@@ -2,7 +2,7 @@ spring:
   application:
     name: EurekaServer
 server:
-  port: 8762
+  port: 8761
 eureka:
   client:
     register-with-eureka: false
