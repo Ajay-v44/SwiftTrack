@@ -1,10 +1,10 @@
-package com.swifttrack.Gateway;
+package com.mircoservice.GateWay;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class GatewayApplicationTests {
+class GateWayApplicationTests {
 
 	@Test
 	void contextLoads() {

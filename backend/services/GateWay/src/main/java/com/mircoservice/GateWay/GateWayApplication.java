@@ -1,13 +1,13 @@
-package com.swifttrack.Gateway;
+package com.mircoservice.GateWay;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class GatewayApplication {
+public class GateWayApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(GatewayApplication.class, args);
+		SpringApplication.run(GateWayApplication.class, args);
 	}
 
 }

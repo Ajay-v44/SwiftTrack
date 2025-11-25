@@ -36,6 +36,7 @@
         <!-- Each folder with its own pom.xml -->
         <module>services/EurekaServer</module>
         <module>services/Gateway</module>
+        <module>services/AuthService</module>
 <!--        <module>services/user-service</module>-->
 <!--        <module>services/order-service</module>-->
 <!--        <module>infra</module>-->
