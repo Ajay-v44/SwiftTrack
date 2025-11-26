@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="19881c33-367b-4e0e-b8e7-72ff8d2ffeba" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/services/AuthService/src/main/java/com/swifttrack/AuthService/controllers/TestContoller.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/compiler.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/encodings.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/jarRepositories.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/AuthService/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/services/AuthService/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/AuthService/src/main/resources/application.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/services/AuthService/src/main/resources/application.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/EurekaServer/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/services/EurekaServer/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/GateWay/src/main/java/com/mircoservice/GateWay/GateWayApplication.java" beforeDir="false" afterPath="$PROJECT_DIR$/services/GateWay/src/main/java/com/mircoservice/GateWay/GateWayApplication.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/Gateway/src/main/resources/application.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/services/Gateway/src/main/resources/application.yaml" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Class" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;customColor&quot;: &quot;&quot;,
+  &quot;associatedIndex&quot;: 4
+}</component>
+  <component name="ProjectId" id="35yscmYeaGYfV8IxMZQhpspDbmX" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "Application.AuthServiceApplication.executor": "Run",
+    "Application.EurekaServerApplication.executor": "Run",
+    "Application.GateWayApplication.executor": "Run",
+    "Application.GatewayApplication.executor": "Run",
+    "JUnit.GatewayApplicationTests.executor": "Run",
+    "Maven.swifttrack [clean].executor": "Run",
+    "Maven.swifttrack [install].executor": "Run",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "main",
+    "ignore.virus.scanning.warn.message": "true",
+    "kotlin-language-version-configured": "true"
+  }
+}]]></component>
+  <component name="RunAnythingCache">
+    <option name="myCommands">
+      <command value="mvn clean" />
+      <command value="mvn install" />
+    </option>
+  </component>
+  <component name="RunManager">
+    <configuration default="true" type="JetRunConfigurationType">
+      <module name="swifttrack" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="KotlinStandaloneScriptRunConfigurationType">
+      <module name="swifttrack" />
+      <option name="filePath" />
+      <method v="2" />
+    </configuration>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="19881c33-367b-4e0e-b8e7-72ff8d2ffeba" name="Changes" comment="" />
+      <created>1764093730207</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1764093730207</updated>
+    </task>
+    <servers />
+  </component>
+</project>
