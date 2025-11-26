@@ -4,20 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="19881c33-367b-4e0e-b8e7-72ff8d2ffeba" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/services/AuthService/src/main/java/com/swifttrack/AuthService/controllers/TestContoller.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/compiler.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/encodings.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/jarRepositories.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/AuthService/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/services/AuthService/pom.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/AuthService/src/main/resources/application.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/services/AuthService/src/main/resources/application.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/EurekaServer/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/services/EurekaServer/pom.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/GateWay/src/main/java/com/mircoservice/GateWay/GateWayApplication.java" beforeDir="false" afterPath="$PROJECT_DIR$/services/GateWay/src/main/java/com/mircoservice/GateWay/GateWayApplication.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/Gateway/src/main/resources/application.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/services/Gateway/src/main/resources/application.yaml" afterDir="false" />
-    </list>
+    <list default="true" id="19881c33-367b-4e0e-b8e7-72ff8d2ffeba" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -42,24 +29,24 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "Application.AuthServiceApplication.executor": "Run",
-    "Application.EurekaServerApplication.executor": "Run",
-    "Application.GateWayApplication.executor": "Run",
-    "Application.GatewayApplication.executor": "Run",
-    "JUnit.GatewayApplicationTests.executor": "Run",
-    "Maven.swifttrack [clean].executor": "Run",
-    "Maven.swifttrack [install].executor": "Run",
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "main",
-    "ignore.virus.scanning.warn.message": "true",
-    "kotlin-language-version-configured": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;Application.AuthServiceApplication.executor&quot;: &quot;Run&quot;,
+    &quot;Application.EurekaServerApplication.executor&quot;: &quot;Run&quot;,
+    &quot;Application.GateWayApplication.executor&quot;: &quot;Run&quot;,
+    &quot;Application.GatewayApplication.executor&quot;: &quot;Run&quot;,
+    &quot;JUnit.GatewayApplicationTests.executor&quot;: &quot;Run&quot;,
+    &quot;Maven.swifttrack [clean].executor&quot;: &quot;Run&quot;,
+    &quot;Maven.swifttrack [install].executor&quot;: &quot;Run&quot;,
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RunAnythingCache">
     <option name="myCommands">
       <command value="mvn clean" />
