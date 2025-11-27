@@ -10,10 +10,13 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import com.swifttrack.AuthService.Models.Enum.VerificationStatus;
 
 @Data
 @Entity
@@ -27,14 +30,14 @@ public class UserModel {
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
     
-    @Column(name = "tenant_id")
+    @Column(name = "tenant_id", nullable = true)
     private UUID tenantId;
     
-    @Column(name = "provider_id")
+    @Column(name = "provider_id", nullable = true)
     private UUID providerId;
     
     @Enumerated(EnumType.STRING)
-    @Column(name = "type")
+    @Column(name = "type", nullable = true)
     private UserType type;
     
     @Column(name = "name")
@@ -49,10 +52,10 @@ public class UserModel {
     @Column(name = "password_hash")
     private String passwordHash;
     
-    @Column(name = "otp")
+    @Column(name = "otp",nullable = true)
     private String otp;
     
-    @Column(name = "last_otp_sent_at")
+    @Column(name = "last_otp_sent_at", nullable = true)
     private LocalDateTime lastOtpSentAt;
     
     @Column(name = "status")
@@ -68,14 +71,21 @@ public class UserModel {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
     
-    @Column(name = "deleted_at")
+    @Column(name = "deleted_at", nullable = true)
     private LocalDateTime deletedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+    
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }
 
 enum UserType {
     TENANT_USER, DRIVER_USER, PROVIDER_USER, ADMIN_USER
-}
-
-enum VerificationStatus {
-    PENDING, APPROVED, REJECTED
 }

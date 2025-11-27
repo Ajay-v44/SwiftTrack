@@ -9,4 +9,5 @@ import com.swifttrack.AuthService.Models.UserModel;
 public interface UserRepo extends JpaRepository<UserModel,UUID> {
     UserModel findByName(String username);
     UserModel findByEmail(String email);
+    UserModel findByMobile(String mobile);
 }
