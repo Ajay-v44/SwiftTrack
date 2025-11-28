@@ -51,7 +51,7 @@ public class JwtUtil {
 
         Map<String, Object> extracted = new HashMap<>();
         extracted.put("userId", claims.get("userId"));
-        extracted.put("username", claims.get("username"));
+        extracted.put("mobile", claims.get("mobile"));
         return extracted;
     }
 }

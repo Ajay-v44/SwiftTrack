@@ -16,6 +16,8 @@ import jakarta.persistence.Table;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+
+import com.swifttrack.AuthService.Models.Enum.UserType;
 import com.swifttrack.AuthService.Models.Enum.VerificationStatus;
 
 @Data
@@ -86,6 +88,3 @@ public class UserModel {
     }
 }
 
-enum UserType {
-    TENANT_USER, DRIVER_USER, PROVIDER_USER, ADMIN_USER
-}
