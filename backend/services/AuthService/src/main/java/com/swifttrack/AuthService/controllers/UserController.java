@@ -24,42 +24,22 @@ public class UserController {
 
     @PostMapping("v1/register")
     public ResponseEntity<String> registerUser(@RequestBody RegisterUser input) {
-        try {
-            return ResponseEntity.ok(userService.registerUser(input));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        return ResponseEntity.ok(userService.registerUser(input));
     }
 
     @PostMapping("v1/login/emailAndPassword")
     public ResponseEntity<LoginResponse> loginUserEmailAndPassword(@RequestBody LoginUser input) {
-        try {
-            return ResponseEntity.ok(userService.loginUserEmailAndPassword(input));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(new LoginResponse(e.getMessage(), null));
-        }
+        return ResponseEntity.ok(userService.loginUserEmailAndPassword(input));
     }
 
     @PostMapping("v1/login/mobileAndOtp")
     public ResponseEntity<LoginResponse> loginUserMobileAndOtp(@RequestBody MobileNumAuth entity) {
-        try {
-            return ResponseEntity.ok(userService.loginMobileAndOtp(entity));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(new LoginResponse(e.getMessage(), null));
-
-        }
+        return ResponseEntity.ok(userService.loginMobileAndOtp(entity));
     }
 
     @PostMapping("v1/getUserDetails")
     public ResponseEntity<TokenResponse> getUesrDetails(@RequestParam String token) {
-        try {
-            return ResponseEntity.ok(userService.getUserDetails(token));
-        } catch (Exception e) {
-            System.out.println(e.getMessage());
-            return null;
-            // return ResponseEntity.badRequest().body(new TokenResponse(e.getMessage(), null,null,null,null,null));
-
-        }
+        return ResponseEntity.ok(userService.getUserDetails(token));
     }
 
 }

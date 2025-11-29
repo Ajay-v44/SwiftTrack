@@ -9,11 +9,13 @@ import java.util.UUID;
 import javax.crypto.SecretKey;
 
 import org.springframework.stereotype.Component;
+import org.springframework.http.HttpStatus;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import com.swifttrack.AuthService.exception.CustomException;
 
 @Component
 public class JwtUtil {
@@ -40,18 +42,22 @@ public class JwtUtil {
     }
 
     public Map<String, Object> decodeToken(String token) {
-        byte[] keyBytes = Base64.getDecoder().decode(SECRET); // same key used for signing
-        SecretKey key = Keys.hmacShaKeyFor(keyBytes);
+        try {
+            byte[] keyBytes = Base64.getDecoder().decode(SECRET);
+            SecretKey key = Keys.hmacShaKeyFor(keyBytes);
 
-        Claims claims = Jwts.parserBuilder()
-                .setSigningKey(key)
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
+            Claims claims = Jwts.parserBuilder()
+                    .setSigningKey(key)
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
 
-        Map<String, Object> extracted = new HashMap<>();
-        extracted.put("userId", claims.get("userId"));
-        extracted.put("mobile", claims.get("mobile"));
-        return extracted;
+            Map<String, Object> extracted = new HashMap<>();
+            extracted.put("userId", claims.get("userId"));
+            extracted.put("mobile", claims.get("mobile"));
+            return extracted;
+        } catch (Exception e) {
+            throw new CustomException(HttpStatus.UNAUTHORIZED, "Invalid or expired token");
+        }
     }
 }

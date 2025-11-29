@@ -6,6 +6,8 @@ import java.util.Objects;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 
 import com.swifttrack.AuthService.Dto.LoginResponse;
 import com.swifttrack.AuthService.Dto.LoginUser;
@@ -18,6 +20,8 @@ import com.swifttrack.AuthService.Repository.UserRepo;
 import com.swifttrack.AuthService.conf.Cryptography;
 import com.swifttrack.AuthService.util.JwtUtil;
 import com.swifttrack.AuthService.util.UserMapper;
+import com.swifttrack.AuthService.exception.ResourceNotFoundException;
+import com.swifttrack.AuthService.exception.CustomException;
 
 @Service
 public class UserServices {
@@ -33,9 +37,9 @@ public class UserServices {
     public String registerUser(RegisterUser registerUser) {
         // validation
         if (userRepo.findByEmail(registerUser.email()) != null)
-            throw new IllegalStateException("email already taken");
+            throw new CustomException(HttpStatus.CONFLICT, "Email already taken");
         if (userRepo.findByMobile(registerUser.mobile()) != null)
-            throw new IllegalStateException("mobile already taken");
+            throw new CustomException(HttpStatus.CONFLICT, "Mobile already taken");
         UserModel userModel = new UserModel();
         userModel.setName(registerUser.name());
         userModel.setEmail(registerUser.email());
@@ -51,20 +55,25 @@ public class UserServices {
     public LoginResponse loginUserEmailAndPassword(LoginUser input) {
         UserModel userModel = userRepo.findByEmail(input.email());
 
-        if (userModel == null || userModel.getStatus() == false)
-            throw new IllegalStateException("Account doesnt Exists Or Not Activated");
+        if (userModel == null)
+            throw new ResourceNotFoundException("Account doesn't exist");
+        
+        if (userModel.getStatus() == false)
+            throw new CustomException(HttpStatus.FORBIDDEN, "Account not activated");
 
         if (cryptography.matches(input.password(), userModel.getPasswordHash()))
             return new LoginResponse("Bearer Token", jwtUtil.generateToken(userModel.getId(), userModel.getMobile()));
-        throw new IllegalStateException("InValid Credentials");
+        throw new CustomException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
     }
 
-    public LoginResponse loginMobileAndOtp(MobileNumAuth entity) throws Exception {
-
+    public LoginResponse loginMobileAndOtp(MobileNumAuth entity) {
         UserModel userModel = userRepo.findByMobile(entity.mobileNum());
 
-        if (userModel == null || userModel.getStatus() == false)
-            throw new IllegalAccessException("User Account Doesnt Exists Or Is Not Verified.");
+        if (userModel == null)
+            throw new ResourceNotFoundException("User account doesn't exist");
+            
+        if (userModel.getStatus() == false)
+            throw new CustomException(HttpStatus.FORBIDDEN, "User account is not verified");
 
         if (entity.otp().isPresent()) {
             if (Objects.equals(userModel.getOtp(), entity.otp().get())) {
@@ -74,18 +83,21 @@ public class UserServices {
         } else {
             // Todo : Implement Otp service
         }
-        throw new IllegalAccessException("In Valid OTP");
+        throw new CustomException(HttpStatus.UNAUTHORIZED, "Invalid OTP");
     }
 
-    public TokenResponse getUserDetails(String token) throws Exception {
+    public TokenResponse getUserDetails(String token) {
         Map<String, Object> map = jwtUtil.decodeToken(token);
         if (map.containsKey("mobile")) {
             String mobileNum = (String) map.get("mobile");
             UserModel userModel = userRepo.findByMobile(mobileNum);
-            if (userModel == null || userModel.getStatus() == false)
-                throw new IllegalAccessException("User Account Doesnt Exists Or Is Not Verified.");
+            if (userModel == null)
+                throw new ResourceNotFoundException("User account doesn't exist");
+                
+            if (userModel.getStatus() == false)
+                throw new CustomException(HttpStatus.FORBIDDEN, "User account is not verified");
             return userMapper.userModelTokenResponse(userModel);
         }
-        throw new IllegalAccessException("Invalid Token.");
+        throw new CustomException(HttpStatus.UNAUTHORIZED, "Invalid Token");
     }
 }
