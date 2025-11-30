@@ -15,7 +15,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
-import com.swifttrack.AuthService.exception.CustomException;
+import com.swifttrack.exception.CustomException;
 
 @Component
 public class JwtUtil {

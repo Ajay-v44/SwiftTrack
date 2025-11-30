@@ -20,8 +20,8 @@ import com.swifttrack.AuthService.Repository.UserRepo;
 import com.swifttrack.AuthService.conf.Cryptography;
 import com.swifttrack.AuthService.util.JwtUtil;
 import com.swifttrack.AuthService.util.UserMapper;
-import com.swifttrack.AuthService.exception.ResourceNotFoundException;
-import com.swifttrack.AuthService.exception.CustomException;
+import com.swifttrack.exception.ResourceNotFoundException;
+import com.swifttrack.exception.CustomException;
 
 @Service
 public class UserServices {

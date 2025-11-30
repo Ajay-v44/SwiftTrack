@@ -7,12 +7,15 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.swifttrack</groupId>
-        <artifactId>swifttrack</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.8</version>
+        <relativePath/>
     </parent>
 
+    <groupId>com.swifttrack</groupId>
     <artifactId>common</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>Common Module</name>
@@ -25,7 +28,10 @@
     </properties>
 
     <dependencies>
-        <!-- Any dependencies needed for the DTOs can be added here -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
     </dependencies>
 
     <build>

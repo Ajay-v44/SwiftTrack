@@ -1,10 +1,10 @@
 package com.swifttrack.controllers;
 
-import com.swifttrack.RegisterUser;
+import com.swifttrack.dto.RegisterUser;
 import com.swifttrack.services.AuthService;
 
 
-import com.swifttrack.Message;
+import com.swifttrack.dto.Message;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;

@@ -1,4 +1,4 @@
-package com.swifttrack.AuthService.exception;
+package com.swifttrack.exception;
 
 import java.time.LocalDateTime;
 

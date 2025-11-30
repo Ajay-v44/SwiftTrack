@@ -1,2 +1,7 @@
+com\swifttrack\dto\Message.class
 com\swifttrack\RegisterUser.class
-com\swifttrack\Message.class
+com\swifttrack\exception\ErrorResponse.class
+com\swifttrack\exception\GlobalErrorAttributes.class
+com\swifttrack\dto\RegisterUser.class
+com\swifttrack\exception\CustomException.class
+com\swifttrack\exception\ResourceNotFoundException.class

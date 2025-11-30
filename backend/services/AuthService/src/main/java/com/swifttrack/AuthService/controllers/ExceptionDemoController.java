@@ -7,8 +7,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.swifttrack.AuthService.exception.CustomException;
-import com.swifttrack.AuthService.exception.ResourceNotFoundException;
+import com.swifttrack.exception.CustomException;
+import com.swifttrack.exception.ResourceNotFoundException;
 
 @RestController
 @RequestMapping("/api/demo/exceptions")

@@ -6,8 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.FeignException;
 
 import com.swifttrack.FeignClients.AuthInterface;
-import com.swifttrack.RegisterUser;
-import com.swifttrack.Message;
+import com.swifttrack.dto.RegisterUser;
+import com.swifttrack.dto.Message;
 import com.swifttrack.exception.CustomException;
 
 import java.util.Map;
@@ -26,9 +26,15 @@ public class AuthService {
             System.out.println("Registering user: " + registerUser);
             return new Message(authInterface.registerUser(registerUser).getBody());
         } catch (FeignException e) {
+            System.out.println("FeignException caught: " + e.getMessage());
+            System.out.println("FeignException body: " + e.contentUTF8());
             String errorMessage = extractErrorMessage(e.contentUTF8());
+            System.out.println("Extracted message: " + errorMessage);
             throw new CustomException(HttpStatus.valueOf(e.status()), errorMessage);
         } catch (Exception e) {
+            System.out.println("Generic exception: " + e.getClass().getName());
+            System.out.println("Exception message: " + e.getMessage());
+            e.printStackTrace();
             throw new CustomException(HttpStatus.BAD_REQUEST, e.getMessage());
         }
     }

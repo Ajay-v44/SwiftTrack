@@ -1,4 +1,4 @@
-package com.swifttrack;
+package com.swifttrack.dto;
 
 public record Message(String message) {
 
