@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import com.swifttrack.RegisterUser;
 
-@FeignClient(name = "auth-service")
+@FeignClient(name = "authservice")
 public interface AuthInterface {
 
     @PostMapping("/api/users/v1/register")
