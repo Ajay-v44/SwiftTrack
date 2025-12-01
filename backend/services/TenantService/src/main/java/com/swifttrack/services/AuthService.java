@@ -7,7 +7,10 @@ import feign.FeignException;
 
 import com.swifttrack.FeignClients.AuthInterface;
 import com.swifttrack.dto.RegisterUser;
+import com.swifttrack.dto.LoginResponse;
+import com.swifttrack.dto.LoginUser;
 import com.swifttrack.dto.Message;
+import com.swifttrack.dto.MobileNumAuth;
 import com.swifttrack.exception.CustomException;
 
 import java.util.Map;
@@ -26,15 +29,28 @@ public class AuthService {
             System.out.println("Registering user: " + registerUser);
             return new Message(authInterface.registerUser(registerUser).getBody());
         } catch (FeignException e) {
-            System.out.println("FeignException caught: " + e.getMessage());
-            System.out.println("FeignException body: " + e.contentUTF8());
-            String errorMessage = extractErrorMessage(e.contentUTF8());
-            System.out.println("Extracted message: " + errorMessage);
-            throw new CustomException(HttpStatus.valueOf(e.status()), errorMessage);
+            throw new CustomException(HttpStatus.valueOf(e.status()), e.getMessage());
         } catch (Exception e) {
-            System.out.println("Generic exception: " + e.getClass().getName());
-            System.out.println("Exception message: " + e.getMessage());
-            e.printStackTrace();
+            throw new CustomException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
+    }
+    
+    public LoginResponse login(LoginUser loginUser) {
+        try {
+            return authInterface.login(loginUser).getBody();
+        } catch (FeignException e) {
+            throw new CustomException(HttpStatus.valueOf(e.status()), e.getMessage());
+        } catch (Exception e) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    public LoginResponse loginMobileNumAndOtp(MobileNumAuth mobileNumAuth) {
+        try {
+            return authInterface.loginMobileNumAndOtp(mobileNumAuth).getBody();
+        } catch (FeignException e) {
+            throw new CustomException(HttpStatus.valueOf(e.status()), e.getMessage());
+        } catch (Exception e) {
             throw new CustomException(HttpStatus.BAD_REQUEST, e.getMessage());
         }
     }

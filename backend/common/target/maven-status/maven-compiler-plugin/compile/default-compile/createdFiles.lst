@@ -1,5 +1,8 @@
 com\swifttrack\dto\Message.class
+com\swifttrack\dto\LoginResponse.class
+com\swifttrack\dto\MobileNumAuth.class
 com\swifttrack\RegisterUser.class
+com\swifttrack\dto\LoginUser.class
 com\swifttrack\exception\ErrorResponse.class
 com\swifttrack\exception\GlobalErrorAttributes.class
 com\swifttrack\dto\RegisterUser.class

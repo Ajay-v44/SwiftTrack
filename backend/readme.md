@@ -2,3 +2,5 @@
   mvn spring-boot:run 
 
   mvn clean install -DskipTests -q
+
+   mvn clean compile -DskipTests -q
