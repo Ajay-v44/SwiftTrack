@@ -8,4 +8,5 @@ com\swifttrack\exception\ErrorResponse.class
 com\swifttrack\exception\GlobalErrorAttributes.class
 com\swifttrack\dto\RegisterUser.class
 com\swifttrack\exception\CustomException.class
+com\swifttrack\dto\TokenResponse.class
 com\swifttrack\exception\ResourceNotFoundException.class

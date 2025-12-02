@@ -7,6 +7,7 @@ import feign.FeignException;
 
 import com.swifttrack.FeignClients.AuthInterface;
 import com.swifttrack.dto.RegisterUser;
+import com.swifttrack.dto.TokenResponse;
 import com.swifttrack.dto.LoginResponse;
 import com.swifttrack.dto.LoginUser;
 import com.swifttrack.dto.Message;
@@ -64,5 +65,9 @@ public class AuthService {
         } catch (Exception e) {
             return responseBody != null ? responseBody : "An error occurred";
         }
+    }
+
+    public TokenResponse getUserDetails(String token) {
+        return authInterface.getUserDetails(token).getBody();
     }
 }

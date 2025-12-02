@@ -1,6 +1,7 @@
 package com.swifttrack.controllers;
 
 import com.swifttrack.dto.RegisterUser;
+import com.swifttrack.dto.TokenResponse;
 import com.swifttrack.services.AuthService;
 import com.swifttrack.dto.LoginResponse;
 import com.swifttrack.dto.LoginUser;
@@ -11,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -26,12 +28,16 @@ public class AuthController {
         return ResponseEntity.ok(authService.register(registerUser));
     }
 
-    @PostMapping("/v1/login")
+    @PostMapping("/api/users/v1/login/emailAndPassword")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginUser loginUser){
         return ResponseEntity.ok(authService.login(loginUser));
     }
-    @PostMapping("/v1/loginMobileNumAndOtp")
+    @PostMapping("/api/users/v1/login/mobileAndOtp")
     public ResponseEntity<LoginResponse> loginMobileNumAndOtp(@RequestBody MobileNumAuth mobileNumAuth){
         return ResponseEntity.ok(authService.loginMobileNumAndOtp(mobileNumAuth));
+    }
+    @PostMapping("/api/users/v1/getUserDetails")
+    public ResponseEntity<TokenResponse> getUserDetails(@RequestParam String token){
+        return ResponseEntity.ok(authService.getUserDetails(token));
     }
 }   

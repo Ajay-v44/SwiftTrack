@@ -32,13 +32,13 @@ public class UserController {
         return ResponseEntity.ok(userService.loginUserEmailAndPassword(input));
     }
 
-    @PostMapping("v1/login/mobileAndOtp")
+    @PostMapping("v1/login/mobileNumAndOtp")
     public ResponseEntity<LoginResponse> loginUserMobileAndOtp(@RequestBody MobileNumAuth entity) {
         return ResponseEntity.ok(userService.loginMobileAndOtp(entity));
     }
 
     @PostMapping("v1/getUserDetails")
-    public ResponseEntity<TokenResponse> getUesrDetails(@RequestParam String token) {
+    public ResponseEntity<TokenResponse> getUserDetails(@RequestParam String token) {
         return ResponseEntity.ok(userService.getUserDetails(token));
     }
 
