@@ -3,6 +3,7 @@ D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\LoginUser.java
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\Message.java
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\MobileNumAuth.java
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\RegisterUser.java
+D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\enums\UserType.java
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\exception\CustomException.java
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\exception\ErrorResponse.java
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\exception\GlobalErrorAttributes.java

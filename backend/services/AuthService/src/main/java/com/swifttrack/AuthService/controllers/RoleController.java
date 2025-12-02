@@ -38,5 +38,4 @@ public class RoleController {
             throw new RuntimeException(e);
         }
     }
-
 }
