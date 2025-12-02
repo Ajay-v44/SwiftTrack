@@ -3,10 +3,13 @@ package com.swifttrack.AuthService.Services;
 import java.util.Map;
 import java.util.Objects;
 
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 
 import com.swifttrack.AuthService.Dto.LoginResponse;
@@ -17,7 +20,6 @@ import com.swifttrack.AuthService.Dto.TokenResponse;
 import com.swifttrack.AuthService.Models.UserModel;
 import com.swifttrack.AuthService.Models.Enum.VerificationStatus;
 import com.swifttrack.AuthService.Repository.UserRepo;
-import com.swifttrack.AuthService.conf.Cryptography;
 import com.swifttrack.AuthService.util.JwtUtil;
 import com.swifttrack.AuthService.util.UserMapper;
 import com.swifttrack.exception.ResourceNotFoundException;
@@ -96,7 +98,21 @@ public class UserServices {
                 
             if (userModel.getStatus() == false)
                 throw new CustomException(HttpStatus.FORBIDDEN, "User account is not verified");
-            return userMapper.userModelTokenResponse(userModel);
+            
+            // Fetch user roles
+            List<String> roleNames = userModel.getUserRoles().stream()
+                .map(userRole -> userRole.getRoles().getName().toString())
+                .collect(Collectors.toList());
+                
+            return new TokenResponse(
+                userModel.getId(),
+                Optional.ofNullable(userModel.getTenantId()),
+                Optional.ofNullable(userModel.getProviderId()),
+                Optional.ofNullable(userModel.getType()),
+                userModel.getName(),
+                userModel.getMobile(),
+                roleNames
+            );
         }
         throw new CustomException(HttpStatus.UNAUTHORIZED, "Invalid Token");
     }

@@ -1,5 +1,6 @@
 package com.swifttrack.AuthService.Dto;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -11,6 +12,9 @@ public record TokenResponse(
                 Optional<UUID> providerId,
                 Optional<UserType> userType,
                 String name,
-                String mobile) {
+                String mobile,
+                List<String> roles
+            
+            ) {
 
 }

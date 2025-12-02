@@ -1,6 +1,7 @@
 package com.swifttrack.AuthService.Models;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
@@ -10,6 +11,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -75,6 +77,9 @@ public class UserModel {
     
     @Column(name = "deleted_at", nullable = true)
     private LocalDateTime deletedAt;
+
+    @OneToMany(mappedBy = "userModel")
+    private List<UserRoles> userRoles;
 
     @PrePersist
     protected void onCreate() {
