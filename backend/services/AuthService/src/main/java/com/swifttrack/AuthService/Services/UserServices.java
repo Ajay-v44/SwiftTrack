@@ -48,6 +48,7 @@ public class UserServices {
         userModel.setMobile(registerUser.mobile());
         userModel.setPasswordHash(cryptography.encode(registerUser.password()));
         userModel.setStatus(false);
+        userModel.setType(registerUser.userType());
         userModel.setVerificationStatus(VerificationStatus.PENDING);
         userRepo.save(userModel);
 

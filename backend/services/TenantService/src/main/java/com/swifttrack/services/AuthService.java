@@ -30,8 +30,12 @@ public class AuthService {
             System.out.println("Registering user: " + registerUser);
             return new Message(authInterface.registerUser(registerUser).getBody());
         } catch (FeignException e) {
-            throw new CustomException(HttpStatus.valueOf(e.status()), e.getMessage());
+            String errorMessage = extractErrorMessage(e.contentUTF8());
+            System.err.println("[TENANT-SERVICE] Auth Service Error in register: " + errorMessage);
+            throw new CustomException(HttpStatus.valueOf(e.status()), errorMessage);
         } catch (Exception e) {
+            System.err.println("[TENANT-SERVICE] Unexpected Error in register: " + e.getMessage());
+            e.printStackTrace();
             throw new CustomException(HttpStatus.BAD_REQUEST, e.getMessage());
         }
     }
@@ -40,8 +44,12 @@ public class AuthService {
         try {
             return authInterface.login(loginUser).getBody();
         } catch (FeignException e) {
-            throw new CustomException(HttpStatus.valueOf(e.status()), e.getMessage());
+            String errorMessage = extractErrorMessage(e.contentUTF8());
+            System.err.println("[TENANT-SERVICE] Auth Service Error in login: " + errorMessage);
+            throw new CustomException(HttpStatus.valueOf(e.status()), errorMessage);
         } catch (Exception e) {
+            System.err.println("[TENANT-SERVICE] Unexpected Error in login: " + e.getMessage());
+            e.printStackTrace();
             throw new CustomException(HttpStatus.BAD_REQUEST, e.getMessage());
         }
     }
@@ -50,20 +58,34 @@ public class AuthService {
         try {
             return authInterface.loginMobileNumAndOtp(mobileNumAuth).getBody();
         } catch (FeignException e) {
-            throw new CustomException(HttpStatus.valueOf(e.status()), e.getMessage());
+            String errorMessage = extractErrorMessage(e.contentUTF8());
+            System.err.println("[TENANT-SERVICE] Auth Service Error in loginMobileNumAndOtp: " + errorMessage);
+            throw new CustomException(HttpStatus.valueOf(e.status()), errorMessage);
         } catch (Exception e) {
+            System.err.println("[TENANT-SERVICE] Unexpected Error in loginMobileNumAndOtp: " + e.getMessage());
+            e.printStackTrace();
             throw new CustomException(HttpStatus.BAD_REQUEST, e.getMessage());
         }
     }
 
     private String extractErrorMessage(String responseBody) {
         try {
+            if (responseBody == null || responseBody.isEmpty()) {
+                return "No error details available";
+            }
             ObjectMapper mapper = new ObjectMapper();
             Map<String, Object> errorMap = mapper.readValue(responseBody, Map.class);
             Object message = errorMap.get("message");
-            return message != null ? message.toString() : "An error occurred";
+            if (message != null && !message.toString().isEmpty()) {
+                return message.toString();
+            }
+            Object error = errorMap.get("error");
+            if (error != null) {
+                return error.toString();
+            }
+            return responseBody;
         } catch (Exception e) {
-            return responseBody != null ? responseBody : "An error occurred";
+            return responseBody != null ? responseBody : "Unknown error occurred";
         }
     }
 
