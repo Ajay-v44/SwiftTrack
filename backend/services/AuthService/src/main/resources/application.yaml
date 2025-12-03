@@ -35,3 +35,8 @@ springdoc:
     enabled: true
     operations-sorter: method
     tags-sorter: alpha
+    use-root-path: true
+    show-extensions: true
+  show-actuator: false
+  cache:
+    disabled: true
