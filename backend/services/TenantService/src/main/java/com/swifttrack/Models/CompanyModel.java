@@ -12,43 +12,52 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
+@Data
 @Table(name = "companie")
 @NoArgsConstructor
 @AllArgsConstructor
 public class CompanyModel {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
-    @Column(name="organization_name")
+    @Column(name = "organization_name")
     private String organizationName;
-    @Column(name="organization_address")
+    @Column(name = "organization_address")
     private String organizationAddress;
-    @Column(name="organization_phone")
+    @Column(name = "organization_phone")
     private String organizationPhone;
-    @Column(name="organization_email")
+    @Column(name = "organization_email")
     private String organizationEmail;
-    @Column(name="organization_website")
+    @Column(name = "organization_website")
     private String organizationWebsite;
-    @Column(name="status")
+    @Column(name = "organization_state")
+    private String organizationState;
+    @Column(name = "organization_city")
+    private String organizationCity;
+    @Column(name = "organization_country")
+    private String organizationCountry;
+    @Column(name = "status")
     private boolean status;
 
-    
-    @Column(name = "created_at")    
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
-    @Column(name = "updated_at")    
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
+        status = false;
     }
-    
+
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();

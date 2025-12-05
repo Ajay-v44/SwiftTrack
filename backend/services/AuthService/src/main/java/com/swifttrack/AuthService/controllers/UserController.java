@@ -1,5 +1,7 @@
 package com.swifttrack.AuthService.controllers;
 
+import java.util.UUID;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,6 +22,7 @@ import com.swifttrack.AuthService.Dto.MobileNumAuth;
 import com.swifttrack.AuthService.Dto.RegisterUser;
 import com.swifttrack.AuthService.Dto.TokenResponse;
 import com.swifttrack.AuthService.Services.UserServices;
+import com.swifttrack.dto.Message;
 
 @RestController
 @RequestMapping("/api/users/")
@@ -72,4 +75,15 @@ public class UserController {
         return ResponseEntity.ok(userService.getUserDetails(token));
     }
 
+
+    @PostMapping("v1/assignAdmin")
+    @Operation(summary = "Assign admin role to a user", description = "Assign Admin Role For A User Who Is Creating A Tenant Account")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Admin role assigned successfully"),
+            @ApiResponse(responseCode = "401", description = "Invalid credentials"),
+            @ApiResponse(responseCode = "403", description = "Account not activated")
+    })
+    public ResponseEntity<Message> assignAdmin(@RequestParam String token, @RequestParam UUID tenantId) {
+        return ResponseEntity.ok(userService.assignAdmin(token, tenantId));
+    }
 }
