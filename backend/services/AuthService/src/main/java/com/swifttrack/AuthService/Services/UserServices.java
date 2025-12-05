@@ -5,6 +5,7 @@ import java.util.Objects;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,10 +19,12 @@ import com.swifttrack.AuthService.Dto.MobileNumAuth;
 import com.swifttrack.AuthService.Dto.RegisterUser;
 import com.swifttrack.AuthService.Dto.TokenResponse;
 import com.swifttrack.AuthService.Models.UserModel;
+import com.swifttrack.AuthService.Models.Enum.UserType;
 import com.swifttrack.AuthService.Models.Enum.VerificationStatus;
 import com.swifttrack.AuthService.Repository.UserRepo;
 import com.swifttrack.AuthService.util.JwtUtil;
 import com.swifttrack.AuthService.util.UserMapper;
+import com.swifttrack.dto.Message;
 import com.swifttrack.exception.ResourceNotFoundException;
 import com.swifttrack.exception.CustomException;
 
@@ -60,7 +63,7 @@ public class UserServices {
 
         if (userModel == null)
             throw new ResourceNotFoundException("Account doesn't exist");
-        
+
         if (userModel.getStatus() == false)
             throw new CustomException(HttpStatus.FORBIDDEN, "Account not activated");
 
@@ -74,7 +77,7 @@ public class UserServices {
 
         if (userModel == null)
             throw new ResourceNotFoundException("User account doesn't exist");
-            
+
         if (userModel.getStatus() == false)
             throw new CustomException(HttpStatus.FORBIDDEN, "User account is not verified");
 
@@ -96,24 +99,42 @@ public class UserServices {
             UserModel userModel = userRepo.findByMobile(mobileNum);
             if (userModel == null)
                 throw new ResourceNotFoundException("User account doesn't exist");
-                
+
             if (userModel.getStatus() == false)
                 throw new CustomException(HttpStatus.FORBIDDEN, "User account is not verified");
-            
+
             // Fetch user roles
             List<String> roleNames = userModel.getUserRoles().stream()
-                .map(userRole -> userRole.getRoles().getName().toString())
-                .collect(Collectors.toList());
-                
+                    .map(userRole -> userRole.getRoles().getName().toString())
+                    .collect(Collectors.toList());
+
             return new TokenResponse(
-                userModel.getId(),
-                Optional.ofNullable(userModel.getTenantId()),
-                Optional.ofNullable(userModel.getProviderId()),
-                Optional.ofNullable(userModel.getType()),
-                userModel.getName(),
-                userModel.getMobile(),
-                roleNames
-            );
+                    userModel.getId(),
+                    Optional.ofNullable(userModel.getTenantId()),
+                    Optional.ofNullable(userModel.getProviderId()),
+                    Optional.ofNullable(userModel.getType()),
+                    userModel.getName(),
+                    userModel.getMobile(),
+                    roleNames);
+        }
+        throw new CustomException(HttpStatus.UNAUTHORIZED, "Invalid Token");
+    }
+
+    public Message assignAdmin(String token, UUID tenantId) {
+        Map<String, Object> map = jwtUtil.decodeToken(token);
+        if (map.containsKey("mobile")) {
+            String mobileNum = (String) map.get("mobile");
+            UserModel userModel = userRepo.findByMobile(mobileNum);
+            if (userModel == null)
+                throw new ResourceNotFoundException("User account doesn't exist");
+
+            if (userModel.getStatus() == false)
+                throw new CustomException(HttpStatus.FORBIDDEN, "User account is not verified");
+            userModel.setTenantId(tenantId);
+            userModel.setType(UserType.TENANT_ADMIN);
+            userRepo.save(userModel);
+            return new Message("Admin role assigned successfully");
+
         }
         throw new CustomException(HttpStatus.UNAUTHORIZED, "Invalid Token");
     }
