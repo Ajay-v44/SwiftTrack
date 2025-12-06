@@ -1,5 +1,6 @@
 package com.swifttrack.AuthService.controllers;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,8 +12,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 
@@ -22,6 +21,7 @@ import com.swifttrack.AuthService.Dto.MobileNumAuth;
 import com.swifttrack.AuthService.Dto.RegisterUser;
 import com.swifttrack.AuthService.Dto.TokenResponse;
 import com.swifttrack.AuthService.Services.UserServices;
+import com.swifttrack.dto.AddTenantUsers;
 import com.swifttrack.dto.Message;
 
 @RestController
@@ -75,7 +75,6 @@ public class UserController {
         return ResponseEntity.ok(userService.getUserDetails(token));
     }
 
-
     @PostMapping("v1/assignAdmin")
     @Operation(summary = "Assign admin role to a user", description = "Assign Admin Role For A User Who Is Creating A Tenant Account")
     @ApiResponses(value = {
@@ -85,5 +84,17 @@ public class UserController {
     })
     public ResponseEntity<Message> assignAdmin(@RequestParam String token, @RequestParam UUID tenantId) {
         return ResponseEntity.ok(userService.assignAdmin(token, tenantId));
+    }
+
+    @PostMapping("v1/addTenantUsers")
+    @Operation(summary = "Add tenant users", description = "Add users to a tenant account")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Users added successfully"),
+            @ApiResponse(responseCode = "401", description = "Invalid credentials"),
+            @ApiResponse(responseCode = "403", description = "Account not activated")
+    })
+    public ResponseEntity<Message> addTenantUsers(@RequestParam String token,
+            @RequestBody List<AddTenantUsers> entity) {
+        return ResponseEntity.ok(userService.addTenantUsers(token, entity));
     }
 }

@@ -1,11 +1,14 @@
-package com.swifttrack.AuthService.Dto;
+package com.swifttrack.dto;
 
 import com.swifttrack.enums.UserType;
 
-public record RegisterUser(
+public record AddTenantUsers(
+
         String name,
         String password,
         String email,
         String mobile,
-        UserType userType) {
+        UserType userType,
+        Boolean status) {
+
 }

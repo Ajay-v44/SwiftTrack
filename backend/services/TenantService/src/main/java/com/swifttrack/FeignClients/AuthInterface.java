@@ -1,5 +1,6 @@
 package com.swifttrack.FeignClients;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.cloud.openfeign.FeignClient;
@@ -8,6 +9,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import com.swifttrack.dto.AddTenantUsers;
 import com.swifttrack.dto.LoginResponse;
 import com.swifttrack.dto.LoginUser;
 import com.swifttrack.dto.Message;
@@ -32,4 +34,8 @@ public interface AuthInterface {
 
     @PostMapping("/api/users/v1/assignAdmin")
     public ResponseEntity<Message> assignAdmin(@RequestParam String token, @RequestParam UUID tenantId);
+
+    @PostMapping("/api/users/v1/addTenantUsers")
+    public ResponseEntity<Message> addTenantUsers(@RequestParam String token,
+            @RequestBody List<AddTenantUsers> addTenantUsers);
 }

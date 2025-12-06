@@ -19,12 +19,13 @@ import com.swifttrack.AuthService.Dto.MobileNumAuth;
 import com.swifttrack.AuthService.Dto.RegisterUser;
 import com.swifttrack.AuthService.Dto.TokenResponse;
 import com.swifttrack.AuthService.Models.UserModel;
-import com.swifttrack.AuthService.Models.Enum.UserType;
 import com.swifttrack.AuthService.Models.Enum.VerificationStatus;
 import com.swifttrack.AuthService.Repository.UserRepo;
 import com.swifttrack.AuthService.util.JwtUtil;
 import com.swifttrack.AuthService.util.UserMapper;
+import com.swifttrack.dto.AddTenantUsers;
 import com.swifttrack.dto.Message;
+import com.swifttrack.enums.UserType;
 import com.swifttrack.exception.ResourceNotFoundException;
 import com.swifttrack.exception.CustomException;
 
@@ -135,6 +136,42 @@ public class UserServices {
             userRepo.save(userModel);
             return new Message("Admin role assigned successfully");
 
+        }
+        throw new CustomException(HttpStatus.UNAUTHORIZED, "Invalid Token");
+    }
+
+    public Message addTenantUsers(String token, List<AddTenantUsers> entity) {
+        Map<String, Object> map = jwtUtil.decodeToken(token);
+        if (map.containsKey("mobile")) {
+            String mobileNum = (String) map.get("mobile");
+            UserModel userModel = userRepo.findByMobile(mobileNum);
+            if (userModel == null)
+                throw new ResourceNotFoundException("User account doesn't exist");
+
+            if (userModel.getStatus() == false)
+                throw new CustomException(HttpStatus.FORBIDDEN, "User account is not verified");
+            if (userModel.getTenantId() == null)
+                throw new CustomException(HttpStatus.FORBIDDEN, "You are not part of any organization");
+
+            // if (userModel.getType() != com.swifttrack.enums.UserType.TENANT_ADMIN)
+            // throw new CustomException(HttpStatus.FORBIDDEN, "User is not a tenant
+            // admin");
+            for (AddTenantUsers addTenantUser : entity) {
+                if (userRepo.findByMobile(addTenantUser.mobile()) != null
+                        || userRepo.findByEmail(addTenantUser.email()) != null)
+                    throw new CustomException(HttpStatus.FORBIDDEN, "User already exists");
+                UserModel userModel1 = new UserModel();
+                userModel1.setName(addTenantUser.name());
+                userModel1.setEmail(addTenantUser.email());
+                userModel1.setMobile(addTenantUser.mobile());
+                userModel1.setTenantId(userModel.getTenantId());
+                userModel1.setPasswordHash(cryptography.encode(addTenantUser.password()));
+                userModel1.setStatus(false);
+                userModel1.setType(addTenantUser.userType());
+                userModel1.setVerificationStatus(VerificationStatus.APPROVED);
+                userRepo.save(userModel1);
+            }
+            return new Message("Users added successfully");
         }
         throw new CustomException(HttpStatus.UNAUTHORIZED, "Invalid Token");
     }
