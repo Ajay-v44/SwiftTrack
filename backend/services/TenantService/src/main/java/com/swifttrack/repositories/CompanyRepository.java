@@ -5,14 +5,19 @@ import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import com.swifttrack.Models.CompanyModel;
+import com.swifttrack.Models.TenantModel;
 
 @Repository
-public interface CompanyRepository  extends JpaRepository<CompanyModel, UUID> {
+public interface CompanyRepository extends JpaRepository<TenantModel, UUID> {
 
-    CompanyModel findByOrganizationName(String organizationName);
-    CompanyModel findByOrganizationEmail(String organizationEmail);
-    CompanyModel findByOrganizationPhone(String organizationPhone);
-    CompanyModel findByOrganizationWebsite(String organizationWebsite);
+    TenantModel findByTenantCode(String tenantCode);
+
+    TenantModel findByOrganizationName(String organizationName);
+
+    TenantModel findByOrganizationEmail(String organizationEmail);
+
+    TenantModel findByOrganizationPhone(String organizationPhone);
+
+    TenantModel findByOrganizationWebsite(String organizationWebsite);
 
 }

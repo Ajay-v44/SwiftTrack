@@ -4,7 +4,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.swifttrack.FeignClients.AuthInterface;
-import com.swifttrack.Models.CompanyModel;
+import com.swifttrack.Models.TenantModel;
 import com.swifttrack.dto.Message;
 import com.swifttrack.dto.RegisterOrg;
 import com.swifttrack.exception.CustomException;
@@ -26,12 +26,13 @@ public class CompanyService {
 
     public Message registerCompany(String token, RegisterOrg registerOrg) {
         // validation
-        if (companyRepository.findByOrganizationName(registerOrg.organizationName()) != null
+        if (companyRepository.findByTenantCode(registerOrg.tenantCode()) != null
+                || companyRepository.findByOrganizationName(registerOrg.organizationName()) != null
                 || companyRepository.findByOrganizationEmail(registerOrg.organizationEmail()) != null
                 || companyRepository.findByOrganizationPhone(registerOrg.organizationPhone()) != null
                 || companyRepository.findByOrganizationWebsite(registerOrg.organizationWebsite()) != null)
             throw new CustomException(HttpStatus.BAD_REQUEST, "Company already exists");
-        CompanyModel company = companyRepository.save(companyMapper.toEntity(registerOrg));
+        TenantModel company = companyRepository.save(companyMapper.toEntity(registerOrg));
         authInterface.assignAdmin(token, company.getId());
 
         return new Message("Company Registered Successfully");
