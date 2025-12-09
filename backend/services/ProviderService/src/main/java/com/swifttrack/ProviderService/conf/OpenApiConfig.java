@@ -1,5 +1,4 @@
-import org.springframework.context.annotation.Configuration;
-
+package com.swifttrack.ProviderService.conf;
 
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
@@ -7,6 +6,7 @@ import io.swagger.v3.oas.models.info.Contact;
 import io.swagger.v3.oas.models.info.License;
 import io.swagger.v3.oas.models.servers.Server;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
 
 @Configuration
@@ -14,8 +14,8 @@ public class OpenApiConfig {
 @Bean
     public OpenAPI customOpenAPI() {
         Server server = new Server();
-        server.setUrl("http://localhost:8003");
-        server.setDescription("Tenant Service Local Development");
+        server.setUrl("http://localhost:8004");
+        server.setDescription("Provider Service Local Development");
 
         Contact contact = new Contact();
         contact.setName("SwiftTrack Team");
@@ -26,10 +26,10 @@ public class OpenApiConfig {
         license.setUrl("https://www.apache.org/licenses/LICENSE-2.0.html");
 
         Info info = new Info()
-                .title("Tenant Service API")
+                .title("Provider Service API")
                 .version("1.0.0")
-                .description("Tenant management and authentication gateway service for SwiftTrack platform. " +
-                        "Provides unified API for tenant operations including user authentication, tenant configuration, and service integration.")
+                .description("Provider management and authentication gateway service for SwiftTrack platform. " +
+                        "Provides unified API for provider operations including user authentication, provider configuration, and service integration.")
                 .contact(contact)
                 .license(license);
 
