@@ -6,6 +6,7 @@ com\swifttrack\dto\TokenResponse.class
 com\swifttrack\exception\ResourceNotFoundException.class
 com\swifttrack\dto\Message.class
 com\swifttrack\dto\LoginResponse.class
+com\swifttrack\dto\GetProviders.class
 com\swifttrack\dto\MobileNumAuth.class
 com\swifttrack\enums\UserType.class
 com\swifttrack\exception\GlobalErrorAttributes.class

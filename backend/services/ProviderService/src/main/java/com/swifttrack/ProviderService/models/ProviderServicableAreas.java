@@ -1,50 +1,50 @@
-package com.swifttrack.AuthService.Models;
+package com.swifttrack.ProviderService.models;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-@Data
 @Entity
-@Table(name = "roles")
+@Data
+@Table(name = "provider_servicable_areas")
 @NoArgsConstructor
 @AllArgsConstructor
-public class Roles {
-    
+public class ProviderServicableAreas {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
+
+    @ManyToOne
+    @JoinColumn(name = "provider_id")
+    private Provider provider;
     
-    @Enumerated(EnumType.STRING)
-    @Column(name = "name", nullable = false)
-    private Name name;
-
-    @Column(name="description",nullable = true)
-    private String description;
-
-    @Column(name="status",columnDefinition="boolean default false",nullable = false)
-    private Boolean status;
-
-    @Column(name = "created_at")
+    private String state;
+    private String city;
+    private String pinCode;
+    private boolean isActive;
+    
     private LocalDateTime createdAt;
-    
-    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
     
+    @Column(name = "created_by", nullable = false)
+    private UUID createdBy;
+    
+    @Column(name = "updated_by", nullable = false)
+    private UUID updatedBy;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
@@ -54,9 +54,5 @@ public class Roles {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
-    }
-    
-    public enum Name{
-        TENANT_ADMIN, DRIVER, PROVIDER_OWNER, SYSTEM_ADMIN, SYSTEM_USER
     }
 }
