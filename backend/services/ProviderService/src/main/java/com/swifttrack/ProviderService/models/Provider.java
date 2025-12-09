@@ -82,6 +82,9 @@ public class Provider {
     @OneToMany(mappedBy = "provider")
     private List<ProviderServicableAreas> providerServicableAreas;
     
+    @OneToMany(mappedBy = "provider")
+    private List<TenantProviderConfig> tenantProviderConfigs;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
