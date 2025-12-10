@@ -2,6 +2,7 @@
 package com.swifttrack.ProviderService.controllers;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -47,8 +48,26 @@ public class ProviderController {
             @ApiResponse(responseCode = "400", description = "Invalid request"),
             @ApiResponse(responseCode = "500", description = "Internal Server error")
     })
-    public ResponseEntity<Message> createProvider(@RequestHeader String token,@RequestBody CreateProviderAndServicableAreas provider) {
-        return ResponseEntity.ok(providerService.createProvider(token,provider));
+    public ResponseEntity<Message> createProvider(@RequestHeader String token,
+            @RequestBody CreateProviderAndServicableAreas provider) {
+        return ResponseEntity.ok(providerService.createProvider(token, provider));
     }
 
+    @PostMapping("/v1/configureTenantProviders")
+    @Operation(summary = "Configure tenant providers", description = "Configure providers for a specific tenant")
+    @ApiResponse(responseCode = "200", description = "Providers configured successfully")
+    public ResponseEntity<Message> configureTenantProviders(@RequestHeader String token,
+            @RequestBody List<UUID> providers) {
+        return ResponseEntity.ok(providerService.configureTenantProviders(token, providers));
+    }
+
+    @GetMapping("/v1/getTenantProviders")
+    @Operation(summary = "Get tenant providers", description = "Retrieve list of providers for a specific tenant")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Providers retrieved successfully"),
+            @ApiResponse(responseCode = "500", description = "Internal Server error")
+    })
+    public ResponseEntity<List<GetProviders>> getTenantProviders(@RequestHeader String token) {
+        return ResponseEntity.ok(providerService.getTenantProviders(token));
+    }
 }

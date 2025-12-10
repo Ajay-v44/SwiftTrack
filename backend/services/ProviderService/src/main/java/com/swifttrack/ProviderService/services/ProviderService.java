@@ -2,6 +2,7 @@ package com.swifttrack.ProviderService.services;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
@@ -13,8 +14,10 @@ import com.swifttrack.ProviderService.dto.CreateServicableAreas;
 import com.swifttrack.ProviderService.dto.GetProviders;
 import com.swifttrack.ProviderService.models.Provider;
 import com.swifttrack.ProviderService.models.ProviderServicableAreas;
+import com.swifttrack.ProviderService.models.TenantProviderConfig;
 import com.swifttrack.ProviderService.repositories.ProviderRepository;
 import com.swifttrack.ProviderService.repositories.ProviderServicableAreasRepository;
+import com.swifttrack.ProviderService.repositories.TenantProviderConfigRepository;
 import com.swifttrack.enums.UserType;
 import com.swifttrack.dto.Message;
 import com.swifttrack.dto.TokenResponse;
@@ -25,12 +28,15 @@ public class ProviderService {
     ProviderRepository providerRepository;
     ProviderServicableAreasRepository providerServicableAreasRepository;
     AuthInterface authInterface;
+    TenantProviderConfigRepository tenantProviderConfigRepository;
 
     public ProviderService(ProviderRepository providerRepository,
             AuthInterface authInterface,
+            TenantProviderConfigRepository tenantProviderConfigRepository,
             ProviderServicableAreasRepository providerServicableAreasRepository) {
         this.providerRepository = providerRepository;
         this.authInterface = authInterface;
+        this.tenantProviderConfigRepository = tenantProviderConfigRepository;
         this.providerServicableAreasRepository = providerServicableAreasRepository;
     }
 
@@ -50,12 +56,14 @@ public class ProviderService {
 
     public Message createProvider(String token, CreateProviderAndServicableAreas provider) {
         TokenResponse tokenResponse = authInterface.getUserDetails(token).getBody();
-        // if(tokenResponse !=null&&(tokenResponse.userType().get()!=UserType.SYSTEM_ADMIN || tokenResponse.userType().get()!=UserType.SYSTEM_USER))
-        //     throw new CustomException(HttpStatus.FORBIDDEN, "Unauthorized");
-        
+        // if(tokenResponse
+        // !=null&&(tokenResponse.userType().get()!=UserType.SYSTEM_ADMIN ||
+        // tokenResponse.userType().get()!=UserType.SYSTEM_USER))
+        // throw new CustomException(HttpStatus.FORBIDDEN, "Unauthorized");
+
         if (providerRepository.findByProviderName(provider.providerName()) != null)
             throw new CustomException(HttpStatus.ALREADY_REPORTED, "Provider already exists");
-        
+
         Provider providerToSave = new Provider();
         providerToSave.setProviderName(provider.providerName());
         providerToSave.setProviderCode(provider.providerName().toUpperCase().replace(" ", "_"));
@@ -85,4 +93,45 @@ public class ProviderService {
 
         return new Message("Provider created successfully");
     }
+
+    public Message configureTenantProviders(String token, List<UUID> providers) {
+        TokenResponse tokenResponse = authInterface.getUserDetails(token).getBody();
+        if (tokenResponse == null || tokenResponse.tenantId() == null)
+            throw new CustomException(HttpStatus.FORBIDDEN, "Unauthorized");
+        for (UUID providerId : providers) {
+            Provider provider = providerRepository.findById(providerId).orElse(null);
+            if (provider != null) {
+                TenantProviderConfig tenantProviderConfig = new TenantProviderConfig();
+                tenantProviderConfig.setProvider(provider);
+                tenantProviderConfig.setTenantId(tokenResponse.tenantId().get());
+                tenantProviderConfig.setEnabled(true);
+                tenantProviderConfig.setCreatedBy(tokenResponse.id());
+                tenantProviderConfig.setUpdatedBy(tokenResponse.id());
+                tenantProviderConfigRepository.save(tenantProviderConfig);
+            }
+        }
+        return new Message("Providers configured successfully");
+
+    }
+
+    public List<GetProviders> getTenantProviders(String token) {
+        TokenResponse tokenResponse = authInterface.getUserDetails(token).getBody();
+        if (tokenResponse == null || tokenResponse.tenantId() == null)
+            throw new CustomException(HttpStatus.FORBIDDEN, "Unauthorized");
+        return tenantProviderConfigRepository.findByTenantId(tokenResponse.tenantId().get()).stream()
+                .map(tenantProviderConfig -> new GetProviders(tenantProviderConfig.getProvider().getId(),
+                        tenantProviderConfig.getProvider().getProviderName(),
+                        tenantProviderConfig.getProvider().getDescription(),
+                        tenantProviderConfig.getProvider().getLogoUrl(),
+                        tenantProviderConfig.getProvider().getWebsiteUrl(),
+                        tenantProviderConfig.getProvider().isSupportsHyperlocal(),
+                        tenantProviderConfig.getProvider().isSupportsCourier(),
+                        tenantProviderConfig.getProvider().isSupportsSameDay(),
+                        tenantProviderConfig.getProvider().isSupportsIntercity(),
+                        tenantProviderConfig.getProvider().getProviderServicableAreas().stream()
+                                .map(providerServicableAreas -> providerServicableAreas.getCity())
+                                .collect(Collectors.toList())))
+                .collect(Collectors.toList());
+    }
 }
+// todo -> enable or disable teant providers, remove tenant providers
