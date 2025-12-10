@@ -12,9 +12,13 @@ import com.swifttrack.FeignClient.AuthInterface;
 import com.swifttrack.ProviderService.dto.CreateProviderAndServicableAreas;
 import com.swifttrack.ProviderService.dto.CreateServicableAreas;
 import com.swifttrack.ProviderService.dto.GetProviders;
+import com.swifttrack.ProviderService.dto.ProviderOnBoardingInput;
 import com.swifttrack.ProviderService.models.Provider;
+import com.swifttrack.ProviderService.models.ProviderOnboardingRequest;
 import com.swifttrack.ProviderService.models.ProviderServicableAreas;
 import com.swifttrack.ProviderService.models.TenantProviderConfig;
+import com.swifttrack.ProviderService.models.enums.Status;
+import com.swifttrack.ProviderService.repositories.ProviderOnboardingRequestRepository;
 import com.swifttrack.ProviderService.repositories.ProviderRepository;
 import com.swifttrack.ProviderService.repositories.ProviderServicableAreasRepository;
 import com.swifttrack.ProviderService.repositories.TenantProviderConfigRepository;
@@ -29,15 +33,18 @@ public class ProviderService {
     ProviderServicableAreasRepository providerServicableAreasRepository;
     AuthInterface authInterface;
     TenantProviderConfigRepository tenantProviderConfigRepository;
+    ProviderOnboardingRequestRepository providerOnboardingRequestRepository;
 
     public ProviderService(ProviderRepository providerRepository,
             AuthInterface authInterface,
             TenantProviderConfigRepository tenantProviderConfigRepository,
-            ProviderServicableAreasRepository providerServicableAreasRepository) {
+            ProviderServicableAreasRepository providerServicableAreasRepository,
+            ProviderOnboardingRequestRepository providerOnboardingRequestRepository) {
         this.providerRepository = providerRepository;
         this.authInterface = authInterface;
         this.tenantProviderConfigRepository = tenantProviderConfigRepository;
         this.providerServicableAreasRepository = providerServicableAreasRepository;
+        this.providerOnboardingRequestRepository = providerOnboardingRequestRepository;
     }
 
     public List<GetProviders> getProviders() {
@@ -132,6 +139,34 @@ public class ProviderService {
                                 .map(providerServicableAreas -> providerServicableAreas.getCity())
                                 .collect(Collectors.toList())))
                 .collect(Collectors.toList());
+    }
+
+    public Message requestProviderOnboarding(String token, ProviderOnBoardingInput providerOnboardingRequest) {
+        TokenResponse tokenResponse = authInterface.getUserDetails(token).getBody();
+        if (tokenResponse == null )
+            throw new CustomException(HttpStatus.FORBIDDEN, "Unauthorized");
+        if (providerOnboardingRequestRepository.findByRequestedUserId(tokenResponse.id()) != null)
+            throw new CustomException(HttpStatus.ALREADY_REPORTED, "Provider onboarding already requested,please wait for approval");
+
+        ProviderOnboardingRequest providerOnboardingRequestToSave = new ProviderOnboardingRequest();
+        providerOnboardingRequestToSave.setRequestedUserId(tokenResponse.id());
+        providerOnboardingRequestToSave.setProviderName(providerOnboardingRequest.providerName());
+        providerOnboardingRequestToSave.setProviderWebsite(providerOnboardingRequest.providerWebsite());
+        providerOnboardingRequestToSave.setContactEmail(providerOnboardingRequest.contactEmail());
+        providerOnboardingRequestToSave.setContactPhone(providerOnboardingRequest.contactPhone());
+        providerOnboardingRequestToSave.setNotes(providerOnboardingRequest.notes());
+        // Ensure docLinks is valid JSON, defaulting to empty object if null or empty
+        String docLinks = providerOnboardingRequest.docLinks();
+        // Always default to valid JSON
+        if (docLinks == null || docLinks.trim().isEmpty()) {
+            docLinks = "{}";
+        }
+        providerOnboardingRequestToSave.setDocLinks(docLinks);
+        providerOnboardingRequestToSave.setStatus(Status.PENDING);
+        providerOnboardingRequestToSave.setCreatedBy(tokenResponse.id());
+        providerOnboardingRequestToSave.setUpdatedBy(tokenResponse.id());
+        providerOnboardingRequestRepository.save(providerOnboardingRequestToSave);
+        return new Message("Provider onboarding requested successfully please wait for approval");
     }
 }
 // todo -> enable or disable teant providers, remove tenant providers

@@ -11,7 +11,7 @@ import com.swifttrack.ProviderService.models.Provider;
 @Repository
 public interface ProviderRepository extends JpaRepository<Provider,UUID> {
 
-    List<Provider> findByIsActive(Boolean isActive);
+    List<Provider> findByIsActive(boolean isActive);
     Provider findByProviderName(String providerName);
 
 }

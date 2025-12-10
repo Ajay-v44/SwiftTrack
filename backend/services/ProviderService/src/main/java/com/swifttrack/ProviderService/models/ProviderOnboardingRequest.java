@@ -8,6 +8,8 @@ import org.hibernate.type.SqlTypes;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -17,20 +19,22 @@ import jakarta.persistence.PreUpdate;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.swifttrack.ProviderService.models.enums.Status;
+
 
 @Entity
-@Table(name = "tenant_provider_requests")
+@Table(name = "provider_onboarding_requests")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class TenantProviderRequest {
-    
+public class ProviderOnboardingRequest {
+
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 
-    @Column(name = "tenant_id", nullable = false)
-    private UUID tenantId;
+    @Column(name = "requested_user_id", nullable = false)
+    private UUID requestedUserId;
 
     @Column(name = "provider_name", length = 150, nullable = false)
     private String providerName;
@@ -45,24 +49,25 @@ public class TenantProviderRequest {
     private String contactPhone = "";
 
     @Column(length = 2000)
-    private String notes = "";                 // tenant note: why they need it
+    private String notes = ""; // tenant note: why they need it
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
-    private String docLinks = "[]";   // API docs, Postman collections, etc.
+    private String docLinks = "{}"; // API docs, Postman collections, etc.
 
-    @Column(length = 30)
-    private String status = "PENDING";  // PENDING, IN_REVIEW, APPROVED, REJECTED
+    @Enumerated(EnumType.STRING)
+    @Column(length = 30, nullable = false)
+    private Status status = Status.PENDING; // PENDING, IN_REVIEW, APPROVED, REJECTED
 
     @Column(name = "rejection_reason", length = 2000)
     private String rejectionReason = "";
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    
+
     @Column(name = "created_by", nullable = false)
     private UUID createdBy;
-    
+
     @Column(name = "updated_by", nullable = false)
     private UUID updatedBy;
 
