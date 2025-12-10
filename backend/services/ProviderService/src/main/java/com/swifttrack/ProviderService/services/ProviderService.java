@@ -115,7 +115,23 @@ public class ProviderService {
     }
 
     public List<GetProviders> getTenantProviders(String token) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getTenantProviders'");
+        TokenResponse tokenResponse = authInterface.getUserDetails(token).getBody();
+        if (tokenResponse == null || tokenResponse.tenantId() == null)
+            throw new CustomException(HttpStatus.FORBIDDEN, "Unauthorized");
+        return tenantProviderConfigRepository.findByTenantId(tokenResponse.tenantId().get()).stream()
+                .map(tenantProviderConfig -> new GetProviders(tenantProviderConfig.getProvider().getId(),
+                        tenantProviderConfig.getProvider().getProviderName(),
+                        tenantProviderConfig.getProvider().getDescription(),
+                        tenantProviderConfig.getProvider().getLogoUrl(),
+                        tenantProviderConfig.getProvider().getWebsiteUrl(),
+                        tenantProviderConfig.getProvider().isSupportsHyperlocal(),
+                        tenantProviderConfig.getProvider().isSupportsCourier(),
+                        tenantProviderConfig.getProvider().isSupportsSameDay(),
+                        tenantProviderConfig.getProvider().isSupportsIntercity(),
+                        tenantProviderConfig.getProvider().getProviderServicableAreas().stream()
+                                .map(providerServicableAreas -> providerServicableAreas.getCity())
+                                .collect(Collectors.toList())))
+                .collect(Collectors.toList());
     }
 }
+// todo -> enable or disable teant providers, remove tenant providers
