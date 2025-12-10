@@ -19,6 +19,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 
 import com.swifttrack.ProviderService.dto.CreateProviderAndServicableAreas;
 import com.swifttrack.ProviderService.dto.GetProviders;
+import com.swifttrack.ProviderService.dto.ProviderOnBoardingInput;
 import com.swifttrack.ProviderService.services.ProviderService;
 import com.swifttrack.dto.Message;
 
@@ -69,5 +70,17 @@ public class ProviderController {
     })
     public ResponseEntity<List<GetProviders>> getTenantProviders(@RequestHeader String token) {
         return ResponseEntity.ok(providerService.getTenantProviders(token));
+    }
+
+    @PostMapping("/v1/requestProviderOnboarding")
+    @Operation(summary = "Request provider onboarding", description = "Request provider onboarding with the given details")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Provider onboarding request created successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid request"),
+            @ApiResponse(responseCode = "500", description = "Internal Server error")
+    })
+    public ResponseEntity<Message> requestProviderOnboarding(@RequestHeader String token,
+            @RequestBody ProviderOnBoardingInput providerOnboardingRequest) {
+        return ResponseEntity.ok(providerService.requestProviderOnboarding(token, providerOnboardingRequest));
     }
 }
