@@ -122,7 +122,7 @@ public class UberDirectAdapter implements DeliveryProvider {
             request.setPickupDeadlineDt(now.plus(1, ChronoUnit.HOURS).toString());
             
             // Dropoff: in 3 hours and deadline in 4 hours
-            request.setDropoffReadyDt(now.plus(3, ChronoUnit.HOURS).toString());
+            request.setDropoffReadyDt(now.plus(1, ChronoUnit.HOURS).toString());
             request.setDropoffDeadlineDt(now.plus(4, ChronoUnit.HOURS).toString());
             
             request.setPickupPhoneNumber("+918921057655");

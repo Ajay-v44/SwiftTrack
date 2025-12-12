@@ -48,6 +48,7 @@ public class UberQuoteResponse {
     
     /**
      * Convert fee from paise to rupees
+     * Example: 5800 paise = 58.0 rupees
      */
     public float getFeeInRupees() {
         if (fee == null) {
