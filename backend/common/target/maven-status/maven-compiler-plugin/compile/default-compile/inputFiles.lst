@@ -4,6 +4,8 @@ D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\LoginResponse.java
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\LoginUser.java
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\Message.java
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\MobileNumAuth.java
+D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\providerDto\QuoteInput.java
+D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\providerDto\QuoteResponse.java
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\RegisterUser.java
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\TokenResponse.java
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\enums\UserType.java
@@ -11,4 +13,7 @@ D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\exception\CustomExcept
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\exception\ErrorResponse.java
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\exception\GlobalErrorAttributes.java
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\exception\ResourceNotFoundException.java
+D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\http\ApiResponse.java
+D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\http\ExternalApiClient.java
+D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\http\HttpClientConfig.java
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\RegisterUser.java

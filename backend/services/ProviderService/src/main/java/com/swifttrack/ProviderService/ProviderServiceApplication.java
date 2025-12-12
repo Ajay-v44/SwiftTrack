@@ -5,8 +5,11 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 
-
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = {
+		"com.swifttrack.ProviderService",
+		"com.swifttrack.http" // Scan common module's HTTP client utilities
+})
+@org.springframework.context.annotation.Import(com.swifttrack.ProviderService.conf.EnvConfiguration.class)
 @EnableDiscoveryClient
 @EnableFeignClients(basePackages = "com.swifttrack.FeignClient")
 public class ProviderServiceApplication {
