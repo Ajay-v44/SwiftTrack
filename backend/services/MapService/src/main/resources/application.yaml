@@ -1,0 +1,148 @@
+spring:
+  application:
+    name: MapService
+  
+  # Redis Cache Configuration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 20
+          max-idle: 10
+          min-idle: 5
+          max-wait: 2000ms
+  
+  # Cache Configuration
+  cache:
+    type: redis
+    redis:
+      time-to-live: 3600000 # 1 hour default TTL
+      cache-null-values: false
+      use-key-prefix: true
+      key-prefix: "mapservice:"
+
+  # Jackson Configuration
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+
+server:
+  port: ${SERVER_PORT:8006}
+  servlet:
+    context-path: /
+
+# Eureka Client Configuration
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://127.0.0.1:8761/eureka/}
+  instance:
+    hostname: 127.0.0.1
+    prefer-ip-address: true
+    ip-address: 127.0.0.1
+    instance-id: ${spring.application.name}:${server.port}
+
+# SpringDoc OpenAPI Configuration
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    operations-sorter: method
+    tags-sorter: alpha
+    use-root-path: true
+    show-extensions: true
+  show-actuator: false
+  cache:
+    disabled: true
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+
+# Map Service External Providers Configuration
+map:
+  # Nominatim Configuration (Geocoding)
+  nominatim:
+    # Public Nominatim API (rate limited, use local for production)
+    base-url: ${NOMINATIM_URL:https://nominatim.openstreetmap.org}
+    # Local Nominatim instance (for production/high throughput)
+    local-url: ${NOMINATIM_LOCAL_URL:http://localhost:8088}
+    use-local: ${NOMINATIM_USE_LOCAL:false}
+    user-agent: SwiftTrack-MapService/1.0
+    timeout: 5000
+    retry-attempts: 3
+    rate-limit-per-second: 1
+  
+  # OSRM Configuration (Routing)
+  osrm:
+    # Public OSRM API
+    base-url: ${OSRM_URL:https://router.project-osrm.org}
+    # Local OSRM instance (for production)
+    local-url: ${OSRM_LOCAL_URL:http://localhost:5000}
+    use-local: ${OSRM_USE_LOCAL:false}
+    timeout: 10000
+    retry-attempts: 3
+    profiles:
+      driving: car
+      walking: foot
+      bike: bike
+      delivery: car
+  
+  # GraphHopper Configuration (Alternative Routing)
+  graphhopper:
+    base-url: ${GRAPHHOPPER_URL:http://localhost:8989}
+    api-key: ${GRAPHHOPPER_API_KEY:}
+    enabled: ${GRAPHHOPPER_ENABLED:false}
+    timeout: 10000
+    profiles:
+      driving: car
+      walking: foot
+      bike: bike
+      delivery: car
+  
+  # Routing Engine Selection (osrm or graphhopper)
+  routing-engine: ${ROUTING_ENGINE:osrm}
+  
+  # Cache TTL Configuration (in seconds)
+  cache:
+    geocode-ttl: 86400        # 24 hours
+    reverse-geocode-ttl: 86400 # 24 hours
+    route-ttl: 3600           # 1 hour
+    matrix-ttl: 1800          # 30 minutes
+    eta-ttl: 600              # 10 minutes
+  
+  # Rate Limiting
+  rate-limit:
+    enabled: true
+    requests-per-minute: 1000
+    burst-size: 50
+  
+  # Default Settings
+  defaults:
+    country-codes: in         # Default country for geocoding
+    language: en              # Default language
+    max-matrix-origins: 50    # Maximum origins in matrix
+    max-matrix-destinations: 50 # Maximum destinations in matrix
+    snap-radius-meters: 50    # Default snap-to-road radius
+
+# Logging Configuration
+logging:
+  level:
+    com.swifttrack.map: DEBUG
+    org.springframework.web.reactive.function.client: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"

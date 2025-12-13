@@ -1,0 +1,56 @@
+# Test configuration
+spring:
+  application:
+    name: MapService-test
+  
+  # Use Redis mock for testing
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  
+  cache:
+    type: none  # Disable caching in tests
+    
+  main:
+    allow-bean-definition-overriding: true
+
+# Server config
+server:
+  port: 0  # Random port for tests
+
+# Eureka disabled for tests
+eureka:
+  client:
+    enabled: false
+
+# Map service config for tests (using mock URLs)
+map:
+  nominatim:
+    base-url: http://localhost:8088
+    use-local: false
+    timeout: 5000
+    retry-attempts: 1
+    
+  osrm:
+    base-url: http://localhost:5000
+    use-local: false
+    timeout: 5000
+    retry-attempts: 1
+    
+  graphhopper:
+    enabled: false
+    
+  routing-engine: osrm
+  
+  defaults:
+    country-codes: in
+    language: en
+    max-matrix-origins: 10
+    max-matrix-destinations: 10
+    snap-radius-meters: 50
+
+# Logging for tests
+logging:
+  level:
+    com.swifttrack.map: DEBUG
