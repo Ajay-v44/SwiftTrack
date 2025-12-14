@@ -1,0 +1,85 @@
+name: Train and Publish ML Service
+
+on:
+  # Daily retraining (default branch only)
+  schedule:
+    - cron: "0 0 * * *"
+
+  # Test runs on ai-ml branch
+  push:
+    branches:
+      - ai-ml
+
+  # Manual trigger (any branch)
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/swifttrack-ml-assignment
+
+jobs:
+  train-and-build:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Print trigger info
+        run: |
+          echo "Event: $GITHUB_EVENT_NAME"
+          echo "Branch: $GITHUB_REF"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        working-directory: ./backend/services/swifttrack-ml-assignment
+        run: |
+          pip install -r requirements.txt
+
+      - name: Train Model
+        working-directory: ./backend/ai-ml/ml
+        env:
+          MODEL_VERSION: 1.0.${{ github.run_number }}
+        run: |
+          python -m training.train
+
+      - name: Upload trained model (artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: trained-model
+          path: backend/ai-ml/ml/models/
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=ai-ml,enable=${{ github.ref == 'refs/heads/ai-ml' }}
+            type=raw,value=1.0.${{ github.run_number }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend/ai-ml/ml
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            MODEL_VERSION=1.0.${{ github.run_number }}

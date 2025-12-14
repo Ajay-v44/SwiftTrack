@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  ml-assignment:
+    image: ghcr.io/Ajay-v44/swifttrack/swifttrack-ml-assignment:latest
+    container_name: swifttrack_ml_service
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_HOST=host.docker.internal
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=your_password
+      - DB_NAME=swifttrack_orders
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    # CRITICAL: Volume Configuration
+    # We mount 'app' so you can change code normally.
+    # We DO NOT mount 'model'. This forces Docker to use the updated model 
+    # baked inside the image from the nightly GitHub Action.
+    volumes:
+      - ./app:/app/app
+      # Do NOT include: - ./model:/app/model
+
+    restart: always
