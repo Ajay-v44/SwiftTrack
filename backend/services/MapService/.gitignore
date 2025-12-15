@@ -1,0 +1,40 @@
+# Compiled files
+target/
+*.class
+*.jar
+*.war
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Maven
+.mvn/wrapper/maven-wrapper.jar
+!.mvn/wrapper/maven-wrapper.properties
+
+# Environment files with secrets
+.env.local
+.env.*.local
+
+# Test files
+test-output/
+*.exec
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+.env

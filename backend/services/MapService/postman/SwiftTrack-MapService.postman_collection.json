@@ -1,0 +1,433 @@
+{
+  "info": {
+    "_postman_id": "swifttrack-map-service-collection",
+    "name": "SwiftTrack Map Service",
+    "description": "API collection for SwiftTrack Map Service - OpenStreetMap based geospatial APIs",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8006"
+    },
+    {
+      "key": "gatewayUrl",
+      "value": "http://localhost:8080/mapservice"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Service Info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/info",
+              "host": ["{{baseUrl}}"],
+              "path": ["info"]
+            }
+          }
+        },
+        {
+          "name": "Readiness Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ready",
+              "host": ["{{baseUrl}}"],
+              "path": ["ready"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Geocoding",
+      "item": [
+        {
+          "name": "Reverse Geocode",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/map/reverse?lat=12.9716&lng=77.5946",
+              "host": ["{{baseUrl}}"],
+              "path": ["map", "reverse"],
+              "query": [
+                {
+                  "key": "lat",
+                  "value": "12.9716",
+                  "description": "Latitude"
+                },
+                {
+                  "key": "lng",
+                  "value": "77.5946",
+                  "description": "Longitude"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Forward Geocode (Search)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/map/search?query=MG Road, Bangalore&limit=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["map", "search"],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "MG Road, Bangalore",
+                  "description": "Address or place to search"
+                },
+                {
+                  "key": "limit",
+                  "value": "5",
+                  "description": "Maximum results"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Directions",
+      "item": [
+        {
+          "name": "Get Directions (POST)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"origin\": {\n    \"lat\": 12.9716,\n    \"lng\": 77.5946\n  },\n  \"destination\": {\n    \"lat\": 12.9350,\n    \"lng\": 77.6245\n  },\n  \"mode\": \"DRIVING\",\n  \"steps\": true,\n  \"geometry\": true,\n  \"alternatives\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/map/directions",
+              "host": ["{{baseUrl}}"],
+              "path": ["map", "directions"]
+            }
+          }
+        },
+        {
+          "name": "Get Directions (GET)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/map/directions?origin_lat=12.9716&origin_lng=77.5946&dest_lat=12.9350&dest_lng=77.6245&mode=DRIVING",
+              "host": ["{{baseUrl}}"],
+              "path": ["map", "directions"],
+              "query": [
+                {
+                  "key": "origin_lat",
+                  "value": "12.9716"
+                },
+                {
+                  "key": "origin_lng",
+                  "value": "77.5946"
+                },
+                {
+                  "key": "dest_lat",
+                  "value": "12.9350"
+                },
+                {
+                  "key": "dest_lng",
+                  "value": "77.6245"
+                },
+                {
+                  "key": "mode",
+                  "value": "DRIVING"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Walking Directions",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"origin\": {\n    \"lat\": 12.9716,\n    \"lng\": 77.5946\n  },\n  \"destination\": {\n    \"lat\": 12.9750,\n    \"lng\": 77.5980\n  },\n  \"mode\": \"WALKING\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/map/directions",
+              "host": ["{{baseUrl}}"],
+              "path": ["map", "directions"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Distance Matrix",
+      "item": [
+        {
+          "name": "Calculate Matrix",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"origins\": [\n    { \"lat\": 12.9716, \"lng\": 77.5946 },\n    { \"lat\": 12.9350, \"lng\": 77.6245 }\n  ],\n  \"destinations\": [\n    { \"lat\": 12.9560, \"lng\": 77.6020 },\n    { \"lat\": 12.9450, \"lng\": 77.5800 },\n    { \"lat\": 12.9816, \"lng\": 77.6046 }\n  ],\n  \"mode\": \"DRIVING\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/map/matrix",
+              "host": ["{{baseUrl}}"],
+              "path": ["map", "matrix"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "ETA",
+      "item": [
+        {
+          "name": "Calculate ETA (POST)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"origin\": {\n    \"lat\": 12.9716,\n    \"lng\": 77.5946\n  },\n  \"destination\": {\n    \"lat\": 12.9350,\n    \"lng\": 77.6245\n  },\n  \"mode\": \"DELIVERY\",\n  \"includePickupTime\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/map/eta",
+              "host": ["{{baseUrl}}"],
+              "path": ["map", "eta"]
+            }
+          }
+        },
+        {
+          "name": "Calculate ETA (GET)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/map/eta?origin_lat=12.9716&origin_lng=77.5946&dest_lat=12.9350&dest_lng=77.6245&mode=DRIVING",
+              "host": ["{{baseUrl}}"],
+              "path": ["map", "eta"],
+              "query": [
+                {
+                  "key": "origin_lat",
+                  "value": "12.9716"
+                },
+                {
+                  "key": "origin_lng",
+                  "value": "77.5946"
+                },
+                {
+                  "key": "dest_lat",
+                  "value": "12.9350"
+                },
+                {
+                  "key": "dest_lng",
+                  "value": "77.6245"
+                },
+                {
+                  "key": "mode",
+                  "value": "DRIVING"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Snap to Road",
+      "item": [
+        {
+          "name": "Snap Path to Road",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"path\": [\n    { \"lat\": 12.9716, \"lng\": 77.5946 },\n    { \"lat\": 12.9720, \"lng\": 77.5950 },\n    { \"lat\": 12.9725, \"lng\": 77.5955 },\n    { \"lat\": 12.9730, \"lng\": 77.5960 }\n  ],\n  \"radiusMeters\": 50\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/map/snap",
+              "host": ["{{baseUrl}}"],
+              "path": ["map", "snap"]
+            }
+          }
+        },
+        {
+          "name": "Snap Single Point",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/map/snap?lat=12.9716&lng=77.5946&radius=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["map", "snap"],
+              "query": [
+                {
+                  "key": "lat",
+                  "value": "12.9716"
+                },
+                {
+                  "key": "lng",
+                  "value": "77.5946"
+                },
+                {
+                  "key": "radius",
+                  "value": "50"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Serviceability",
+      "item": [
+        {
+          "name": "Check Point in Polygon",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"point\": {\n    \"lat\": 12.9716,\n    \"lng\": 77.5946\n  },\n  \"polygon\": [\n    { \"lat\": 12.9, \"lng\": 77.5 },\n    { \"lat\": 12.9, \"lng\": 77.7 },\n    { \"lat\": 13.1, \"lng\": 77.7 },\n    { \"lat\": 13.1, \"lng\": 77.5 }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/map/inside-area",
+              "host": ["{{baseUrl}}"],
+              "path": ["map", "inside-area"]
+            }
+          }
+        },
+        {
+          "name": "Check Point in Radius",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/map/inside-area?lat=12.9720&lng=77.5950&center_lat=12.9716&center_lng=77.5946&radius=1000",
+              "host": ["{{baseUrl}}"],
+              "path": ["map", "inside-area"],
+              "query": [
+                {
+                  "key": "lat",
+                  "value": "12.9720",
+                  "description": "Point latitude"
+                },
+                {
+                  "key": "lng",
+                  "value": "77.5950",
+                  "description": "Point longitude"
+                },
+                {
+                  "key": "center_lat",
+                  "value": "12.9716",
+                  "description": "Center latitude"
+                },
+                {
+                  "key": "center_lng",
+                  "value": "77.5946",
+                  "description": "Center longitude"
+                },
+                {
+                  "key": "radius",
+                  "value": "1000",
+                  "description": "Radius in meters"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Utilities",
+      "item": [
+        {
+          "name": "Calculate Straight-line Distance",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/map/distance?origin_lat=12.9716&origin_lng=77.5946&dest_lat=12.9350&dest_lng=77.6245",
+              "host": ["{{baseUrl}}"],
+              "path": ["map", "distance"],
+              "query": [
+                {
+                  "key": "origin_lat",
+                  "value": "12.9716"
+                },
+                {
+                  "key": "origin_lng",
+                  "value": "77.5946"
+                },
+                {
+                  "key": "dest_lat",
+                  "value": "12.9350"
+                },
+                {
+                  "key": "dest_lng",
+                  "value": "77.6245"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

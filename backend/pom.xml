@@ -40,6 +40,7 @@
         <module>services/AuthService</module>
         <module>services/TenantService</module>
         <module>services/ProviderService</module>
+        <module>services/MapService</module>
 <!--        <module>services/user-service</module>-->
 <!--        <module>services/order-service</module>-->
 <!--        <module>infra</module>-->

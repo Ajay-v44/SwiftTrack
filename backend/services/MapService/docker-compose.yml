@@ -1,0 +1,85 @@
+# SwiftTrack Map Service - Docker Compose
+# Includes MapService, Redis, and optional local OSRM/Nominatim
+
+services:
+  # Map Service
+  map-service:
+    build:
+      context: ../.. # Build from backend root to include common module
+      dockerfile: services/MapService/Dockerfile
+    container_name: swifttrack-map-service
+    ports:
+      - "8006:8006"
+    environment:
+      - SERVER_PORT=8006
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - NOMINATIM_URL=https://nominatim.openstreetmap.org
+      - NOMINATIM_USE_LOCAL=false
+      - OSRM_URL=https://router.project-osrm.org
+      - OSRM_USE_LOCAL=false
+      - ROUTING_ENGINE=osrm
+      - EUREKA_URL=http://host.docker.internal:8761/eureka/
+      - JAVA_OPTS=-Xms256m -Xmx512m
+    depends_on:
+      - redis
+    networks:
+      - swifttrack-network
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8006/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # Redis for caching
+  redis:
+    image: redis:7-alpine
+    container_name: swifttrack-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - swifttrack-network
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+  # Optional: Local OSRM instance (comment out if using public API)
+  # osrm:
+  #   image: osrm/osrm-backend
+  #   container_name: swifttrack-osrm
+  #   ports:
+  #     - "5000:5000"
+  #   volumes:
+  #     - ./data/osrm:/data
+  #   command: osrm-routed --algorithm mld /data/india-latest.osrm
+  #   networks:
+  #     - swifttrack-network
+  #   restart: unless-stopped
+
+  # Optional: Local Nominatim instance (comment out if using public API)
+  # nominatim:
+  #   image: mediagis/nominatim:4.2
+  #   container_name: swifttrack-nominatim
+  #   ports:
+  #     - "8088:8080"
+  #   environment:
+  #     - PBF_URL=https://download.geofabrik.de/asia/india-latest.osm.pbf
+  #     - REPLICATION_URL=https://download.geofabrik.de/asia/india-updates/
+  #   volumes:
+  #     - nominatim-data:/var/lib/postgresql/14/main
+  #   networks:
+  #     - swifttrack-network
+  #   restart: unless-stopped
+
+networks:
+  swifttrack-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+    # nominatim-data:
+    # osrm-data:

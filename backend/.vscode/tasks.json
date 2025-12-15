@@ -1,0 +1,85 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "1. Infra (Eureka, Gateway)",
+            "type": "shell",
+            "command": "npx",
+            "args": [
+                "-y",
+                "concurrently",
+                "--kill-others-on-fail",
+                "--names",
+                "EUREKA,GATEWAY",
+                "--prefix-colors",
+                "bgBlue.bold,bgMagenta.bold",
+                "\"cd services\\EurekaServer ; .\\mvnw.cmd spring-boot:run\"",
+                "\"cd services\\GateWay ; .\\mvnw.cmd spring-boot:run\""
+            ],
+            "presentation": {
+                "group": "backend",
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "2. Identity (Auth, Tenant)",
+            "type": "shell",
+            "command": "npx",
+            "args": [
+                "-y",
+                "concurrently",
+                "--kill-others-on-fail",
+                "--names",
+                "AUTH,TENANT",
+                "--prefix-colors",
+                "bgGreen.bold,bgYellow.bold",
+                "\"cd services\\AuthService ; .\\mvnw.cmd spring-boot:run\"",
+                "\"cd services\\TenantService ; .\\mvnw.cmd spring-boot:run\""
+            ],
+            "presentation": {
+                "group": "backend",
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "3. Core & ML (Provider, Order, ML)",
+            "type": "shell",
+            "command": "npx",
+            "args": [
+                "-y",
+                "concurrently",
+                "--kill-others-on-fail",
+                "--names",
+                "PROVIDER,ORDER,ML",
+                "--prefix-colors",
+                "bgCyan.bold,bgRed.bold,bgWhite.bold",
+                "\"cd services\\ProviderService ; .\\mvnw.cmd spring-boot:run\"",
+                "\"cd services\\OrderService ; .\\mvnw.cmd spring-boot:run\"",
+                "\"cd ai-ml\\ml ; docker-compose up\""
+            ],
+            "presentation": {
+                "group": "backend",
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Start All (3 Terminals)",
+            "dependsOn": [
+                "1. Infra (Eureka, Gateway)",
+                "2. Identity (Auth, Tenant)",
+                "3. Core & ML (Provider, Order, ML)"
+            ],
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}
