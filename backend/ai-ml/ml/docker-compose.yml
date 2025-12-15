@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   ml-assignment:
-    image: ghcr.io/Ajay-v44/swifttrack/swifttrack-ml-assignment:latest
+    image: ghcr.io/ajay-v44/swifttrack/swifttrack-ml-assignment:ai-ml
     container_name: swifttrack_ml_service
     ports:
       - "8000:8000"
