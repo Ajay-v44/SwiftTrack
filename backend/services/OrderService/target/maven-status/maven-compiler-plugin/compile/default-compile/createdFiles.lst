@@ -5,9 +5,7 @@ com\swifttrack\OrderService\OrderServiceApplication.class
 com\swifttrack\OrderService\conf\OpenApiConfig.class
 com\swifttrack\OrderService\models\enums\TrackingStatus.class
 com\swifttrack\OrderService\models\OrderAiFeature.class
-ProviderInterface.class
 com\swifttrack\OrderService\conf\EnvConfiguration.class
-com\swifttrack\OrderService\services\package-info.class
 com\swifttrack\OrderService\models\enums\LocationType.class
 com\swifttrack\OrderService\controllers\OrderController.class
 com\swifttrack\OrderService\repositories\OrderAiFeatureRepository.class

@@ -2,6 +2,14 @@ D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\AddTenantUsers.jav
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\GetProviders.java
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\LoginResponse.java
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\LoginUser.java
+D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\map\ApiResponse.java
+D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\map\Coordinates.java
+D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\map\DistanceResult.java
+D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\map\LocationClassification.java
+D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\map\MatrixRequest.java
+D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\map\MatrixResponse.java
+D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\map\NormalizedLocation.java
+D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\map\TravelMode.java
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\Message.java
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\MobileNumAuth.java
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\providerDto\QuoteInput.java
