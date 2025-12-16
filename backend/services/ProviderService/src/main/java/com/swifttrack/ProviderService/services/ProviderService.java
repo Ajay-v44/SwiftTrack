@@ -53,7 +53,8 @@ public class ProviderService {
         for (Provider provider : providers) {
             List<String> servicableAreas = provider.getProviderServicableAreas().stream()
                     .map(providerServicableAreas -> providerServicableAreas.getCity()).collect(Collectors.toList());
-            getProviders.add(new GetProviders(provider.getId(), provider.getProviderName(), provider.getDescription(),
+            getProviders.add(new GetProviders(provider.getId(), provider.getProviderName(), provider.getProviderCode(),
+                    provider.getDescription(),
                     provider.getLogoUrl(), provider.getWebsiteUrl(), provider.isSupportsHyperlocal(),
                     provider.isSupportsCourier(), provider.isSupportsSameDay(), provider.isSupportsIntercity(),
                     servicableAreas));
@@ -128,6 +129,7 @@ public class ProviderService {
         return tenantProviderConfigRepository.findByTenantId(tokenResponse.tenantId().get()).stream()
                 .map(tenantProviderConfig -> new GetProviders(tenantProviderConfig.getProvider().getId(),
                         tenantProviderConfig.getProvider().getProviderName(),
+                        tenantProviderConfig.getProvider().getProviderCode(),
                         tenantProviderConfig.getProvider().getDescription(),
                         tenantProviderConfig.getProvider().getLogoUrl(),
                         tenantProviderConfig.getProvider().getWebsiteUrl(),
@@ -143,10 +145,11 @@ public class ProviderService {
 
     public Message requestProviderOnboarding(String token, ProviderOnBoardingInput providerOnboardingRequest) {
         TokenResponse tokenResponse = authInterface.getUserDetails(token).getBody();
-        if (tokenResponse == null )
+        if (tokenResponse == null)
             throw new CustomException(HttpStatus.FORBIDDEN, "Unauthorized");
         if (providerOnboardingRequestRepository.findByRequestedUserId(tokenResponse.id()) != null)
-            throw new CustomException(HttpStatus.ALREADY_REPORTED, "Provider onboarding already requested,please wait for approval");
+            throw new CustomException(HttpStatus.ALREADY_REPORTED,
+                    "Provider onboarding already requested,please wait for approval");
 
         ProviderOnboardingRequest providerOnboardingRequestToSave = new ProviderOnboardingRequest();
         providerOnboardingRequestToSave.setRequestedUserId(tokenResponse.id());

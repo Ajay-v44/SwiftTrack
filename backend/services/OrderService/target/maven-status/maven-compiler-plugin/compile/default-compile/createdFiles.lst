@@ -5,6 +5,8 @@ com\swifttrack\OrderService\OrderServiceApplication.class
 com\swifttrack\OrderService\conf\OpenApiConfig.class
 com\swifttrack\OrderService\models\enums\TrackingStatus.class
 com\swifttrack\OrderService\models\OrderAiFeature.class
+com\swifttrack\FeignClient\MapInterface.class
+com\swifttrack\FeignClient\ProviderInterface.class
 com\swifttrack\OrderService\conf\EnvConfiguration.class
 com\swifttrack\OrderService\models\enums\LocationType.class
 com\swifttrack\OrderService\controllers\OrderController.class
@@ -13,8 +15,9 @@ com\swifttrack\OrderService\models\OrderLocation.class
 com\swifttrack\OrderService\models\Order.class
 com\swifttrack\OrderService\models\OrderTrackingEvent.class
 com\swifttrack\OrderService\models\OrderQuoteSession.class
+com\swifttrack\OrderService\dto\ModelQuoteInput.class
+com\swifttrack\OrderService\services\OrderServices.class
 com\swifttrack\OrderService\models\OrderProviderAssignment.class
-com\swifttrack\OrderService\dto\package-info.class
 com\swifttrack\OrderService\repositories\OrderLocationRepository.class
 com\swifttrack\OrderService\models\enums\PaymentType.class
 com\swifttrack\OrderService\models\enums\QuoteSessionStatus.class

@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.swifttrack.ProviderService.services.ProviderOrderServices;
@@ -25,7 +26,8 @@ public class ProviderOrders {
     }
 
     @PostMapping("/v1/getQuote")
-    public ResponseEntity<QuoteResponse> getQuote(@RequestHeader String token, @RequestBody QuoteInput quoteInput) {
-        return ResponseEntity.ok(providerOrderServices.getQuote(token, quoteInput));
+    public ResponseEntity<QuoteResponse> getQuote(@RequestHeader String token, @RequestParam String providerCode,
+            @RequestBody QuoteInput quoteInput) {
+        return ResponseEntity.ok(providerOrderServices.getQuote(token, providerCode, quoteInput));
     }
 }

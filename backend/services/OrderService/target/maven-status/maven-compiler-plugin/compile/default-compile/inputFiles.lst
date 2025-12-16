@@ -4,7 +4,7 @@ D:\SwiftTrack\backend\services\OrderService\src\main\java\com\swifttrack\OrderSe
 D:\SwiftTrack\backend\services\OrderService\src\main\java\com\swifttrack\OrderService\conf\EnvPropertySourceFactory.java
 D:\SwiftTrack\backend\services\OrderService\src\main\java\com\swifttrack\OrderService\conf\OpenApiConfig.java
 D:\SwiftTrack\backend\services\OrderService\src\main\java\com\swifttrack\OrderService\controllers\OrderController.java
-D:\SwiftTrack\backend\services\OrderService\src\main\java\com\swifttrack\OrderService\dto\package-info.java
+D:\SwiftTrack\backend\services\OrderService\src\main\java\com\swifttrack\OrderService\dto\ModelQuoteInput.java
 D:\SwiftTrack\backend\services\OrderService\src\main\java\com\swifttrack\OrderService\models\enums\AssignmentType.java
 D:\SwiftTrack\backend\services\OrderService\src\main\java\com\swifttrack\OrderService\models\enums\LocationType.java
 D:\SwiftTrack\backend\services\OrderService\src\main\java\com\swifttrack\OrderService\models\enums\OrderStatus.java

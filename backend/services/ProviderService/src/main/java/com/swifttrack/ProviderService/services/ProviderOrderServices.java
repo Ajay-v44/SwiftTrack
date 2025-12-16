@@ -18,9 +18,15 @@ public class ProviderOrderServices {
         this.uberDirectAdapter = uberDirectAdapter;
     }
 
-    public QuoteResponse getQuote(String token, QuoteInput quoteInput) {
+    public QuoteResponse getQuote(String token, String providerCode, QuoteInput quoteInput) {
 
-        return null;
+        if (providerCode.toUpperCase().equals("PORTER")) {
+            return porterAdapter.getQuote(quoteInput);
+        } else if (providerCode.toUpperCase().equals("UBER_DIRECT")) {
+            return uberDirectAdapter.getQuote(quoteInput);
+        } else {
+            throw new RuntimeException("Invalid provider code");
+        }
 
     }
 

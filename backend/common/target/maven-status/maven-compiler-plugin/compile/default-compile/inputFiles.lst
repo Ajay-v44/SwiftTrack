@@ -9,6 +9,8 @@ D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\map\LocationClassi
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\map\MatrixRequest.java
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\map\MatrixResponse.java
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\map\NormalizedLocation.java
+D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\map\RouteResponse.java
+D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\map\StepInstruction.java
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\map\TravelMode.java
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\Message.java
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\MobileNumAuth.java
