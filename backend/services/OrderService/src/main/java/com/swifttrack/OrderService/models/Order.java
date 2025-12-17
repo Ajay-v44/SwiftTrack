@@ -74,12 +74,9 @@ public class Order {
     private LocalDateTime updatedAt;
 
     // Relationships based on "ON DELETE CASCADE" in SQL
-    
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<OrderLocation> locations;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<OrderQuoteSession> quoteSessions;
+    private List<OrderLocation> locations;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderProviderAssignment> providerAssignments;

@@ -2,6 +2,7 @@ com\swifttrack\dto\map\StepInstruction$ManeuverType.class
 com\swifttrack\dto\map\MatrixRequest$MatrixRequestBuilder.class
 com\swifttrack\dto\LoginUser.class
 com\swifttrack\exception\ErrorResponse.class
+com\swifttrack\dto\orderDto\OrderQuoteResponse.class
 com\swifttrack\http\ExternalApiClient.class
 com\swifttrack\dto\Message.class
 com\swifttrack\dto\GetProviders.class

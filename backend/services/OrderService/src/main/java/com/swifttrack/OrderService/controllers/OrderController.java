@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 import com.swifttrack.OrderService.services.OrderServices;
+import com.swifttrack.dto.orderDto.OrderQuoteResponse;
 import com.swifttrack.dto.providerDto.QuoteInput;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -25,7 +26,8 @@ public class OrderController {
     }
 
     @PostMapping("/v1/getQuote")
-    public ResponseEntity<Object> getQuote(@RequestHeader String token, @RequestBody QuoteInput quoteInput) {
+    public ResponseEntity<OrderQuoteResponse> getQuote(@RequestHeader String token,
+            @RequestBody QuoteInput quoteInput) {
         return ResponseEntity.ok(orderServices.getQuote(token, quoteInput));
     }
 
