@@ -16,11 +16,10 @@ import com.swifttrack.OrderService.models.enums.QuoteSessionStatus;
 @Repository
 public interface OrderQuoteSessionRepository extends JpaRepository<OrderQuoteSession, UUID> {
 
-    List<OrderQuoteSession> findByOrderId(UUID orderId);
-
     // Find active session for an order
-    @Query("SELECT qs FROM OrderQuoteSession qs WHERE qs.order.id = :orderId AND qs.status = 'ACTIVE' AND qs.expiresAt > :now")
-    Optional<OrderQuoteSession> findActiveSessionByOrder(@Param("orderId") UUID orderId, @Param("now") LocalDateTime now);
+    @Query("SELECT qs FROM OrderQuoteSession qs WHERE qs.id = :id AND qs.status = 'ACTIVE' AND qs.expiresAt > :now")
+    Optional<OrderQuoteSession> findActiveSessionById(@Param("id") UUID id,
+            @Param("now") LocalDateTime now);
 
     // Find expired active sessions
     List<OrderQuoteSession> findByStatusAndExpiresAtBefore(QuoteSessionStatus status, LocalDateTime dateTime);

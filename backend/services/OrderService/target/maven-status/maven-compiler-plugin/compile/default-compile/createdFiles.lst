@@ -1,3 +1,5 @@
+com\swifttrack\FeignClient\AuthInterface.class
+com\swifttrack\OrderService\dto\MLPredictionRequest.class
 com\swifttrack\OrderService\models\enums\OrderType.class
 com\swifttrack\OrderService\models\OrderTrackingState.class
 com\swifttrack\OrderService\models\enums\AssignmentType.class
@@ -28,5 +30,7 @@ com\swifttrack\OrderService\conf\EnvPropertySourceFactory.class
 com\swifttrack\OrderService\repositories\OrderQuoteSessionRepository.class
 com\swifttrack\OrderService\repositories\OrderQuoteRepository.class
 com\swifttrack\OrderService\repositories\OrderRepository.class
+com\swifttrack\OrderService\dto\MLPredictionResponse.class
 com\swifttrack\OrderService\models\OrderQuote.class
+com\swifttrack\OrderService\dto\MLPredictionResponse$Prediction.class
 com\swifttrack\OrderService\models\enums\OrderStatus.class

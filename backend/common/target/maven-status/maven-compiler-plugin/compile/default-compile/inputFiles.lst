@@ -14,6 +14,7 @@ D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\map\StepInstructio
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\map\TravelMode.java
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\Message.java
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\MobileNumAuth.java
+D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\orderDto\OrderQuoteResponse.java
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\providerDto\QuoteInput.java
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\providerDto\QuoteResponse.java
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\RegisterUser.java
