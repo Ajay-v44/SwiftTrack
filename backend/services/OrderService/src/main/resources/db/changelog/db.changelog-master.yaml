@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/changes/001-create-orders-table.yaml
+  - include:
+      file: db/changelog/changes/002-create-order-locations-table.yaml
+  - include:
+      file: db/changelog/changes/003-create-order-provider-assignments-table.yaml
+  - include:
+      file: db/changelog/changes/004-create-order-tracking-events-table.yaml
+  - include:
+      file: db/changelog/changes/005-create-order-tracking-state-table.yaml
+  - include:
+      file: db/changelog/changes/006-create-order-ai-features-table.yaml
+  - include:
+      file: db/changelog/changes/007-create-order-quote-sessions-table.yaml
+  - include:
+      file: db/changelog/changes/008-create-order-quotes-table.yaml

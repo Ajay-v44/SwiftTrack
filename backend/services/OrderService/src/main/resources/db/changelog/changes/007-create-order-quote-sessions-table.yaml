@@ -1,0 +1,48 @@
+databaseChangeLog:
+  - changeSet:
+      id: 007-create-order-quote-sessions-table
+      author: swifttrack
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: order_quote_sessions
+      changes:
+        - createTable:
+            tableName: order_quote_sessions
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: tenant_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expires_at
+                  type: timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(20)
+                  defaultValue: 'ACTIVE'
+              - column:
+                  name: created_at
+                  type: timestamp
+        - createIndex:
+            indexName: idx_order_quote_sessions_tenant_id
+            tableName: order_quote_sessions
+            columns:
+              - column:
+                  name: tenant_id
+        - createIndex:
+            indexName: idx_order_quote_sessions_status
+            tableName: order_quote_sessions
+            columns:
+              - column:
+                  name: status
