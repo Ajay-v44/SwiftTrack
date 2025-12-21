@@ -1,0 +1,50 @@
+databaseChangeLog:
+  - changeSet:
+      id: 006-create-order-ai-features-table
+      author: swifttrack
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: order_ai_features
+      changes:
+        - createTable:
+            tableName: order_ai_features
+            columns:
+              - column:
+                  name: order_id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: distance_km
+                  type: decimal(6,2)
+              - column:
+                  name: traffic_level
+                  type: integer
+              - column:
+                  name: is_peak_hour
+                  type: boolean
+              - column:
+                  name: provider_load
+                  type: integer
+              - column:
+                  name: predicted_eta
+                  type: integer
+              - column:
+                  name: actual_eta
+                  type: integer
+              - column:
+                  name: success
+                  type: boolean
+              - column:
+                  name: cancellation_reason
+                  type: text
+        - addForeignKeyConstraint:
+            baseTableName: order_ai_features
+            baseColumnNames: order_id
+            constraintName: fk_order_ai_features_order
+            referencedTableName: orders
+            referencedColumnNames: id
+            onDelete: CASCADE

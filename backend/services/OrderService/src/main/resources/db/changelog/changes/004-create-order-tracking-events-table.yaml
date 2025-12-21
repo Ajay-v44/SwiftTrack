@@ -1,0 +1,62 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-create-order-tracking-events-table
+      author: swifttrack
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: order_tracking_events
+      changes:
+        - createTable:
+            tableName: order_tracking_events
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: order_id
+                  type: uuid
+              - column:
+                  name: provider_code
+                  type: varchar(50)
+              - column:
+                  name: status
+                  type: varchar(30)
+              - column:
+                  name: latitude
+                  type: decimal(10,6)
+              - column:
+                  name: longitude
+                  type: decimal(10,6)
+              - column:
+                  name: description
+                  type: text
+              - column:
+                  name: event_time
+                  type: timestamp
+              - column:
+                  name: created_at
+                  type: timestamp
+        - addForeignKeyConstraint:
+            baseTableName: order_tracking_events
+            baseColumnNames: order_id
+            constraintName: fk_order_tracking_events_order
+            referencedTableName: orders
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - createIndex:
+            indexName: idx_order_tracking_events_order_id
+            tableName: order_tracking_events
+            columns:
+              - column:
+                  name: order_id
+        - createIndex:
+            indexName: idx_order_tracking_events_event_time
+            tableName: order_tracking_events
+            columns:
+              - column:
+                  name: event_time

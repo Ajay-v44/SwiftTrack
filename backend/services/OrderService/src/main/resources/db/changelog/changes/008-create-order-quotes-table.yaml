@@ -1,0 +1,66 @@
+databaseChangeLog:
+  - changeSet:
+      id: 008-create-order-quotes-table
+      author: swifttrack
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: order_quotes
+      changes:
+        - createTable:
+            tableName: order_quotes
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: quote_session_id
+                  type: uuid
+              - column:
+                  name: provider_code
+                  type: varchar(50)
+              - column:
+                  name: price
+                  type: decimal(10,2)
+              - column:
+                  name: currency
+                  type: varchar(10)
+              - column:
+                  name: estimated_pickup_minutes
+                  type: integer
+              - column:
+                  name: estimated_delivery_minutes
+                  type: integer
+              - column:
+                  name: ai_score
+                  type: decimal(5,4)
+              - column:
+                  name: is_selected
+                  type: boolean
+                  defaultValueBoolean: false
+              - column:
+                  name: created_at
+                  type: timestamp
+        - addForeignKeyConstraint:
+            baseTableName: order_quotes
+            baseColumnNames: quote_session_id
+            constraintName: fk_order_quotes_quote_session
+            referencedTableName: order_quote_sessions
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - createIndex:
+            indexName: idx_order_quotes_quote_session_id
+            tableName: order_quotes
+            columns:
+              - column:
+                  name: quote_session_id
+        - createIndex:
+            indexName: idx_order_quotes_provider_code
+            tableName: order_quotes
+            columns:
+              - column:
+                  name: provider_code

@@ -1,0 +1,14 @@
+# Liquibase Configuration for Maven Commands
+# Copy this file and fill in your actual values
+# DO NOT commit this file with real credentials!
+
+changeLogFile=src/main/resources/db/changelog/db.changelog-master.yaml
+driver=org.postgresql.Driver
+
+# Replace these with your actual values from .env
+url=jdbc:postgresql://localhost:5432/orderdb
+username=your_username
+password=your_password
+
+# Optional settings
+promptOnNonLocalDatabase=false
