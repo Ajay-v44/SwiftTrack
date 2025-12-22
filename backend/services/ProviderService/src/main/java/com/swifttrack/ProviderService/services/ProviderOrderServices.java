@@ -1,10 +1,14 @@
 package com.swifttrack.ProviderService.services;
 
+import java.util.UUID;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import com.swifttrack.ProviderService.adapters.porter.PorterAdapter;
 import com.swifttrack.ProviderService.adapters.uber.UberDirectAdapter;
+import com.swifttrack.dto.orderDto.CreateOrderRequest;
+import com.swifttrack.dto.orderDto.CreateOrderResponse;
 import com.swifttrack.dto.providerDto.QuoteInput;
 import com.swifttrack.dto.providerDto.QuoteResponse;
 
@@ -28,6 +32,10 @@ public class ProviderOrderServices {
             throw new RuntimeException("Invalid provider code");
         }
 
+    }
+
+    public CreateOrderResponse createOrder(String token, UUID quoteSessionId, CreateOrderRequest createOrderRequest) {
+        return porterAdapter.createOrder(createOrderRequest);
     }
 
 }
