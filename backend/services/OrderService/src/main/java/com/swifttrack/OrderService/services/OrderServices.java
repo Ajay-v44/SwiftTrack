@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.UUID;
 import java.math.BigDecimal;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -24,8 +25,10 @@ import com.swifttrack.OrderService.dto.MLPredictionRequest;
 import com.swifttrack.OrderService.dto.MLPredictionResponse;
 import com.swifttrack.OrderService.dto.MLPredictionResponse.Prediction;
 import com.swifttrack.OrderService.dto.ModelQuoteInput;
+import com.swifttrack.OrderService.models.Order;
 import com.swifttrack.OrderService.models.OrderQuote;
 import com.swifttrack.OrderService.models.OrderQuoteSession;
+import com.swifttrack.OrderService.models.enums.OrderStatus;
 import com.swifttrack.OrderService.models.enums.QuoteSessionStatus;
 import com.swifttrack.OrderService.repositories.OrderQuoteRepository;
 import com.swifttrack.OrderService.repositories.OrderQuoteSessionRepository;
@@ -33,6 +36,8 @@ import com.swifttrack.OrderService.repositories.OrderRepository;
 import com.swifttrack.dto.map.ApiResponse;
 import com.swifttrack.dto.map.DistanceResult;
 import com.swifttrack.dto.map.NormalizedLocation;
+import com.swifttrack.dto.orderDto.CreateOrderRequest;
+import com.swifttrack.dto.orderDto.CreateOrderResponse;
 import com.swifttrack.dto.orderDto.OrderQuoteResponse;
 import com.swifttrack.dto.GetProviders;
 import com.swifttrack.dto.providerDto.QuoteInput;
@@ -49,9 +54,9 @@ public class OrderServices {
     OrderQuoteSessionRepository orderQuoteSessionRepository;
     OrderQuoteRepository orderQuoteRepository;
     AuthInterface authInterface;
-    @Value("${ML_SERVICES_URL}")
+    @Value("")
     String mlServicesUrl;
-    @Value("${ML_MODEL_THRESHOLD}")
+    @Value("")
     double mlThreshold;
 
     public OrderServices(ProviderInterface providerInterface, MapInterface mapInterface,
@@ -201,6 +206,27 @@ public class OrderServices {
         } catch (Exception e) {
             throw new RuntimeException("Error occurred while processing quote: " + e.getMessage(), e);
         }
+    }
+
+    public CreateOrderResponse createOrder(String token, UUID quoteSessionId, CreateOrderRequest createOrderRequest) {
+        TokenResponse userDetails = authInterface.getUserDetails(token).getBody();
+        CreateOrderResponse response = providerInterface.createOrder(token, quoteSessionId, createOrderRequest);
+
+        Order order = new Order();
+        order.setTenantId(userDetails.tenantId().get());
+        order.setCustomerReferenceId(createOrderRequest.orderReference());
+        // order.setOrderType(createOrderRequest.orderType());
+        // order.setOrderStatus(OrderStatus.CREATED);
+        // order.setPaymentType(createOrderRequest.);
+        // order.setPaymentAmount(response.getPrice());
+        // order.setSelectedProviderCode(response.getProviderCode());
+        // order.setProviderOrderId(response.getProviderOrderId());
+        // order.setCreatedBy(userDetails.getUserId());
+        order.setCreatedAt(LocalDateTime.now());
+        order.setUpdatedAt(LocalDateTime.now());
+        orderRepository.save(order);
+        return response;
+
     }
 
 }

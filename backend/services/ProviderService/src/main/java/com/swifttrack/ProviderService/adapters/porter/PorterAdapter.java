@@ -15,6 +15,8 @@ import com.swifttrack.ProviderService.adapters.porter.dto.PorterQuoteResponse;
 import com.swifttrack.ProviderService.conf.DeliveryProvider;
 import java.util.List;
 import java.util.ArrayList;
+
+import com.swifttrack.dto.Message;
 import com.swifttrack.dto.orderDto.CreateOrderRequest;
 import com.swifttrack.dto.orderDto.CreateOrderResponse;
 import com.swifttrack.dto.providerDto.QuoteInput;
@@ -138,9 +140,9 @@ public class PorterAdapter implements DeliveryProvider {
             HttpEntity<PorterCreateOrderRequest> request = new HttpEntity<>(porterRequest, headers);
             ResponseEntity<PorterCreateOrderResponse> response = restTemplate.postForEntity(fullUrl, request,
                     PorterCreateOrderResponse.class);
-
+            log.info("Porter order created successfully: {}", response.getBody());
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                return new CreateOrderResponse(response.getBody().getOrderId());
+                return new CreateOrderResponse(response.getBody().getOrderId(), "PORTER");
             } else {
                 log.error("Failed to create Porter order: HTTP {}", response.getStatusCode());
                 throw new RuntimeException("Failed to create Porter order: HTTP " + response.getStatusCode());
@@ -148,6 +150,30 @@ public class PorterAdapter implements DeliveryProvider {
         } catch (Exception e) {
             log.error("Exception while creating Porter order: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to create Porter order: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public Message cancelOrder(String orderId) {
+        try {
+            String fullUrl = porterApiUrl + "/v1/orders/" + orderId + "/cancel";
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("X-API-KEY", porterApiKey);
+
+            HttpEntity<String> request = new HttpEntity<>(headers);
+            ResponseEntity<?> response = restTemplate.postForEntity(fullUrl, request, Object.class);
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                return new Message("Order cancelled successfully");
+            } else {
+                log.error("Failed to cancel Porter order: HTTP {}", response.getStatusCode());
+                throw new RuntimeException("Failed to cancel Porter order: HTTP " + response.getStatusCode());
+            }
+        } catch (Exception e) {
+            log.error("Exception while canceling Porter order: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to cancel Porter order: " + e.getMessage());
         }
     }
 }
