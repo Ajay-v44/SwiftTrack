@@ -13,7 +13,6 @@ D:\SwiftTrack\backend\services\OrderService\src\main\java\com\swifttrack\OrderSe
 D:\SwiftTrack\backend\services\OrderService\src\main\java\com\swifttrack\OrderService\models\enums\LocationType.java
 D:\SwiftTrack\backend\services\OrderService\src\main\java\com\swifttrack\OrderService\models\enums\OrderStatus.java
 D:\SwiftTrack\backend\services\OrderService\src\main\java\com\swifttrack\OrderService\models\enums\OrderType.java
-D:\SwiftTrack\backend\services\OrderService\src\main\java\com\swifttrack\OrderService\models\enums\PaymentType.java
 D:\SwiftTrack\backend\services\OrderService\src\main\java\com\swifttrack\OrderService\models\enums\QuoteSessionStatus.java
 D:\SwiftTrack\backend\services\OrderService\src\main\java\com\swifttrack\OrderService\models\enums\TrackingStatus.java
 D:\SwiftTrack\backend\services\OrderService\src\main\java\com\swifttrack\OrderService\models\Order.java

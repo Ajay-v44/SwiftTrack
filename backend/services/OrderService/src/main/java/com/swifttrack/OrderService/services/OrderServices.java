@@ -56,8 +56,8 @@ public class OrderServices {
     AuthInterface authInterface;
     @Value("")
     String mlServicesUrl;
-    @Value("")
-    double mlThreshold;
+    @Value("ML_MODEL_THRESHOLD")
+    String mlThreshold;
 
     public OrderServices(ProviderInterface providerInterface, MapInterface mapInterface,
             OrderRepository orderRepository, RestTemplate restTemplate,
@@ -155,7 +155,7 @@ public class OrderServices {
                     Prediction prediction = predictionResponse.getPredictions().stream()
                             .max(Comparator.comparing(Prediction::getSuccessProbability)).orElse(null);
 
-                    if (prediction != null && prediction.getSuccessProbability() > mlThreshold) {
+                    if (prediction != null && prediction.getSuccessProbability() > Double.parseDouble(mlThreshold)) {
                         System.out.println("Selected provider via ML: " + prediction.getProvider());
                         QuoteResponse quoteResponse = providerInterface.getQuote(token, prediction.getProvider(),
                                 quoteInput);
@@ -215,13 +215,12 @@ public class OrderServices {
         Order order = new Order();
         order.setTenantId(userDetails.tenantId().get());
         order.setCustomerReferenceId(createOrderRequest.orderReference());
-        // order.setOrderType(createOrderRequest.orderType());
-        // order.setOrderStatus(OrderStatus.CREATED);
-        // order.setPaymentType(createOrderRequest.);
-        // order.setPaymentAmount(response.getPrice());
-        // order.setSelectedProviderCode(response.getProviderCode());
-        // order.setProviderOrderId(response.getProviderOrderId());
-        // order.setCreatedBy(userDetails.getUserId());
+        order.setOrderStatus(OrderStatus.CREATED);
+        order.setPaymentType(createOrderRequest.paymentType());
+        order.setPaymentAmount(response.totalAmount());
+        order.setSelectedProviderCode(response.providerCode());
+        order.setProviderOrderId(response.orderId());
+        order.setCreatedBy(userDetails.id());
         order.setCreatedAt(LocalDateTime.now());
         order.setUpdatedAt(LocalDateTime.now());
         orderRepository.save(order);

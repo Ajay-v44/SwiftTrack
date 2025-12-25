@@ -1,4 +1,4 @@
-package com.swifttrack.OrderService.models.enums;
+package com.swifttrack.enums;
 
 public enum PaymentType {
     PREPAID,

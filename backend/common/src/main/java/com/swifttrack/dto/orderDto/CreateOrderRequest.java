@@ -4,6 +4,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
+import com.swifttrack.enums.PaymentType;
+
 public record CreateOrderRequest(
 
                 // ---- Core Identifiers ----
@@ -12,6 +14,7 @@ public record CreateOrderRequest(
                 String quoteId,
                 String orderReference,
                 OrderType orderType,
+                PaymentType paymentType,
 
                 // ---- Locations ----
                 LocationPoint pickup,

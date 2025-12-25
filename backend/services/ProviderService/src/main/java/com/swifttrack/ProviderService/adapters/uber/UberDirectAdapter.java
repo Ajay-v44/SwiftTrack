@@ -24,8 +24,10 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Random;
 
 @Slf4j
 @Component
@@ -54,6 +56,9 @@ public class UberDirectAdapter implements DeliveryProvider {
 
         @Value("${UBER_DIRECT_DELIVERIES_ENDPOINT}")
         private String deliveriesEndpoint;
+
+        @Value("${ENV}")
+        private String env;
 
         private String token;
         private Long tokenExpireTime;
@@ -182,6 +187,13 @@ public class UberDirectAdapter implements DeliveryProvider {
 
         @Override
         public CreateOrderResponse createOrder(CreateOrderRequest createOrderRequest) {
+                // For demo mimic order craetion
+                if (env.equals("dev")) {
+                        Random random = new Random();
+                        return new CreateOrderResponse("UD-" + random.nextInt(1000), "UBER_DIRECT",
+                                        new BigDecimal(100));
+                }
+
                 log.info("Creating Uber Direct order");
                 getToken();
 
@@ -299,7 +311,8 @@ public class UberDirectAdapter implements DeliveryProvider {
                         if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                                 UberCreateOrderResponse orderResponse = response.getBody();
                                 log.info("Uber Direct order created successfully. Order ID: {}", orderResponse.getId());
-                                return new CreateOrderResponse(orderResponse.getId(), "UBER_DIRECT");
+                                return new CreateOrderResponse(orderResponse.getId(), "UBER_DIRECT",
+                                                new BigDecimal(120));
                         } else {
                                 log.error("Failed to create Uber Direct order: HTTP {}", response.getStatusCode());
                                 throw new RuntimeException(

@@ -7,7 +7,7 @@ import java.util.UUID;
 
 import com.swifttrack.OrderService.models.enums.OrderStatus;
 import com.swifttrack.OrderService.models.enums.OrderType;
-import com.swifttrack.OrderService.models.enums.PaymentType;
+import com.swifttrack.enums.PaymentType;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
