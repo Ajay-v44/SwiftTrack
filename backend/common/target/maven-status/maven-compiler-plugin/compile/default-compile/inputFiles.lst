@@ -22,6 +22,7 @@ D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\providerDto\QuoteI
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\providerDto\QuoteResponse.java
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\RegisterUser.java
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\dto\TokenResponse.java
+D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\enums\PaymentType.java
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\enums\UserType.java
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\exception\CustomException.java
 D:\SwiftTrack\backend\common\src\main\java\com\swifttrack\exception\ErrorResponse.java

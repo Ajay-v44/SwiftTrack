@@ -1,7 +1,10 @@
 package com.swifttrack.dto.orderDto;
 
+import java.math.BigDecimal;
+
 public record CreateOrderResponse(
-                String orderIdx,
-                String providerCode) {
+                String orderId,
+                String providerCode,
+                BigDecimal totalAmount) {
 
 }

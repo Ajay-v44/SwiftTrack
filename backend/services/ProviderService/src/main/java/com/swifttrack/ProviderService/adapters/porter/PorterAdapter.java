@@ -14,6 +14,8 @@ import com.swifttrack.ProviderService.adapters.porter.dto.PorterGetQuoteInp;
 import com.swifttrack.ProviderService.adapters.porter.dto.PorterQuoteResponse;
 import com.swifttrack.ProviderService.conf.DeliveryProvider;
 import java.util.List;
+import java.util.Random;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 
 import com.swifttrack.dto.Message;
@@ -35,6 +37,9 @@ public class PorterAdapter implements DeliveryProvider {
     private String porterApiUrl;
     @Value("${PORTER_API_KEY}")
     private String porterApiKey;
+
+    @Value("${ENV}")
+    private String env;
 
     public PorterAdapter(ExternalApiClient externalApiClient, RestTemplate restTemplate) {
         this.externalApiClient = externalApiClient;
@@ -97,6 +102,10 @@ public class PorterAdapter implements DeliveryProvider {
     @Override
     public CreateOrderResponse createOrder(CreateOrderRequest createOrderRequest) {
         try {
+            if (env.equals("dev")) {
+                Random random = new Random();
+                return new CreateOrderResponse("PD-" + random.nextInt(1000), "PORTER", new BigDecimal(120));
+            }
             String fullUrl = porterApiUrl + "/v1/orders/create";
 
             HttpHeaders headers = new HttpHeaders();
@@ -142,7 +151,7 @@ public class PorterAdapter implements DeliveryProvider {
                     PorterCreateOrderResponse.class);
             log.info("Porter order created successfully: {}", response.getBody());
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                return new CreateOrderResponse(response.getBody().getOrderId(), "PORTER");
+                return new CreateOrderResponse(response.getBody().getOrderId(), "PORTER", new BigDecimal(120));
             } else {
                 log.error("Failed to create Porter order: HTTP {}", response.getStatusCode());
                 throw new RuntimeException("Failed to create Porter order: HTTP " + response.getStatusCode());

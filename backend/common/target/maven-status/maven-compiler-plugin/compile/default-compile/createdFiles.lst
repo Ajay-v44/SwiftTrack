@@ -61,6 +61,7 @@ com\swifttrack\dto\orderDto\CreateOrderRequest$LocationPoint.class
 com\swifttrack\dto\orderDto\CreateOrderRequest$PackageInfo.class
 com\swifttrack\http\ApiResponse.class
 com\swifttrack\dto\map\ApiResponse$ErrorInfo.class
+com\swifttrack\enums\PaymentType.class
 com\swifttrack\exception\CustomException.class
 com\swifttrack\dto\map\ApiResponse$ApiResponseBuilder.class
 com\swifttrack\dto\map\NormalizedLocation.class

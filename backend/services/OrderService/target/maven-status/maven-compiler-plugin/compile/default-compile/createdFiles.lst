@@ -10,6 +10,7 @@ com\swifttrack\OrderService\models\Order.class
 com\swifttrack\OrderService\models\OrderQuoteSession.class
 com\swifttrack\OrderService\services\OrderServices.class
 com\swifttrack\OrderService\models\OrderProviderAssignment.class
+com\swifttrack\OrderService\controllers\OrderQuoteSessionController.class
 com\swifttrack\OrderService\repositories\OrderLocationRepository.class
 com\swifttrack\OrderService\repositories\OrderProviderAssignmentRepository.class
 com\swifttrack\OrderService\repositories\OrderTrackingStateRepository.class
@@ -24,7 +25,7 @@ com\swifttrack\OrderService\repositories\OrderAiFeatureRepository.class
 com\swifttrack\OrderService\models\OrderLocation.class
 com\swifttrack\OrderService\models\OrderTrackingEvent.class
 com\swifttrack\OrderService\dto\ModelQuoteInput.class
-com\swifttrack\OrderService\models\enums\PaymentType.class
+com\swifttrack\OrderService\services\OrderQuoteSessionService.class
 com\swifttrack\OrderService\models\enums\QuoteSessionStatus.class
 com\swifttrack\OrderService\conf\EnvPropertySourceFactory.class
 com\swifttrack\OrderService\repositories\OrderQuoteSessionRepository.class
