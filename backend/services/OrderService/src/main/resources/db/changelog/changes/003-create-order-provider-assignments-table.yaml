@@ -1,0 +1,56 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-create-order-provider-assignments-table
+      author: swifttrack
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: order_provider_assignments
+      changes:
+        - createTable:
+            tableName: order_provider_assignments
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: order_id
+                  type: uuid
+              - column:
+                  name: provider_code
+                  type: varchar(50)
+              - column:
+                  name: assignment_type
+                  type: varchar(20)
+              - column:
+                  name: assignment_reason
+                  type: text
+              - column:
+                  name: ai_decision_snapshot
+                  type: jsonb
+              - column:
+                  name: assigned_at
+                  type: timestamp
+        - addForeignKeyConstraint:
+            baseTableName: order_provider_assignments
+            baseColumnNames: order_id
+            constraintName: fk_order_provider_assignments_order
+            referencedTableName: orders
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - createIndex:
+            indexName: idx_order_provider_assignments_order_id
+            tableName: order_provider_assignments
+            columns:
+              - column:
+                  name: order_id
+        - createIndex:
+            indexName: idx_order_provider_assignments_provider_code
+            tableName: order_provider_assignments
+            columns:
+              - column:
+                  name: provider_code

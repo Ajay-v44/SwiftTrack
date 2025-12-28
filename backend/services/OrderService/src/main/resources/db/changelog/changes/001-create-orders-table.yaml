@@ -1,0 +1,76 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-orders-table
+      author: swifttrack
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: orders
+      changes:
+        - createTable:
+            tableName: orders
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: tenant_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: customer_reference_id
+                  type: varchar(100)
+              - column:
+                  name: order_type
+                  type: varchar(30)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: order_status
+                  type: varchar(30)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: payment_type
+                  type: varchar(20)
+              - column:
+                  name: payment_amount
+                  type: decimal(10,2)
+              - column:
+                  name: selected_provider_code
+                  type: varchar(50)
+              - column:
+                  name: provider_order_id
+                  type: varchar(100)
+              - column:
+                  name: created_by
+                  type: uuid
+              - column:
+                  name: created_at
+                  type: timestamp
+              - column:
+                  name: updated_at
+                  type: timestamp
+        - createIndex:
+            indexName: idx_orders_tenant_id
+            tableName: orders
+            columns:
+              - column:
+                  name: tenant_id
+        - createIndex:
+            indexName: idx_orders_order_status
+            tableName: orders
+            columns:
+              - column:
+                  name: order_status
+        - createIndex:
+            indexName: idx_orders_created_at
+            tableName: orders
+            columns:
+              - column:
+                  name: created_at

@@ -1,0 +1,38 @@
+databaseChangeLog:
+  - changeSet:
+      id: 005-create-order-tracking-state-table
+      author: swifttrack
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: order_tracking_state
+      changes:
+        - createTable:
+            tableName: order_tracking_state
+            columns:
+              - column:
+                  name: order_id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: current_status
+                  type: varchar(30)
+              - column:
+                  name: last_latitude
+                  type: decimal(10,6)
+              - column:
+                  name: last_longitude
+                  type: decimal(10,6)
+              - column:
+                  name: last_updated_at
+                  type: timestamp
+        - addForeignKeyConstraint:
+            baseTableName: order_tracking_state
+            baseColumnNames: order_id
+            constraintName: fk_order_tracking_state_order
+            referencedTableName: orders
+            referencedColumnNames: id
+            onDelete: CASCADE
