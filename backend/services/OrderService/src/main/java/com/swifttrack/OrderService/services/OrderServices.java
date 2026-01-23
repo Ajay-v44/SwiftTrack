@@ -40,6 +40,7 @@ import com.swifttrack.dto.orderDto.CreateOrderRequest;
 import com.swifttrack.dto.orderDto.CreateOrderResponse;
 import com.swifttrack.dto.orderDto.OrderQuoteResponse;
 import com.swifttrack.dto.GetProviders;
+import com.swifttrack.dto.Message;
 import com.swifttrack.dto.providerDto.QuoteInput;
 import com.swifttrack.dto.providerDto.QuoteResponse;
 import com.swifttrack.FeignClient.AuthInterface;
@@ -225,6 +226,12 @@ public class OrderServices {
         order.setUpdatedAt(LocalDateTime.now());
         orderRepository.save(order);
         return response;
+
+    }
+
+    public Message cancelOrder(String token, String orderId, String providerCode) {
+        TokenResponse userDetails = authInterface.getUserDetails(token).getBody();
+        return new Message("Order cancelled successfully");
 
     }
 
