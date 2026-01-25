@@ -29,6 +29,7 @@ import com.swifttrack.OrderService.models.Order;
 import com.swifttrack.OrderService.models.OrderQuote;
 import com.swifttrack.OrderService.models.OrderQuoteSession;
 import com.swifttrack.OrderService.models.enums.OrderStatus;
+import com.swifttrack.OrderService.models.enums.OrderType;
 import com.swifttrack.OrderService.models.enums.QuoteSessionStatus;
 import com.swifttrack.OrderService.repositories.OrderQuoteRepository;
 import com.swifttrack.OrderService.repositories.OrderQuoteSessionRepository;
@@ -38,14 +39,20 @@ import com.swifttrack.dto.map.DistanceResult;
 import com.swifttrack.dto.map.NormalizedLocation;
 import com.swifttrack.dto.orderDto.CreateOrderRequest;
 import com.swifttrack.dto.orderDto.CreateOrderResponse;
+import com.swifttrack.dto.orderDto.FinalCreateOrderResponse;
 import com.swifttrack.dto.orderDto.OrderQuoteResponse;
 import com.swifttrack.dto.GetProviders;
+import com.swifttrack.dto.Message;
 import com.swifttrack.dto.providerDto.QuoteInput;
 import com.swifttrack.dto.providerDto.QuoteResponse;
+
+import jakarta.transaction.Transactional;
+
 import com.swifttrack.FeignClient.AuthInterface;
 import com.swifttrack.dto.TokenResponse;
 
 @Service
+@Transactional
 public class OrderServices {
     ProviderInterface providerInterface;
     MapInterface mapInterface;
@@ -208,7 +215,8 @@ public class OrderServices {
         }
     }
 
-    public CreateOrderResponse createOrder(String token, UUID quoteSessionId, CreateOrderRequest createOrderRequest) {
+    public FinalCreateOrderResponse createOrder(String token, UUID quoteSessionId,
+            CreateOrderRequest createOrderRequest) {
         TokenResponse userDetails = authInterface.getUserDetails(token).getBody();
         CreateOrderResponse response = providerInterface.createOrder(token, quoteSessionId, createOrderRequest);
 
@@ -223,9 +231,19 @@ public class OrderServices {
         order.setCreatedBy(userDetails.id());
         order.setCreatedAt(LocalDateTime.now());
         order.setUpdatedAt(LocalDateTime.now());
+        order.setOrderType(OrderType.HYPERLOCAL);
         orderRepository.save(order);
-        return response;
+        return new FinalCreateOrderResponse(order.getId(), response.providerCode(), response.totalAmount());
+    }
 
+    public Message cancelOrder(String token, UUID orderId, String providerCode) {
+        TokenResponse userDetails = authInterface.getUserDetails(token).getBody();
+        if (orderRepository.findById(orderId, userDetails.id()).isPresent()) {
+            providerInterface.cancelOrder(token, orderId, providerCode);
+            orderRepository.updateOrderStatus(orderId, OrderStatus.CANCELLED);
+            return new Message("Order cancelled successfully");
+        }
+        throw new RuntimeException("Order not found");
     }
 
 }
