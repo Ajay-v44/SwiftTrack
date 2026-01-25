@@ -33,6 +33,8 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
         // Find by Provider Order ID
         Optional<Order> findByProviderOrderId(String providerOrderId);
 
+        Optional<Order> findById(UUID orderId);
+
         // Search by Customer Reference ID (Partial Match)
         @Query("SELECT o FROM Order o WHERE o.tenantId = :tenantId AND o.customerReferenceId LIKE %:query%")
         Page<Order> searchByCustomerReferenceId(@Param("tenantId") UUID tenantId, @Param("query") String query,

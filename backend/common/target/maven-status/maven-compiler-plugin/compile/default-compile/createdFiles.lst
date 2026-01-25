@@ -2,6 +2,7 @@ com\swifttrack\dto\orderDto\CreateOrderRequest$OrderType.class
 com\swifttrack\dto\orderDto\CreateOrderRequest$Priority.class
 com\swifttrack\dto\map\StepInstruction$ManeuverType.class
 com\swifttrack\dto\orderDto\CreateOrderRequest$VerificationRequirements.class
+com\swifttrack\events\DriverAssignedEvent.class
 com\swifttrack\dto\orderDto\CreateOrderRequest$Item.class
 com\swifttrack\dto\Message.class
 com\swifttrack\dto\orderDto\CreateOrderRequest$UserContext.class
@@ -44,14 +45,17 @@ com\swifttrack\dto\providerDto\QuoteResponse.class
 com\swifttrack\dto\AddTenantUsers.class
 com\swifttrack\dto\map\RouteResponse.class
 com\swifttrack\dto\orderDto\CreateOrderRequest$Contact.class
+com\swifttrack\events\OrderCreatedEvent$OrderCreatedEventBuilder.class
 com\swifttrack\dto\map\MatrixResponse$MatrixResponseBuilder.class
 com\swifttrack\dto\map\StepInstruction$StepInstructionBuilder.class
 com\swifttrack\dto\map\MatrixResponse$ElementStatus.class
 com\swifttrack\dto\orderDto\OrderQuoteSessionResponse.class
+com\swifttrack\events\OrderCreatedEvent.class
 com\swifttrack\dto\map\DistanceResult.class
 com\swifttrack\dto\map\TravelMode.class
 com\swifttrack\dto\RegisterUser.class
 com\swifttrack\dto\map\MatrixResponse$MatrixStatus.class
+com\swifttrack\events\DriverAssignedEvent$DriverAssignedEventBuilder.class
 com\swifttrack\exception\ResourceNotFoundException.class
 com\swifttrack\dto\map\RouteResponse$RouteResponseBuilder.class
 com\swifttrack\dto\map\ApiResponse$ResponseMetadata$ResponseMetadataBuilder.class
