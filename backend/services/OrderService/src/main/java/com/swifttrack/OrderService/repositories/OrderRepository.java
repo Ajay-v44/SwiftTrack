@@ -7,6 +7,7 @@ import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -49,4 +50,13 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
         @Query("SELECT o FROM Order o WHERE o.tenantId = :tenantId AND o.selectedProviderCode = :providerCode")
         List<Order> findByTenantIdAndProviderCode(@Param("tenantId") UUID tenantId,
                         @Param("providerCode") String providerCode);
+
+        // Find by Order ID and Created By (User ID)
+        @Query("SELECT o FROM Order o WHERE o.id=:orderId AND o.createdBy=:userId")
+        Optional<Order> findById(@Param("orderId") UUID orderId, @Param("userId") UUID userId);
+
+        // Update Order Status
+        @Modifying(clearAutomatically = true)
+        @Query("UPDATE Order o SET o.orderStatus=:orderStatus WHERE o.id=:orderId")
+        void updateOrderStatus(@Param("orderId") UUID orderId, @Param("orderStatus") OrderStatus orderStatus);
 }

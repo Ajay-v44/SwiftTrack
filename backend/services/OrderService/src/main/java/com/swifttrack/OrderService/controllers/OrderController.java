@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import com.swifttrack.OrderService.services.OrderServices;
 import com.swifttrack.dto.Message;
 import com.swifttrack.dto.orderDto.CreateOrderRequest;
-import com.swifttrack.dto.orderDto.CreateOrderResponse;
+import com.swifttrack.dto.orderDto.FinalCreateOrderResponse;
 import com.swifttrack.dto.orderDto.OrderQuoteResponse;
 import com.swifttrack.dto.providerDto.QuoteInput;
 
@@ -38,13 +38,13 @@ public class OrderController {
     }
 
     @PostMapping("/v1/createOrder")
-    public ResponseEntity<CreateOrderResponse> createOrder(@RequestHeader String token,
+    public ResponseEntity<FinalCreateOrderResponse> createOrder(@RequestHeader String token,
             @RequestParam UUID quoteSessionId, @RequestBody CreateOrderRequest createOrderRequest) {
         return ResponseEntity.ok(orderServices.createOrder(token, quoteSessionId, createOrderRequest));
     }
 
     @PostMapping("/v1/cancelOrder")
-    public ResponseEntity<Message> cancelOrder(@RequestHeader String token, @RequestParam String orderId,
+    public ResponseEntity<Message> cancelOrder(@RequestHeader String token, @RequestParam UUID orderId,
             @RequestParam String providerCode) {
         return ResponseEntity.ok(orderServices.cancelOrder(token, orderId, providerCode));
     }

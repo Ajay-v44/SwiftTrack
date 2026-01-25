@@ -13,6 +13,8 @@ import com.swifttrack.ProviderService.adapters.porter.dto.PorterCreateOrderRespo
 import com.swifttrack.ProviderService.adapters.porter.dto.PorterGetQuoteInp;
 import com.swifttrack.ProviderService.adapters.porter.dto.PorterQuoteResponse;
 import com.swifttrack.ProviderService.conf.DeliveryProvider;
+import com.swifttrack.ProviderService.utils.GetUUID;
+
 import java.util.List;
 import java.util.Random;
 import java.math.BigDecimal;
@@ -32,6 +34,7 @@ import lombok.extern.slf4j.Slf4j;
 public class PorterAdapter implements DeliveryProvider {
     private final ExternalApiClient externalApiClient;
     private final RestTemplate restTemplate;
+    private final GetUUID getUUID;
 
     @Value("${PORTER_API_URL}")
     private String porterApiUrl;
@@ -41,9 +44,10 @@ public class PorterAdapter implements DeliveryProvider {
     @Value("${ENV}")
     private String env;
 
-    public PorterAdapter(ExternalApiClient externalApiClient, RestTemplate restTemplate) {
+    public PorterAdapter(ExternalApiClient externalApiClient, RestTemplate restTemplate, GetUUID getUUID) {
         this.externalApiClient = externalApiClient;
         this.restTemplate = restTemplate;
+        this.getUUID = getUUID;
     }
 
     @Override
@@ -145,17 +149,24 @@ public class PorterAdapter implements DeliveryProvider {
             porterRequest.setDropDetails(new PorterCreateOrderRequest.LocationDetails(dropAddress));
 
             porterRequest.setAdditionalComments(createOrderRequest.orderReference());
+            return new CreateOrderResponse("PR-" + getUUID.getUUID(), "PORTER", new BigDecimal(120));
 
-            HttpEntity<PorterCreateOrderRequest> request = new HttpEntity<>(porterRequest, headers);
-            ResponseEntity<PorterCreateOrderResponse> response = restTemplate.postForEntity(fullUrl, request,
-                    PorterCreateOrderResponse.class);
-            log.info("Porter order created successfully: {}", response.getBody());
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                return new CreateOrderResponse(response.getBody().getOrderId(), "PORTER", new BigDecimal(120));
-            } else {
-                log.error("Failed to create Porter order: HTTP {}", response.getStatusCode());
-                throw new RuntimeException("Failed to create Porter order: HTTP " + response.getStatusCode());
-            }
+            // HttpEntity<PorterCreateOrderRequest> request = new
+            // HttpEntity<>(porterRequest, headers);
+            // ResponseEntity<PorterCreateOrderResponse> response =
+            // restTemplate.postForEntity(fullUrl, request,
+            // PorterCreateOrderResponse.class);
+            // log.info("Porter order created successfully: {}", response.getBody());
+            // if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null)
+            // {
+            // return new CreateOrderResponse(response.getBody().getOrderId(), "PORTER", new
+            // BigDecimal(120));
+            // } else {
+            // log.error("Failed to create Porter order: HTTP {}",
+            // response.getStatusCode());
+            // throw new RuntimeException("Failed to create Porter order: HTTP " +
+            // response.getStatusCode());
+            // }
         } catch (Exception e) {
             log.error("Exception while creating Porter order: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to create Porter order: " + e.getMessage());
@@ -165,6 +176,9 @@ public class PorterAdapter implements DeliveryProvider {
     @Override
     public Message cancelOrder(String orderId) {
         try {
+            if ((env.equals("dev"))) {
+                return new Message("Order cancelled successfully");
+            }
             String fullUrl = porterApiUrl + "/v1/orders/" + orderId + "/cancel";
 
             HttpHeaders headers = new HttpHeaders();

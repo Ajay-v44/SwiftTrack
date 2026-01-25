@@ -6,6 +6,7 @@ import com.swifttrack.ProviderService.adapters.uber.dto.UberQuoteRequest;
 import com.swifttrack.ProviderService.adapters.uber.dto.UberQuoteResponse;
 import com.swifttrack.ProviderService.adapters.uber.dto.UberTokenResponse;
 import com.swifttrack.ProviderService.conf.DeliveryProvider;
+import com.swifttrack.ProviderService.utils.GetUUID;
 import com.swifttrack.dto.Message;
 import com.swifttrack.dto.orderDto.CreateOrderRequest;
 import com.swifttrack.dto.orderDto.CreateOrderResponse;
@@ -35,6 +36,7 @@ public class UberDirectAdapter implements DeliveryProvider {
 
         private final ExternalApiClient externalApiClient;
         private final RestTemplate restTemplate;
+        private final GetUUID getUUID;
 
         @Value("${UBER_DIRECT_CUSTOMER_ID}")
         private String customerId;
@@ -63,9 +65,10 @@ public class UberDirectAdapter implements DeliveryProvider {
         private String token;
         private Long tokenExpireTime;
 
-        public UberDirectAdapter(ExternalApiClient externalApiClient, RestTemplate restTemplate) {
+        public UberDirectAdapter(ExternalApiClient externalApiClient, RestTemplate restTemplate, GetUUID getUUID) {
                 this.externalApiClient = externalApiClient;
                 this.restTemplate = restTemplate;
+                this.getUUID = getUUID;
         }
 
         /**
@@ -302,22 +305,28 @@ public class UberDirectAdapter implements DeliveryProvider {
                 try {
                         // Build the full API URL from .env values
                         String fullUrl = baseUrl + deliveriesEndpoint.replace("{customerId}", customerId);
-
-                        ResponseEntity<UberCreateOrderResponse> response = restTemplate.postForEntity(
-                                        fullUrl,
-                                        httpRequest,
-                                        UberCreateOrderResponse.class);
-                        log.info("Uber Direct order created successfully. Order ID: {}", response.getBody());
-                        if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                                UberCreateOrderResponse orderResponse = response.getBody();
-                                log.info("Uber Direct order created successfully. Order ID: {}", orderResponse.getId());
-                                return new CreateOrderResponse(orderResponse.getId(), "UBER_DIRECT",
-                                                new BigDecimal(120));
-                        } else {
-                                log.error("Failed to create Uber Direct order: HTTP {}", response.getStatusCode());
-                                throw new RuntimeException(
-                                                "Failed to create Uber Direct order: HTTP " + response.getStatusCode());
-                        }
+                        return new CreateOrderResponse("UBR-" + getUUID.getUUID(), "UBER_DIRECT",
+                                        new BigDecimal(120));
+                        // ResponseEntity<UberCreateOrderResponse> response =
+                        // restTemplate.postForEntity(
+                        // fullUrl,
+                        // httpRequest,
+                        // UberCreateOrderResponse.class);
+                        // log.info("Uber Direct order created successfully. Order ID: {}",
+                        // response.getBody());
+                        // if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null)
+                        // {
+                        // UberCreateOrderResponse orderResponse = response.getBody();
+                        // log.info("Uber Direct order created successfully. Order ID: {}",
+                        // orderResponse.getId());
+                        // return new CreateOrderResponse(orderResponse.getId(), "UBER_DIRECT",
+                        // new BigDecimal(120));
+                        // } else {
+                        // log.error("Failed to create Uber Direct order: HTTP {}",
+                        // response.getStatusCode());
+                        // throw new RuntimeException(
+                        // "Failed to create Uber Direct order: HTTP " + response.getStatusCode());
+                        // }
                 } catch (Exception e) {
                         log.error("Exception while creating Uber Direct order: {}", e.getMessage(), e);
                         throw new RuntimeException("Failed to create Uber Direct order: " + e.getMessage());
@@ -326,6 +335,9 @@ public class UberDirectAdapter implements DeliveryProvider {
 
         @Override
         public Message cancelOrder(String orderId) {
+                if ((env.equals("DEV"))) {
+                        return new Message("Order cancelled successfully");
+                }
                 try {
                         getToken();
                         String fullUrl = baseUrl + deliveriesEndpoint.replace("{customerId}", customerId)
