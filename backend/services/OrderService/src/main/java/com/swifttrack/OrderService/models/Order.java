@@ -73,6 +73,18 @@ public class Order {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Column(name = "pickup_latitude", precision = 10, scale = 6)
+    private BigDecimal pickupLatitude;
+
+    @Column(name = "pickup_longitude", precision = 10, scale = 6)
+    private BigDecimal pickupLongitude;
+
+    @Column(name = "drop_latitude", precision = 10, scale = 6)
+    private BigDecimal dropLatitude;
+
+    @Column(name = "drop_longitude", precision = 10, scale = 6)
+    private BigDecimal dropLongitude;
+
     // Relationships based on "ON DELETE CASCADE" in SQL
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)

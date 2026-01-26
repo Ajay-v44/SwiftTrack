@@ -30,6 +30,7 @@ com\swifttrack\OrderService\models\enums\QuoteSessionStatus.class
 com\swifttrack\OrderService\conf\EnvPropertySourceFactory.class
 com\swifttrack\OrderService\repositories\OrderQuoteSessionRepository.class
 com\swifttrack\OrderService\repositories\OrderQuoteRepository.class
+com\swifttrack\OrderService\services\OrderEventConsumer.class
 com\swifttrack\OrderService\repositories\OrderRepository.class
 com\swifttrack\OrderService\dto\MLPredictionResponse.class
 com\swifttrack\OrderService\models\OrderQuote.class

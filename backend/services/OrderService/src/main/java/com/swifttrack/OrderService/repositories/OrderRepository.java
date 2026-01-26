@@ -33,6 +33,8 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
         // Find by Provider Order ID
         Optional<Order> findByProviderOrderId(String providerOrderId);
 
+        Optional<Order> findById(UUID orderId);
+
         // Search by Customer Reference ID (Partial Match)
         @Query("SELECT o FROM Order o WHERE o.tenantId = :tenantId AND o.customerReferenceId LIKE %:query%")
         Page<Order> searchByCustomerReferenceId(@Param("tenantId") UUID tenantId, @Param("query") String query,
@@ -57,6 +59,7 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
 
         // Update Order Status
         @Modifying(clearAutomatically = true)
-        @Query("UPDATE Order o SET o.orderStatus=:orderStatus WHERE o.id=:orderId")
-        void updateOrderStatus(@Param("orderId") UUID orderId, @Param("orderStatus") OrderStatus orderStatus);
+        @org.springframework.transaction.annotation.Transactional
+        @Query("UPDATE Order o SET o.orderStatus=:orderStatus, o.updatedAt = CURRENT_TIMESTAMP WHERE o.id=:orderId")
+        int updateOrderStatus(@Param("orderId") UUID orderId, @Param("orderStatus") OrderStatus orderStatus);
 }

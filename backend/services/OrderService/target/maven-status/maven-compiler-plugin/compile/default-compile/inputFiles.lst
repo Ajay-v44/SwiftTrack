@@ -32,5 +32,6 @@ D:\SwiftTrack\backend\services\OrderService\src\main\java\com\swifttrack\OrderSe
 D:\SwiftTrack\backend\services\OrderService\src\main\java\com\swifttrack\OrderService\repositories\OrderRepository.java
 D:\SwiftTrack\backend\services\OrderService\src\main\java\com\swifttrack\OrderService\repositories\OrderTrackingEventRepository.java
 D:\SwiftTrack\backend\services\OrderService\src\main\java\com\swifttrack\OrderService\repositories\OrderTrackingStateRepository.java
+D:\SwiftTrack\backend\services\OrderService\src\main\java\com\swifttrack\OrderService\services\OrderEventConsumer.java
 D:\SwiftTrack\backend\services\OrderService\src\main\java\com\swifttrack\OrderService\services\OrderQuoteSessionService.java
 D:\SwiftTrack\backend\services\OrderService\src\main\java\com\swifttrack\OrderService\services\OrderServices.java

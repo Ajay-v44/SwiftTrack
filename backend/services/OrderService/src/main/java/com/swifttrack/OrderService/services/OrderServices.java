@@ -3,7 +3,7 @@ package com.swifttrack.OrderService.services;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.ExecutionException;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -61,6 +61,8 @@ public class OrderServices {
     OrderQuoteSessionRepository orderQuoteSessionRepository;
     OrderQuoteRepository orderQuoteRepository;
     AuthInterface authInterface;
+    private final org.springframework.kafka.core.KafkaTemplate<String, Object> kafkaTemplate;
+
     @Value("")
     String mlServicesUrl;
     @Value("ML_MODEL_THRESHOLD")
@@ -69,7 +71,8 @@ public class OrderServices {
     public OrderServices(ProviderInterface providerInterface, MapInterface mapInterface,
             OrderRepository orderRepository, RestTemplate restTemplate,
             OrderQuoteSessionRepository orderQuoteSessionRepository,
-            OrderQuoteRepository orderQuoteRepository, AuthInterface authInterface) {
+            OrderQuoteRepository orderQuoteRepository, AuthInterface authInterface,
+            org.springframework.kafka.core.KafkaTemplate<String, Object> kafkaTemplate) {
         this.providerInterface = providerInterface;
         this.mapInterface = mapInterface;
         this.orderRepository = orderRepository;
@@ -77,6 +80,7 @@ public class OrderServices {
         this.orderQuoteSessionRepository = orderQuoteSessionRepository;
         this.orderQuoteRepository = orderQuoteRepository;
         this.authInterface = authInterface;
+        this.kafkaTemplate = kafkaTemplate;
     }
 
     public OrderQuoteResponse getQuote(String token, QuoteInput quoteInput) {
@@ -232,7 +236,52 @@ public class OrderServices {
         order.setCreatedAt(LocalDateTime.now());
         order.setUpdatedAt(LocalDateTime.now());
         order.setOrderType(OrderType.HYPERLOCAL);
+
+        if (createOrderRequest.pickup() != null && createOrderRequest.pickup().address() != null) {
+            order.setPickupLatitude(BigDecimal.valueOf(createOrderRequest.pickup().address().latitude()));
+            order.setPickupLongitude(BigDecimal.valueOf(createOrderRequest.pickup().address().longitude()));
+        }
+        if (createOrderRequest.dropoff() != null && createOrderRequest.dropoff().address() != null) {
+            order.setDropLatitude(BigDecimal.valueOf(createOrderRequest.dropoff().address().latitude()));
+            order.setDropLongitude(BigDecimal.valueOf(createOrderRequest.dropoff().address().longitude()));
+        }
+
         orderRepository.save(order);
+
+        com.swifttrack.events.OrderCreatedEvent.OrderCreatedEventBuilder eventBuilder = com.swifttrack.events.OrderCreatedEvent
+                .builder()
+                .orderId(order.getId())
+                .customerReferenceId(order.getCustomerReferenceId())
+                .providerCode(order.getSelectedProviderCode())
+                .amount(order.getPaymentAmount())
+                .tenantId(order.getTenantId().toString())
+                .createdAt(order.getCreatedAt())
+                .orderStatus(order.getOrderStatus().name())
+                .pickupLat(order.getPickupLatitude().doubleValue())
+                .pickupLng(order.getPickupLongitude().doubleValue())
+                .dropoffLat(order.getDropLatitude().doubleValue())
+                .dropoffLng(order.getDropLongitude().doubleValue());
+
+        if (createOrderRequest.pickup() != null && createOrderRequest.pickup().address() != null) {
+            var pAddr = createOrderRequest.pickup().address();
+            eventBuilder.pickupCity(pAddr.city())
+                    .pickupState(pAddr.state())
+                    .pickupCountry(pAddr.country())
+                    .pickupPincode(pAddr.pincode())
+                    .pickupLocality(pAddr.locality());
+        }
+
+        if (createOrderRequest.dropoff() != null && createOrderRequest.dropoff().address() != null) {
+            var dAddr = createOrderRequest.dropoff().address();
+            eventBuilder.dropCity(dAddr.city())
+                    .dropState(dAddr.state())
+                    .dropCountry(dAddr.country())
+                    .dropPincode(dAddr.pincode())
+                    .dropLocality(dAddr.locality());
+        }
+
+        kafkaTemplate.send("order-created", eventBuilder.build());
+
         return new FinalCreateOrderResponse(order.getId(), response.providerCode(), response.totalAmount());
     }
 

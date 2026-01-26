@@ -47,7 +47,7 @@ public class OrderQuote {
     @Column(name = "estimated_delivery_minutes")
     private Integer estimatedDeliveryMinutes;
 
-    @Column(name = "ai_score", precision = 5, scale = 4)
+    @Column(name = "ai_score", precision = 8, scale = 2)
     private BigDecimal aiScore;
 
     @Column(name = "is_selected")
