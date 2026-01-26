@@ -22,6 +22,17 @@ public class OrderCreatedEvent {
     private String orderStatus;
     private Double pickupLat;
     private Double pickupLng;
+    private String pickupCity;
+    private String pickupState;
+    private String pickupCountry;
+    private String pickupPincode;
+    private String pickupLocality;
+
     private Double dropoffLat;
     private Double dropoffLng;
+    private String dropCity;
+    private String dropState;
+    private String dropCountry;
+    private String dropPincode;
+    private String dropLocality;
 }

@@ -8,6 +8,7 @@ com\swifttrack\dto\Message.class
 com\swifttrack\dto\orderDto\CreateOrderRequest$UserContext.class
 com\swifttrack\dto\MobileNumAuth.class
 com\swifttrack\http\HttpClientConfig.class
+com\swifttrack\events\DriverLocationUpdates$DriverLocationUpdatesBuilder.class
 com\swifttrack\dto\orderDto\CreateOrderRequest$TimeWindows.class
 com\swifttrack\http\ApiResponse$ApiResponseBuilder.class
 com\swifttrack\dto\map\MatrixRequest.class
@@ -54,6 +55,7 @@ com\swifttrack\events\OrderCreatedEvent.class
 com\swifttrack\dto\map\DistanceResult.class
 com\swifttrack\dto\map\TravelMode.class
 com\swifttrack\dto\RegisterUser.class
+com\swifttrack\events\DriverLocationUpdates.class
 com\swifttrack\dto\map\MatrixResponse$MatrixStatus.class
 com\swifttrack\events\DriverAssignedEvent$DriverAssignedEventBuilder.class
 com\swifttrack\exception\ResourceNotFoundException.class

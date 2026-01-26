@@ -17,3 +17,5 @@ databaseChangeLog:
       file: db/changelog/changes/008-create-order-quotes-table.yaml
   - include:
       file: db/changelog/changes/009-add-lat-long-to-orders-table.yaml
+  - include:
+      file: db/changelog/changes/010-modify-ai-score-precision.yaml

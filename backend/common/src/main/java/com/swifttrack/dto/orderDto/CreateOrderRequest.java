@@ -52,6 +52,11 @@ public record CreateOrderRequest(
         public record Address(
                         String line1,
                         String line2,
+                        String city,
+                        String state,
+                        String country,
+                        String pincode,
+                        String locality,
                         double latitude,
                         double longitude) {
         }

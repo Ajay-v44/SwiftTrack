@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: 010-modify-ai-score-precision
+      author: swifttrack
+      changes:
+        - modifyDataType:
+            tableName: order_quotes
+            columnName: ai_score
+            newDataType: decimal(8,2)

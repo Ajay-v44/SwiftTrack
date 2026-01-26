@@ -248,7 +248,8 @@ public class OrderServices {
 
         orderRepository.save(order);
 
-        com.swifttrack.events.OrderCreatedEvent event = com.swifttrack.events.OrderCreatedEvent.builder()
+        com.swifttrack.events.OrderCreatedEvent.OrderCreatedEventBuilder eventBuilder = com.swifttrack.events.OrderCreatedEvent
+                .builder()
                 .orderId(order.getId())
                 .customerReferenceId(order.getCustomerReferenceId())
                 .providerCode(order.getSelectedProviderCode())
@@ -259,9 +260,27 @@ public class OrderServices {
                 .pickupLat(order.getPickupLatitude().doubleValue())
                 .pickupLng(order.getPickupLongitude().doubleValue())
                 .dropoffLat(order.getDropLatitude().doubleValue())
-                .dropoffLng(order.getDropLongitude().doubleValue())
-                .build();
-        kafkaTemplate.send("order-created", event);
+                .dropoffLng(order.getDropLongitude().doubleValue());
+
+        if (createOrderRequest.pickup() != null && createOrderRequest.pickup().address() != null) {
+            var pAddr = createOrderRequest.pickup().address();
+            eventBuilder.pickupCity(pAddr.city())
+                    .pickupState(pAddr.state())
+                    .pickupCountry(pAddr.country())
+                    .pickupPincode(pAddr.pincode())
+                    .pickupLocality(pAddr.locality());
+        }
+
+        if (createOrderRequest.dropoff() != null && createOrderRequest.dropoff().address() != null) {
+            var dAddr = createOrderRequest.dropoff().address();
+            eventBuilder.dropCity(dAddr.city())
+                    .dropState(dAddr.state())
+                    .dropCountry(dAddr.country())
+                    .dropPincode(dAddr.pincode())
+                    .dropLocality(dAddr.locality());
+        }
+
+        kafkaTemplate.send("order-created", eventBuilder.build());
 
         return new FinalCreateOrderResponse(order.getId(), response.providerCode(), response.totalAmount());
     }
