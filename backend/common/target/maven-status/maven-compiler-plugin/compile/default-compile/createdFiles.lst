@@ -13,11 +13,14 @@ com\swifttrack\dto\orderDto\CreateOrderRequest$TimeWindows.class
 com\swifttrack\http\ApiResponse$ApiResponseBuilder.class
 com\swifttrack\dto\map\MatrixRequest.class
 com\swifttrack\dto\map\StepInstruction.class
+com\swifttrack\enums\DriverAssignmentStatus.class
 com\swifttrack\RegisterUser.class
+com\swifttrack\enums\DriverEventType.class
 com\swifttrack\dto\orderDto\CreateOrderRequest$PackageSize.class
 com\swifttrack\dto\orderDto\FinalCreateOrderResponse.class
 com\swifttrack\dto\map\RouteResponse$RouteStatus.class
 com\swifttrack\dto\TokenResponse.class
+com\swifttrack\enums\DriverOnlineStatus.class
 com\swifttrack\dto\orderDto\CreateOrderRequest$ExternalMetadata.class
 com\swifttrack\dto\orderDto\CreateOrderRequest$Address.class
 com\swifttrack\dto\orderDto\CreateOrderRequest$VehiclePreference.class
@@ -54,6 +57,7 @@ com\swifttrack\dto\orderDto\OrderQuoteSessionResponse.class
 com\swifttrack\events\OrderCreatedEvent.class
 com\swifttrack\dto\map\DistanceResult.class
 com\swifttrack\dto\map\TravelMode.class
+com\swifttrack\enums\VehicleType.class
 com\swifttrack\dto\RegisterUser.class
 com\swifttrack\events\DriverLocationUpdates.class
 com\swifttrack\dto\map\MatrixResponse$MatrixStatus.class
