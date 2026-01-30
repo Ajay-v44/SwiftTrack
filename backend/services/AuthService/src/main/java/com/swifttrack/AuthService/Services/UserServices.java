@@ -25,6 +25,8 @@ import com.swifttrack.AuthService.util.JwtUtil;
 import com.swifttrack.AuthService.util.UserMapper;
 import com.swifttrack.dto.AddTenantUsers;
 import com.swifttrack.dto.Message;
+import com.swifttrack.dto.driverDto.AddTenantDriver;
+import com.swifttrack.dto.driverDto.AddTennatDriverResponse;
 import com.swifttrack.enums.UserType;
 import com.swifttrack.exception.ResourceNotFoundException;
 import com.swifttrack.exception.CustomException;
@@ -174,6 +176,41 @@ public class UserServices {
                 userRepo.save(userModel1);
             }
             return new Message("Users added successfully");
+        }
+        throw new CustomException(HttpStatus.UNAUTHORIZED, "Invalid Token");
+    }
+
+    public AddTennatDriverResponse addTenantDrivers(String token, AddTenantDriver entity) {
+        Map<String, Object> map = jwtUtil.decodeToken(token);
+        if (map.containsKey("mobile")) {
+            String mobileNum = (String) map.get("mobile");
+            UserModel userModel = userRepo.findByMobile(mobileNum);
+            if (userModel == null)
+                throw new ResourceNotFoundException("User account doesn't exist");
+
+            if (userModel.getStatus() == false)
+                throw new CustomException(HttpStatus.FORBIDDEN, "User account is not verified");
+            if (userModel.getTenantId() == null)
+                throw new CustomException(HttpStatus.FORBIDDEN, "You are not part of any organization");
+
+            // if (userModel.getType() != com.swifttrack.enums.UserType.TENANT_ADMIN)
+            // throw new CustomException(HttpStatus.FORBIDDEN, "User is not a tenant
+            // admin");
+
+            if (userRepo.findByMobile(entity.mobile()) != null
+                    || userRepo.findByEmail(entity.email()) != null)
+                throw new CustomException(HttpStatus.FORBIDDEN, "User already exists");
+            UserModel userModel1 = new UserModel();
+            userModel1.setName(entity.name());
+            userModel1.setEmail(entity.email());
+            userModel1.setMobile(entity.mobile());
+            userModel1.setTenantId(userModel.getTenantId());
+            userModel1.setPasswordHash(cryptography.encode(entity.password()));
+            userModel1.setStatus(false);
+            userModel1.setType(entity.userType());
+            userModel1.setVerificationStatus(VerificationStatus.APPROVED);
+            userRepo.save(userModel1);
+            return new AddTennatDriverResponse(userModel.getId(), "Driver added successfully");
         }
         throw new CustomException(HttpStatus.UNAUTHORIZED, "Invalid Token");
     }
