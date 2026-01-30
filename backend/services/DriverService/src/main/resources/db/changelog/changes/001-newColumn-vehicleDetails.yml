@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-newColumn-vehicleDetails
+      author: antigravity
+      changes:
+        - addColumn:
+            tableName: driver_vehicle_details
+            columns:
+              - column:
+                  name: driver_licens_number
+                  type: VARCHAR(255)

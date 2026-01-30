@@ -31,6 +31,7 @@ public class DriverVehicleDetails {
     private VehicleType vehicleType;
 
     private String licenseNumber;
+    private String driverLicensNumber;
 
     private Boolean isActive;
     private Boolean isVerified;
