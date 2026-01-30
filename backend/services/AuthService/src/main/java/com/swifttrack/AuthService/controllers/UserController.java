@@ -23,6 +23,8 @@ import com.swifttrack.AuthService.Dto.TokenResponse;
 import com.swifttrack.AuthService.Services.UserServices;
 import com.swifttrack.dto.AddTenantUsers;
 import com.swifttrack.dto.Message;
+import com.swifttrack.dto.driverDto.AddTenantDriver;
+import com.swifttrack.dto.driverDto.AddTennatDriverResponse;
 
 @RestController
 @RequestMapping("/api/users/")
@@ -96,5 +98,17 @@ public class UserController {
     public ResponseEntity<Message> addTenantUsers(@RequestParam String token,
             @RequestBody List<AddTenantUsers> entity) {
         return ResponseEntity.ok(userService.addTenantUsers(token, entity));
+    }
+
+    @PostMapping("v1/addTenantDrivers")
+    @Operation(summary = "Add tenant drivers", description = "Add drivers to a tenant account")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Drivers added successfully"),
+            @ApiResponse(responseCode = "401", description = "Invalid credentials"),
+            @ApiResponse(responseCode = "403", description = "Account not activated")
+    })
+    public ResponseEntity<AddTennatDriverResponse> addTenantDrivers(@RequestParam String token,
+            @RequestBody AddTenantDriver entity) {
+        return ResponseEntity.ok(userService.addTenantDrivers(token, entity));
     }
 }
