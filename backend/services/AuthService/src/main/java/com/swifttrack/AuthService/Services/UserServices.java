@@ -206,11 +206,12 @@ public class UserServices {
             userModel1.setMobile(entity.mobile());
             userModel1.setTenantId(userModel.getTenantId());
             userModel1.setPasswordHash(cryptography.encode(entity.password()));
-            userModel1.setStatus(false);
+            userModel1.setStatus(entity.status());
             userModel1.setType(entity.userType());
             userModel1.setVerificationStatus(VerificationStatus.APPROVED);
             userRepo.save(userModel1);
-            return new AddTennatDriverResponse(userModel.getId(), "Driver added successfully");
+            return new AddTennatDriverResponse(userModel1.getId(), userModel.getTenantId(),
+                    "Driver added successfully");
         }
         throw new CustomException(HttpStatus.UNAUTHORIZED, "Invalid Token");
     }

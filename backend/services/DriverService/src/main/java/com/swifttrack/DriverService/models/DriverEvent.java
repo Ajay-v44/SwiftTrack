@@ -33,7 +33,8 @@ public class DriverEvent {
     @Enumerated(EnumType.STRING)
     private DriverEventType eventType;
 
-    @Column(columnDefinition = "TEXT") // JSON support varies, using TEXT for simplicity
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(columnDefinition = "json")
     private String metadata;
 
     private LocalDateTime createdAt;

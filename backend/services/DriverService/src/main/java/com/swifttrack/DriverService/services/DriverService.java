@@ -17,6 +17,10 @@ import com.swifttrack.DriverService.models.DriverStatus;
 import com.swifttrack.DriverService.repositories.DriverLocationLiveRepository;
 import com.swifttrack.DriverService.repositories.DriverOrderAssignmentRepository;
 import com.swifttrack.DriverService.repositories.DriverVehicleDetailsRepository;
+import com.swifttrack.FeignClient.AuthInterface;
+import com.swifttrack.dto.Message;
+import com.swifttrack.dto.driverDto.AddTenantDriver;
+import com.swifttrack.dto.driverDto.AddTennatDriverResponse;
 import com.swifttrack.DriverService.repositories.DriverStatusRepository;
 import com.swifttrack.enums.DriverAssignmentStatus;
 import com.swifttrack.enums.DriverOnlineStatus;
@@ -39,20 +43,20 @@ public class DriverService {
     @Autowired
     private DriverOrderAssignmentRepository driverAssignmentRepository;
 
+    @Autowired
+    AuthInterface authInterface;
+
     @Transactional
-    public DriverVehicleDetails createDriverProfile(DriverVehicleDetails driverDetails) {
-        log.info("Creating new driver profile for ID: {}", driverDetails.getDriverId());
-        DriverVehicleDetails savedDetails = driverVehicleDetailsRepository.save(driverDetails);
-
-        // Initialize Status
-        DriverStatus initialStatus = new DriverStatus();
-        initialStatus.setDriverId(savedDetails.getDriverId());
-        initialStatus.setTenantId(savedDetails.getTenantId());
-        initialStatus.setStatus(DriverOnlineStatus.OFFLINE);
-        initialStatus.setLastSeenAt(LocalDateTime.now());
-        driverStatusRepository.save(initialStatus);
-
-        return savedDetails;
+    public Message createDriverProfile(String token, AddTenantDriver entity) {
+        AddTennatDriverResponse response = authInterface.addTenantDrivers(token, entity).getBody();
+        DriverVehicleDetails driverVehicleDetails = new DriverVehicleDetails();
+        driverVehicleDetails.setDriverId(response.userId());
+        driverVehicleDetails.setTenantId(response.tenantId());
+        driverVehicleDetails.setVehicleType(entity.vehicleType());
+        driverVehicleDetails.setLicenseNumber(entity.vehicleNumber());
+        driverVehicleDetails.setDriverLicensNumber(entity.driverLicensNumber());
+        driverVehicleDetailsRepository.save(driverVehicleDetails);
+        return new Message("Driver profile created successfully");
     }
 
     public DriverVehicleDetails getDriverProfile(UUID driverId) {
@@ -86,6 +90,9 @@ public class DriverService {
         driverStatusRepository.save(status);
     }
 
+    @Autowired
+    private com.swifttrack.DriverService.utils.DriverEventUtil driverEventUtil;
+
     @Transactional
     public void toggleOnlineStatus(UUID driverId, boolean isOnline) {
         DriverStatus driverStatus = driverStatusRepository.findById(driverId)
@@ -93,11 +100,56 @@ public class DriverService {
 
         if (isOnline) {
             driverStatus.setStatus(DriverOnlineStatus.ONLINE);
+            driverEventUtil.logEvent(driverId, driverStatus.getTenantId(), com.swifttrack.enums.DriverEventType.ONLINE,
+                    "Driver went online");
         } else {
             driverStatus.setStatus(DriverOnlineStatus.OFFLINE);
+            driverEventUtil.logEvent(driverId, driverStatus.getTenantId(), com.swifttrack.enums.DriverEventType.OFFLINE,
+                    "Driver went offline");
         }
         driverStatus.setLastSeenAt(LocalDateTime.now());
         driverStatusRepository.save(driverStatus);
+    }
+
+    @Transactional
+    public Message updateDriverStatus(String token, com.swifttrack.dto.driverDto.UpdateDriverStatusRequest request) {
+        com.swifttrack.dto.TokenResponse userDetails = authInterface.getUserDetails(token).getBody();
+        if (userDetails == null || userDetails.id() == null) {
+            throw new RuntimeException("Invalid token or user not found");
+        }
+        UUID driverId = userDetails.id();
+        UUID tenantId = userDetails.tenantId().orElseThrow(() -> new RuntimeException("Tenant ID not found"));
+        log.info("Driver ID: {}", driverId);
+        log.info("Tenant ID: {}", tenantId);
+        if (!driverVehicleDetailsRepository.findByDriverId(driverId).isPresent()) {
+            throw new RuntimeException("Driver profile not found. Please complete driver registration first.");
+        }
+
+        DriverStatus driverStatus = driverStatusRepository.findById(driverId)
+                .orElse(new DriverStatus(driverId, tenantId, DriverOnlineStatus.OFFLINE, LocalDateTime.now()));
+
+        // Ensure tenant matched if existing
+        if (driverStatus.getTenantId() == null) {
+            driverStatus.setTenantId(tenantId);
+        }
+
+        driverStatus.setStatus(request.status());
+        driverStatus.setLastSeenAt(LocalDateTime.now());
+        driverStatusRepository.save(driverStatus);
+
+        // Log event
+        com.swifttrack.enums.DriverEventType eventType = null;
+        if (request.status() == DriverOnlineStatus.ONLINE) {
+            eventType = com.swifttrack.enums.DriverEventType.ONLINE;
+        } else if (request.status() == DriverOnlineStatus.OFFLINE) {
+            eventType = com.swifttrack.enums.DriverEventType.OFFLINE;
+        }
+
+        if (eventType != null) {
+            driverEventUtil.logEvent(driverId, tenantId, eventType, "Status updated to " + request.status());
+        }
+
+        return new Message("Driver status updated successfully");
     }
 
     @Transactional

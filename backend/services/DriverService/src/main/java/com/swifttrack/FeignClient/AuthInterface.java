@@ -5,11 +5,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import com.swifttrack.dto.LoginResponse;
 import com.swifttrack.dto.LoginUser;
 import com.swifttrack.dto.MobileNumAuth;
 import com.swifttrack.dto.TokenResponse;
+import com.swifttrack.dto.driverDto.AddTenantDriver;
+import com.swifttrack.dto.driverDto.AddTennatDriverResponse;
 
 @FeignClient(name = "authservice", url = "http://localhost:8080/authservice")
 public interface AuthInterface {
@@ -21,5 +24,9 @@ public interface AuthInterface {
     public ResponseEntity<LoginResponse> loginMobileNumAndOtp(@RequestBody MobileNumAuth mobileNumAuth);
 
     @PostMapping("/api/users/v1/getUserDetails")
-    public ResponseEntity<TokenResponse> getUserDetails(@RequestHeader String token);
+    public ResponseEntity<TokenResponse> getUserDetails(@RequestParam("token") String token);
+
+    @PostMapping("/api/users/v1/addTenantDrivers")
+    public ResponseEntity<AddTennatDriverResponse> addTenantDrivers(@RequestParam String token,
+            @RequestBody AddTenantDriver entity);
 }
