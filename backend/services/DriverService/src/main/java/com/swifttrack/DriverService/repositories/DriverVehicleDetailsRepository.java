@@ -13,4 +13,6 @@ import com.swifttrack.DriverService.models.DriverVehicleDetails;
 @Repository
 public interface DriverVehicleDetailsRepository extends JpaRepository<DriverVehicleDetails, UUID> {
     Page<DriverVehicleDetails> findByTenantId(UUID tenantId, Pageable pageable);
+
+    Optional<DriverVehicleDetails> findByDriverId(UUID driverId);
 }
