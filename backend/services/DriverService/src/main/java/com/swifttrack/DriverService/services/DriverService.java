@@ -19,8 +19,10 @@ import com.swifttrack.DriverService.repositories.DriverOrderAssignmentRepository
 import com.swifttrack.DriverService.repositories.DriverVehicleDetailsRepository;
 import com.swifttrack.FeignClient.AuthInterface;
 import com.swifttrack.dto.Message;
+import com.swifttrack.dto.TokenResponse;
 import com.swifttrack.dto.driverDto.AddTenantDriver;
 import com.swifttrack.dto.driverDto.AddTennatDriverResponse;
+import com.swifttrack.dto.driverDto.GetDriverUserDetails;
 import com.swifttrack.DriverService.repositories.DriverStatusRepository;
 import com.swifttrack.enums.DriverAssignmentStatus;
 import com.swifttrack.enums.DriverOnlineStatus;
@@ -196,5 +198,23 @@ public class DriverService {
 
     public Page<DriverVehicleDetails> getDriversByTenant(UUID tenantId, Pageable pageable) {
         return driverVehicleDetailsRepository.findByTenantId(tenantId, pageable);
+    }
+
+    public GetDriverUserDetails getDriverUserDetails(String token) {
+        TokenResponse userDetails = authInterface.getUserDetails(token).getBody();
+        if (userDetails == null || userDetails.id() == null) {
+            throw new RuntimeException("Invalid token or user not found");
+        }
+        UUID driverId = userDetails.id();
+        DriverVehicleDetails driverVehicleDetails = driverVehicleDetailsRepository.findByDriverId(driverId)
+                .orElseThrow(() -> new RuntimeException("Driver profile not found"));
+        DriverStatus driverStatus = driverStatusRepository.findById(driverId)
+                .orElseThrow(() -> new RuntimeException("Driver Status not found"));
+        // Log Login Event
+        driverEventUtil.logEvent(driverId, userDetails.tenantId().orElse(null),
+                com.swifttrack.enums.DriverEventType.LOGIN, "Driver Logged In via GetDetails");
+        return new GetDriverUserDetails(userDetails, driverVehicleDetails.getVehicleType(),
+                driverVehicleDetails.getLicenseNumber(), driverVehicleDetails.getDriverLicensNumber(),
+                driverStatus.getStatus());
     }
 }

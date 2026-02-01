@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.swifttrack.DriverService.services.DriverService;
 import com.swifttrack.dto.Message;
 import com.swifttrack.dto.driverDto.AddTenantDriver;
+import com.swifttrack.dto.driverDto.GetDriverUserDetails;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
@@ -34,8 +35,8 @@ public class DriverAccountController {
             @ApiResponse(responseCode = "401", description = "Invalid token"),
             @ApiResponse(responseCode = "404", description = "Driver account not found")
     })
-    public ResponseEntity<?> getDriverDetails(@RequestHeader String token) {
-        return ResponseEntity.ok("Driver Details");
+    public ResponseEntity<GetDriverUserDetails> getDriverDetails(@RequestHeader String token) {
+        return ResponseEntity.ok(driverService.getDriverUserDetails(token));
     }
 
     @PostMapping("/v1/addTenantDrivers")
