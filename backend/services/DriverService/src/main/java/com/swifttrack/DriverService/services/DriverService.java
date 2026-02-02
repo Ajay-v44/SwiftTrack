@@ -120,7 +120,7 @@ public class DriverService {
             throw new RuntimeException("Invalid token or user not found");
         }
         UUID driverId = userDetails.id();
-        UUID tenantId = userDetails.tenantId().orElseThrow(() -> new RuntimeException("Tenant ID not found"));
+        UUID tenantId = userDetails.tenantId().orElse(null);
         log.info("Driver ID: {}", driverId);
         log.info("Tenant ID: {}", tenantId);
         if (!driverVehicleDetailsRepository.findByDriverId(driverId).isPresent()) {
@@ -131,7 +131,7 @@ public class DriverService {
                 .orElse(new DriverStatus(driverId, tenantId, DriverOnlineStatus.OFFLINE, LocalDateTime.now()));
 
         // Ensure tenant matched if existing
-        if (driverStatus.getTenantId() == null) {
+        if (driverStatus.getTenantId() == null && tenantId != null) {
             driverStatus.setTenantId(tenantId);
         }
 
@@ -216,5 +216,23 @@ public class DriverService {
         return new GetDriverUserDetails(userDetails, driverVehicleDetails.getVehicleType(),
                 driverVehicleDetails.getLicenseNumber(), driverVehicleDetails.getDriverLicensNumber(),
                 driverStatus.getStatus());
+    }
+
+    // --- APIs for Other Services ---
+
+    public DriverStatus getDriverStatus(UUID driverId) {
+        return driverStatusRepository.findById(driverId)
+                .orElseThrow(() -> new RuntimeException("Driver Status not found"));
+    }
+
+    public DriverLocationLive getDriverLocation(UUID driverId) {
+        return driverLocationLiveRepository.findById(driverId)
+                .orElseThrow(() -> new RuntimeException("Driver location not found"));
+    }
+
+    public boolean isDriverAvailable(UUID driverId) {
+        return driverStatusRepository.findById(driverId)
+                .map(status -> status.getStatus() == DriverOnlineStatus.ONLINE)
+                .orElse(false);
     }
 }
