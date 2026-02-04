@@ -21,4 +21,11 @@ public class DriverLocationProducer {
         // kafkaTemplate.send(TOPIC, driverId, payload);
         log.info("Publishing location update for driver {}: {}, {}", driverId, lat, lng);
     }
+
+    private static final String EVENT_TOPIC = "driver.events";
+
+    public void publishDriverEvent(com.swifttrack.DriverService.models.DriverEvent event) {
+        kafkaTemplate.send(EVENT_TOPIC, event.getDriverId().toString(), event);
+        log.info("Published driver event: {}", event);
+    }
 }

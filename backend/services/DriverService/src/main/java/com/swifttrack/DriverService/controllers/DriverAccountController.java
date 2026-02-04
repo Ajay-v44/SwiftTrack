@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.swifttrack.DriverService.services.DriverService;
 import com.swifttrack.dto.Message;
 import com.swifttrack.dto.driverDto.AddTenantDriver;
+import com.swifttrack.dto.driverDto.GetDriverUserDetails;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
@@ -34,8 +35,8 @@ public class DriverAccountController {
             @ApiResponse(responseCode = "401", description = "Invalid token"),
             @ApiResponse(responseCode = "404", description = "Driver account not found")
     })
-    public ResponseEntity<?> getDriverDetails(@RequestHeader String token) {
-        return ResponseEntity.ok("Driver Details");
+    public ResponseEntity<GetDriverUserDetails> getDriverDetails(@RequestHeader String token) {
+        return ResponseEntity.ok(driverService.getDriverUserDetails(token));
     }
 
     @PostMapping("/v1/addTenantDrivers")
@@ -60,6 +61,63 @@ public class DriverAccountController {
     public ResponseEntity<Message> updateStatus(@RequestHeader String token,
             @RequestBody com.swifttrack.dto.driverDto.UpdateDriverStatusRequest request) {
         return ResponseEntity.ok(driverService.updateDriverStatus(token, request));
+    }
+
+    @GetMapping("/v1/status/{driverId}")
+    @Operation(summary = "Get Driver Status (Internal)", description = "Get current status of a driver by ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Driver status retrieved"),
+            @ApiResponse(responseCode = "404", description = "Driver not found")
+    })
+    public ResponseEntity<com.swifttrack.DriverService.models.DriverStatus> getDriverStatus(
+            @org.springframework.web.bind.annotation.PathVariable java.util.UUID driverId) {
+        return ResponseEntity.ok(driverService.getDriverStatus(driverId));
+    }
+
+    @GetMapping("/v1/location/{driverId}")
+    @Operation(summary = "Get Driver Location (Internal)", description = "Get current live location of a driver by ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Driver location retrieved"),
+            @ApiResponse(responseCode = "404", description = "Driver location not found")
+    })
+    public ResponseEntity<com.swifttrack.DriverService.models.DriverLocationLive> getDriverLocation(
+            @org.springframework.web.bind.annotation.PathVariable java.util.UUID driverId) {
+        return ResponseEntity.ok(driverService.getDriverLocation(driverId));
+    }
+
+    @GetMapping("/v1/available/{driverId}")
+    @Operation(summary = "Check Driver Availability (Internal)", description = "Check if driver is currently available (ONLINE)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Availability check successful")
+    })
+    public ResponseEntity<Boolean> isDriverAvailable(
+            @org.springframework.web.bind.annotation.PathVariable java.util.UUID driverId) {
+        return ResponseEntity.ok(driverService.isDriverAvailable(driverId));
+    }
+
+    @PostMapping("/v1/location")
+    @Operation(summary = "Update Driver Location", description = "Update the live location of the authenticated driver")
+    public ResponseEntity<Message> updateLocation(@RequestHeader String token,
+            @RequestBody com.swifttrack.dto.driverDto.DriverLocationUpdateDto request) {
+        com.swifttrack.dto.TokenResponse userDetails = driverService.getDriverUserDetails(token).user();
+        driverService.updateDriverLocation(userDetails.id(), request.latitude(), request.longitude());
+        return ResponseEntity.ok(new Message("Location updated successfully"));
+    }
+
+    @PostMapping("/v1/assign-order")
+    @Operation(summary = "Assign Order", description = "Assign an order to a specific driver")
+    public ResponseEntity<com.swifttrack.DriverService.models.DriverOrderAssignment> assignOrder(
+            @RequestBody com.swifttrack.dto.driverDto.AssignOrderRequest request) {
+        return ResponseEntity.ok(driverService.assignOrder(request.driverId(), request.orderId()));
+    }
+
+    @PostMapping("/v1/respond-assignment")
+    @Operation(summary = "Respond to Assignment", description = "Driver accepts or rejects an order assignment")
+    public ResponseEntity<Message> respondToAssignment(@RequestHeader String token,
+            @RequestBody com.swifttrack.dto.driverDto.RespondToAssignmentDto request) {
+        // Validation could be added here to ensure the assignment belongs to the driver
+        driverService.respondToAssignment(request.assignmentId(), request.accept(), request.reason());
+        return ResponseEntity.ok(new Message("Response recorded successfully"));
     }
 
 }

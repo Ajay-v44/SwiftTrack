@@ -20,6 +20,12 @@ public class DriverEventUtil {
     @Autowired
     private DriverEventRepository driverEventRepository;
 
+    @Autowired
+    private com.swifttrack.DriverService.events.DriverLocationProducer driverLocationProducer;
+
+    @Autowired
+    private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+
     @Async
     public void logEvent(UUID driverId, UUID tenantId, DriverEventType eventType, String metadata) {
         try {
@@ -27,12 +33,31 @@ public class DriverEventUtil {
             event.setDriverId(driverId);
             event.setTenantId(tenantId);
             event.setEventType(eventType);
-            event.setMetadata(metadata);
+
+            String jsonMetadata = metadata;
+            if (metadata == null) {
+                jsonMetadata = "{}";
+            } else if (!metadata.trim().startsWith("{") && !metadata.trim().startsWith("[")) {
+                try {
+                    java.util.Map<String, String> map = new java.util.HashMap<>();
+                    map.put("message", metadata);
+                    jsonMetadata = objectMapper.writeValueAsString(map);
+                } catch (Exception e) {
+                    log.warn("Failed to wrap metadata string into JSON", e);
+                    jsonMetadata = "{}";
+                }
+            }
+
+            event.setMetadata(jsonMetadata);
             event.setCreatedAt(LocalDateTime.now());
             driverEventRepository.save(event);
-            log.info("Logged driver event: {} for driver: {}", eventType, driverId);
+
+            // Publish event to Kafka
+            driverLocationProducer.publishDriverEvent(event);
+
+            log.info("Logged and published driver event: {} for driver: {}", eventType, driverId);
         } catch (Exception e) {
-            log.error("Failed to log driver event: {} for driver: {}", eventType, driverId, e);
+            log.error("Failed to log/publish driver event: {} for driver: {}", eventType, driverId, e);
         }
     }
 }
