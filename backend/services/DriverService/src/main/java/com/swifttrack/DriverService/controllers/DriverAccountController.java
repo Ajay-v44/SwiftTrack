@@ -99,7 +99,7 @@ public class DriverAccountController {
     @Operation(summary = "Update Driver Location", description = "Update the live location of the authenticated driver")
     public ResponseEntity<Message> updateLocation(@RequestHeader String token,
             @RequestBody com.swifttrack.dto.driverDto.DriverLocationUpdateDto request) {
-        com.swifttrack.dto.TokenResponse userDetails = driverService.getDriverUserDetails(token).user();
+        com.swifttrack.dto.TokenResponse userDetails = driverService.validateToken(token);
         driverService.updateDriverLocation(userDetails.id(), request.latitude(), request.longitude());
         return ResponseEntity.ok(new Message("Location updated successfully"));
     }

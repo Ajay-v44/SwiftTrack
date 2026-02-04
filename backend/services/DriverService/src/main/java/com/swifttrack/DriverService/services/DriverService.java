@@ -90,6 +90,9 @@ public class DriverService {
                 .orElseThrow(() -> new RuntimeException("Driver Status not found"));
         status.setLastSeenAt(LocalDateTime.now());
         driverStatusRepository.save(status);
+        // Log Login Event
+        driverEventUtil.logEvent(driverId, status.getTenantId(),
+                com.swifttrack.enums.DriverEventType.LOCATION_UPDATE, "Driver location updated via UpdateStatus");
     }
 
     @Autowired
@@ -150,7 +153,9 @@ public class DriverService {
         if (eventType != null) {
             driverEventUtil.logEvent(driverId, tenantId, eventType, "Status updated to " + request.status());
         }
-
+        // Log Login Event
+        driverEventUtil.logEvent(driverId, userDetails.tenantId().orElse(null),
+                com.swifttrack.enums.DriverEventType.UPDATE_STATUS, "Driver status updated via UpdateStatus");
         return new Message("Driver status updated successfully");
     }
 
@@ -198,6 +203,14 @@ public class DriverService {
 
     public Page<DriverVehicleDetails> getDriversByTenant(UUID tenantId, Pageable pageable) {
         return driverVehicleDetailsRepository.findByTenantId(tenantId, pageable);
+    }
+
+    public TokenResponse validateToken(String token) {
+        TokenResponse userDetails = authInterface.getUserDetails(token).getBody();
+        if (userDetails == null || userDetails.id() == null) {
+            throw new RuntimeException("Invalid token or user not found");
+        }
+        return userDetails;
     }
 
     public GetDriverUserDetails getDriverUserDetails(String token) {

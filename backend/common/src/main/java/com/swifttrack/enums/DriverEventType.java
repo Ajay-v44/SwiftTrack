@@ -7,5 +7,7 @@ public enum DriverEventType {
     OFFLINE,
     ORDER_ASSIGNED,
     ORDER_ACCEPTED,
-    ORDER_CANCELLED
+    ORDER_CANCELLED,
+    UPDATE_STATUS,
+    LOCATION_UPDATE
 }
