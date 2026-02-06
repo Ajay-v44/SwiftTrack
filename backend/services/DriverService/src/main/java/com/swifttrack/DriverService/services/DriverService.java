@@ -2,6 +2,8 @@ package com.swifttrack.DriverService.services;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,14 +20,17 @@ import com.swifttrack.DriverService.repositories.DriverLocationLiveRepository;
 import com.swifttrack.DriverService.repositories.DriverOrderAssignmentRepository;
 import com.swifttrack.DriverService.repositories.DriverVehicleDetailsRepository;
 import com.swifttrack.FeignClient.AuthInterface;
+import com.swifttrack.dto.ListOfTenantUsers;
 import com.swifttrack.dto.Message;
 import com.swifttrack.dto.TokenResponse;
 import com.swifttrack.dto.driverDto.AddTenantDriver;
 import com.swifttrack.dto.driverDto.AddTennatDriverResponse;
 import com.swifttrack.dto.driverDto.GetDriverUserDetails;
+import com.swifttrack.dto.driverDto.GetTenantDrivers;
 import com.swifttrack.DriverService.repositories.DriverStatusRepository;
 import com.swifttrack.enums.DriverAssignmentStatus;
 import com.swifttrack.enums.DriverOnlineStatus;
+import com.swifttrack.enums.UserType;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -71,7 +76,8 @@ public class DriverService {
         // Update Live Location Table (HOT)
         DriverLocationLive location = driverLocationLiveRepository.findById(driverId)
                 .orElse(new DriverLocationLive());
-
+        driverEventUtil.addDriverPreviousLocation(driverId, location.getTenantId(), location.getLatitude(),
+                location.getLongitude());
         if (location.getDriverId() == null) {
             DriverVehicleDetails details = getDriverProfile(driverId);
             location.setDriverId(driverId);
@@ -247,5 +253,40 @@ public class DriverService {
         return driverStatusRepository.findById(driverId)
                 .map(status -> status.getStatus() == DriverOnlineStatus.ONLINE)
                 .orElse(false);
+    }
+
+    public List<GetTenantDrivers> getTenantDrivers(String token) {
+        List<ListOfTenantUsers> tenantUsers = authInterface.getTenantUsers(token, UserType.TENANT_DRIVER).getBody();
+        List<GetTenantDrivers> driverDetailsList = new ArrayList<>();
+
+        if (tenantUsers != null) {
+            for (ListOfTenantUsers user : tenantUsers) {
+                DriverVehicleDetails vehicleDetails = driverVehicleDetailsRepository
+                        .findByDriverId(user.id())
+                        .orElse(new DriverVehicleDetails());
+
+                DriverStatus driverStatus = driverStatusRepository
+                        .findById(user.id())
+                        .orElse(new DriverStatus());
+
+                String vType = (vehicleDetails.getVehicleType() != null) ? vehicleDetails.getVehicleType().name()
+                        : null;
+
+                GetTenantDrivers dto = new GetTenantDrivers(
+                        user.id(),
+                        user.name(),
+                        user.email(),
+                        user.mobile(),
+                        vType,
+                        vehicleDetails.getLicenseNumber(),
+                        vehicleDetails.getDriverLicensNumber(),
+                        driverStatus.getStatus(),
+                        driverStatus.getLastSeenAt(),
+                        vehicleDetails.getCreatedAt(),
+                        vehicleDetails.getUpdatedAt());
+                driverDetailsList.add(dto);
+            }
+        }
+        return driverDetailsList;
     }
 }

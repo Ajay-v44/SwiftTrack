@@ -24,6 +24,7 @@ import com.swifttrack.AuthService.Repository.UserRepo;
 import com.swifttrack.AuthService.util.JwtUtil;
 import com.swifttrack.AuthService.util.UserMapper;
 import com.swifttrack.dto.AddTenantUsers;
+import com.swifttrack.dto.ListOfTenantUsers;
 import com.swifttrack.dto.Message;
 import com.swifttrack.dto.driverDto.AddTenantDriver;
 import com.swifttrack.dto.driverDto.AddTennatDriverResponse;
@@ -212,6 +213,32 @@ public class UserServices {
             userRepo.save(userModel1);
             return new AddTennatDriverResponse(userModel1.getId(), userModel.getTenantId(),
                     "Driver added successfully");
+        }
+        throw new CustomException(HttpStatus.UNAUTHORIZED, "Invalid Token");
+    }
+
+    public List<ListOfTenantUsers> getTenantUsers(String token, UserType userType) {
+        Map<String, Object> map = jwtUtil.decodeToken(token);
+        if (map.containsKey("mobile")) {
+            String mobileNum = (String) map.get("mobile");
+            UserModel userModel = userRepo.findByMobile(mobileNum);
+            if (userModel == null)
+                throw new ResourceNotFoundException("User account doesn't exist");
+
+            if (userModel.getStatus() == false)
+                throw new CustomException(HttpStatus.FORBIDDEN, "User account is not verified");
+            if (userModel.getTenantId() == null)
+                throw new CustomException(HttpStatus.FORBIDDEN, "You are not part of any organization");
+
+            // if (userModel.getType() != com.swifttrack.enums.UserType.TENANT_ADMIN)
+            // throw new CustomException(HttpStatus.FORBIDDEN, "User is not a tenant
+            // admin");
+            UUID tenantId = userModel.getTenantId();
+            // if (userModel.getType() == UserType.TENANT_ADMIN)
+            // tenantId = userModel.getId();
+
+            List<UserModel> userModel1 = userRepo.findByTenantId(tenantId, userType);
+            return userModel1.stream().map(userMapper::toTenantUser).collect(Collectors.toList());
         }
         throw new CustomException(HttpStatus.UNAUTHORIZED, "Invalid Token");
     }
