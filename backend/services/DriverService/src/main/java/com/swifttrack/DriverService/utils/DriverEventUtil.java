@@ -1,5 +1,6 @@
 package com.swifttrack.DriverService.utils;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -8,7 +9,9 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import com.swifttrack.DriverService.models.DriverEvent;
+import com.swifttrack.DriverService.models.DriverLocationHistory;
 import com.swifttrack.DriverService.repositories.DriverEventRepository;
+import com.swifttrack.DriverService.repositories.DriverLocationHistoryRepository;
 import com.swifttrack.enums.DriverEventType;
 
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +22,9 @@ public class DriverEventUtil {
 
     @Autowired
     private DriverEventRepository driverEventRepository;
+
+    @Autowired
+    private DriverLocationHistoryRepository driverLocationHistoryRepository;
 
     @Autowired
     private com.swifttrack.DriverService.events.DriverLocationProducer driverLocationProducer;
@@ -58,6 +64,23 @@ public class DriverEventUtil {
             log.info("Logged and published driver event: {} for driver: {}", eventType, driverId);
         } catch (Exception e) {
             log.error("Failed to log/publish driver event: {} for driver: {}", eventType, driverId, e);
+        }
+    }
+
+    @Async
+    public void addDriverPreviousLocation(UUID driverId, UUID tenantId, BigDecimal lat, BigDecimal lng) {
+        try {
+            DriverLocationHistory driverLocationHistory = new DriverLocationHistory();
+            driverLocationHistory.setDriverId(driverId);
+            driverLocationHistory.setTenantId(tenantId);
+            driverLocationHistory.setLatitude(lat);
+            driverLocationHistory.setLongitude(lng);
+            driverLocationHistory.setRecordedAt(LocalDateTime.now());
+            driverLocationHistoryRepository.save(driverLocationHistory);
+        } catch (Exception e) {
+            log.error("Failed to log/publish driver event: {} for driver: {}", DriverEventType.LOCATION_UPDATE,
+                    driverId,
+                    e);
         }
     }
 }

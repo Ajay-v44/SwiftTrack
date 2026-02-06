@@ -3,6 +3,7 @@ package com.swifttrack.AuthService.controllers;
 import java.util.List;
 import java.util.UUID;
 
+import com.swifttrack.enums.UserType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,6 +23,7 @@ import com.swifttrack.AuthService.Dto.RegisterUser;
 import com.swifttrack.AuthService.Dto.TokenResponse;
 import com.swifttrack.AuthService.Services.UserServices;
 import com.swifttrack.dto.AddTenantUsers;
+import com.swifttrack.dto.ListOfTenantUsers;
 import com.swifttrack.dto.Message;
 import com.swifttrack.dto.driverDto.AddTenantDriver;
 import com.swifttrack.dto.driverDto.AddTennatDriverResponse;
@@ -110,5 +112,17 @@ public class UserController {
     public ResponseEntity<AddTennatDriverResponse> addTenantDrivers(@RequestParam String token,
             @RequestBody AddTenantDriver entity) {
         return ResponseEntity.ok(userService.addTenantDrivers(token, entity));
+    }
+
+    @PostMapping("v1/getTenantUsers")
+    @Operation(summary = "Get tenant users", description = "Get users of a tenant")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Users retrieved successfully"),
+            @ApiResponse(responseCode = "401", description = "Invalid credentials"),
+            @ApiResponse(responseCode = "403", description = "Account not activated")
+    })
+    public ResponseEntity<List<ListOfTenantUsers>> getTenantUsers(@RequestParam String token,
+            @RequestParam UserType userType) {
+        return ResponseEntity.ok(userService.getTenantUsers(token, userType));
     }
 }

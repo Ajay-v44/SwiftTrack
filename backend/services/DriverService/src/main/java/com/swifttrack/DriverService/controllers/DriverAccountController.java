@@ -1,5 +1,7 @@
 package com.swifttrack.DriverService.controllers;
 
+import java.util.List;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -12,6 +14,7 @@ import com.swifttrack.DriverService.services.DriverService;
 import com.swifttrack.dto.Message;
 import com.swifttrack.dto.driverDto.AddTenantDriver;
 import com.swifttrack.dto.driverDto.GetDriverUserDetails;
+import com.swifttrack.dto.driverDto.GetTenantDrivers;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
@@ -118,6 +121,17 @@ public class DriverAccountController {
         // Validation could be added here to ensure the assignment belongs to the driver
         driverService.respondToAssignment(request.assignmentId(), request.accept(), request.reason());
         return ResponseEntity.ok(new Message("Response recorded successfully"));
+    }
+
+    @PostMapping("/v1/getTenantDrivers")
+    @Operation(summary = "Get Tenant Drivers", description = "Get all drivers of a tenant")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Drivers retrieved successfully"),
+            @ApiResponse(responseCode = "401", description = "Invalid token"),
+            @ApiResponse(responseCode = "404", description = "Tenant not found")
+    })
+    public ResponseEntity<List<GetTenantDrivers>> getTenantDrivers(@RequestHeader String token) {
+        return ResponseEntity.ok(driverService.getTenantDrivers(token));
     }
 
 }
