@@ -53,6 +53,9 @@ public class DriverService {
     @Autowired
     AuthInterface authInterface;
 
+    @Autowired
+    com.swifttrack.FeignClient.OrderInterface orderInterface;
+
     @Transactional
     public Message createDriverProfile(String token, AddTenantDriver entity) {
         AddTennatDriverResponse response = authInterface.addTenantDrivers(token, entity).getBody();
@@ -166,7 +169,7 @@ public class DriverService {
     }
 
     @Transactional
-    public DriverOrderAssignment assignOrder(UUID driverId, Long orderId) {
+    public DriverOrderAssignment assignOrder(UUID driverId, UUID orderId) {
         DriverStatus driverStatus = driverStatusRepository.findById(driverId)
                 .orElseThrow(() -> new RuntimeException("Driver Status not found"));
 
@@ -205,6 +208,27 @@ public class DriverService {
             assignment.setStatus(DriverAssignmentStatus.REJECTED);
         }
         driverAssignmentRepository.save(assignment);
+    }
+
+    public List<com.swifttrack.dto.orderDto.GetOrdersForDriver> getMyOrders(String token, DriverAssignmentStatus status,
+            int page, int size) {
+        TokenResponse userDetails = authInterface.getUserDetails(token).getBody();
+        UUID driverId = userDetails.id();
+
+        Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        Page<DriverOrderAssignment> assignments = driverAssignmentRepository.findByDriverIdAndStatus(driverId, status,
+                pageable);
+
+        List<UUID> orderIds = assignments.getContent().stream()
+                .map(DriverOrderAssignment::getOrderId)
+                .collect(java.util.stream.Collectors.toList());
+
+        if (orderIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        return orderInterface.getOrdersForDriver(token, new com.swifttrack.dto.orderDto.GetOrdersRequest(orderIds))
+                .getBody();
     }
 
     public Page<DriverVehicleDetails> getDriversByTenant(UUID tenantId, Pageable pageable) {

@@ -28,7 +28,7 @@ public class DriverOrderAssignment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long orderId; // Kept as Long per schema assumption, check OrderService if strictly needed
+    private UUID orderId;
     private UUID driverId;
     private UUID tenantId;
 

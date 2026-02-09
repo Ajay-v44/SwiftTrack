@@ -26,8 +26,10 @@ import com.swifttrack.OrderService.dto.MLPredictionResponse;
 import com.swifttrack.OrderService.dto.MLPredictionResponse.Prediction;
 import com.swifttrack.OrderService.dto.ModelQuoteInput;
 import com.swifttrack.OrderService.models.Order;
+import com.swifttrack.OrderService.models.OrderLocation;
 import com.swifttrack.OrderService.models.OrderQuote;
 import com.swifttrack.OrderService.models.OrderQuoteSession;
+import com.swifttrack.OrderService.models.enums.LocationType;
 import com.swifttrack.OrderService.models.enums.OrderStatus;
 import com.swifttrack.OrderService.models.enums.OrderType;
 import com.swifttrack.OrderService.models.enums.QuoteSessionStatus;
@@ -40,7 +42,10 @@ import com.swifttrack.dto.map.NormalizedLocation;
 import com.swifttrack.dto.orderDto.CreateOrderRequest;
 import com.swifttrack.dto.orderDto.CreateOrderResponse;
 import com.swifttrack.dto.orderDto.FinalCreateOrderResponse;
+import com.swifttrack.dto.orderDto.GetOrdersForDriver;
+import com.swifttrack.dto.orderDto.GetOrdersRequest;
 import com.swifttrack.dto.orderDto.OrderQuoteResponse;
+import com.swifttrack.events.OrderCreatedEvent;
 import com.swifttrack.dto.GetProviders;
 import com.swifttrack.dto.Message;
 import com.swifttrack.dto.providerDto.QuoteInput;
@@ -248,7 +253,7 @@ public class OrderServices {
 
         orderRepository.save(order);
 
-        com.swifttrack.events.OrderCreatedEvent.OrderCreatedEventBuilder eventBuilder = com.swifttrack.events.OrderCreatedEvent
+        OrderCreatedEvent.OrderCreatedEventBuilder eventBuilder = OrderCreatedEvent
                 .builder()
                 .orderId(order.getId())
                 .customerReferenceId(order.getCustomerReferenceId())
@@ -295,4 +300,44 @@ public class OrderServices {
         throw new RuntimeException("Order not found");
     }
 
+    public List<GetOrdersForDriver> getOrdersForDriver(String token,
+            GetOrdersRequest request) {
+        TokenResponse userDetails = authInterface.getUserDetails(token).getBody();
+        List<Order> orders = orderRepository.findByIdIn(request.orderIds());
+        List<GetOrdersForDriver> result = new ArrayList<>();
+
+        for (Order order : orders) {
+            OrderLocation pickup = order.getLocations().stream()
+                    .filter(loc -> loc
+                            .getLocationType() == LocationType.PICKUP)
+                    .findFirst().orElse(null);
+
+            OrderLocation dropoff = order.getLocations().stream()
+                    .filter(loc -> loc.getLocationType() == LocationType.DROP)
+                    .findFirst().orElse(null);
+
+            String city = (pickup != null) ? pickup.getCity() : null;
+            String state = (pickup != null) ? pickup.getState() : null;
+            Double pickupLat = (pickup != null && pickup.getLatitude() != null) ? pickup.getLatitude().doubleValue()
+                    : null;
+            Double pickupLng = (pickup != null && pickup.getLongitude() != null) ? pickup.getLongitude().doubleValue()
+                    : null;
+            Double dropoffLat = (dropoff != null && dropoff.getLatitude() != null) ? dropoff.getLatitude().doubleValue()
+                    : null;
+            Double dropoffLng = (dropoff != null && dropoff.getLongitude() != null)
+                    ? dropoff.getLongitude().doubleValue()
+                    : null;
+
+            result.add(new GetOrdersForDriver(
+                    order.getId(),
+                    order.getCustomerReferenceId(),
+                    city,
+                    state,
+                    pickupLat,
+                    pickupLng,
+                    dropoffLat,
+                    dropoffLng));
+        }
+        return result;
+    }
 }

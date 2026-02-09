@@ -2,9 +2,11 @@ package com.swifttrack.OrderService.controllers;
 
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -15,6 +17,7 @@ import com.swifttrack.OrderService.services.OrderServices;
 import com.swifttrack.dto.Message;
 import com.swifttrack.dto.orderDto.CreateOrderRequest;
 import com.swifttrack.dto.orderDto.FinalCreateOrderResponse;
+import com.swifttrack.dto.orderDto.GetOrdersForDriver;
 import com.swifttrack.dto.orderDto.OrderQuoteResponse;
 import com.swifttrack.dto.providerDto.QuoteInput;
 
@@ -49,4 +52,9 @@ public class OrderController {
         return ResponseEntity.ok(orderServices.cancelOrder(token, orderId, providerCode));
     }
 
+    @PostMapping("/v1/getOrdersForDriver")
+    public ResponseEntity<List<GetOrdersForDriver>> getOrdersForDriver(@RequestHeader String token,
+            @RequestBody com.swifttrack.dto.orderDto.GetOrdersRequest request) {
+        return ResponseEntity.ok(orderServices.getOrdersForDriver(token, request));
+    }
 }
