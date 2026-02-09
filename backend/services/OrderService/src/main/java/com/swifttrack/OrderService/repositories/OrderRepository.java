@@ -62,4 +62,8 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
         @org.springframework.transaction.annotation.Transactional
         @Query("UPDATE Order o SET o.orderStatus=:orderStatus, o.updatedAt = CURRENT_TIMESTAMP WHERE o.id=:orderId")
         int updateOrderStatus(@Param("orderId") UUID orderId, @Param("orderStatus") OrderStatus orderStatus);
+
+        // Find orders by list of IDs
+        @Query("SELECT DISTINCT o FROM Order o LEFT JOIN FETCH o.locations WHERE o.id IN :ids")
+        List<Order> findByIdIn(@Param("ids") List<UUID> ids);
 }

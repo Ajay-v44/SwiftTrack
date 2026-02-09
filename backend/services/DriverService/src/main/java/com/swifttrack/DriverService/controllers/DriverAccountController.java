@@ -134,4 +134,13 @@ public class DriverAccountController {
         return ResponseEntity.ok(driverService.getTenantDrivers(token));
     }
 
+    @GetMapping("/v1/getMyOrders")
+    @Operation(summary = "Get My Orders", description = "Get orders assigned to the authenticated driver")
+    public ResponseEntity<List<com.swifttrack.dto.orderDto.GetOrdersForDriver>> getMyOrders(
+            @RequestHeader String token,
+            @org.springframework.web.bind.annotation.RequestParam com.swifttrack.enums.DriverAssignmentStatus status,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "0") int page,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "10") int limit) {
+        return ResponseEntity.ok(driverService.getMyOrders(token, status, page, limit));
+    }
 }
