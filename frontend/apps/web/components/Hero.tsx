@@ -1,20 +1,15 @@
 "use client"
 
-import { Button, Input } from "@swifttrack/shared-ui"
+import { Button, Input, HeroBackground } from "@swifttrack/shared-ui"
 import { MapPin, Truck, ShieldCheck, Zap } from "lucide-react"
 
 export function Hero() {
     return (
         <div className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
             {/* Background Gradients & Image */}
-            <div className="absolute inset-0 z-0">
-                <img
-                    src="https://placehold.co/1920x1080/1a103c/FFF?text=Futuristic+Logistics+Network"
-                    alt="Hero Background"
-                    className="w-full h-full object-cover opacity-20"
-                />
-                <div className="absolute inset-0 bg-gradient-to-b from-background via-background/90 to-background/50" />
-            </div>
+            {/* Background Gradients & Animation */}
+            <HeroBackground />
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/50 to-background pointer-events-none" />
 
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full z-0 pointer-events-none">
                 <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/20 blur-[120px] rounded-full mix-blend-screen animate-blob"></div>

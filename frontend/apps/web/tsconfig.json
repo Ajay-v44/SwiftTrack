@@ -28,6 +28,9 @@
       ],
       "@swifttrack/shared-ui": [
         "../../libs/shared-ui/src/index.ts"
+      ],
+      "@swifttrack/shared-assets": [
+        "../../libs/shared-assets/src/index.ts"
       ]
     }
   },
