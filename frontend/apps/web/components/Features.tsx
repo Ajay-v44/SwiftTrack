@@ -2,37 +2,38 @@
 
 import { motion } from "framer-motion"
 import { ShieldCheck, Zap, Truck, Globe, BarChart3, Users } from "lucide-react"
+import { DriverNetwork, LiveMap, AnalyticsChart } from "@swifttrack/shared-ui"
 
 const features = [
     {
         icon: Zap,
-        title: "AI-Driven Dispatch",
-        description: "Our algorithms automatically assign orders to the best-suited drivers based on proximity, vehicle type, and historical performance.",
+        title: "Unified Decision Engine",
+        description: "AI/ML algorithms dynamically select the best delivery option—in-house fleet, marketplace drivers, or 3rd-party providers—based on cost, ETA, and performance.",
     },
     {
         icon: Globe,
-        title: "Real-Time Tracking",
-        description: "Give your customers peace of mind with live tracking links. Monitor your entire fleet on a single, interactive map.",
-    },
-    {
-        icon: BarChart3,
-        title: "Advanced Analytics",
-        description: "Gain deep insights into your operations with custom reports on delivery times, cost per mile, and driver efficiency.",
-    },
-    {
-        icon: ShieldCheck,
-        title: "Secure & Reliable",
-        description: "Enterprise-grade security for your data. 99.99% uptime guarantee ensures your operations never stop.",
-    },
-    {
-        icon: Truck,
-        title: "Fleet Management",
-        description: "Manage vehicle maintenance, fuel costs, and driver documents all in one place.",
+        title: "Real-Time Infrastructure",
+        description: "WebSocket-powered low-latency tracking with Redis backing. Monitor your entire fleet live on a single interactive map with timeline events.",
     },
     {
         icon: Users,
-        title: "Driver App",
-        description: "A dedicated app for drivers to manage orders, navigate routes, and track earnings seamlessly.",
+        title: "Driver Marketplace",
+        description: "Access a pool of verified freelance drivers. AI-based scoring and risk evaluation ensures reliability for every delivery.",
+    },
+    {
+        icon: ShieldCheck,
+        title: "3rd-Party Integrations",
+        description: "Plug-and-play adapters for major providers like Shadowfax, Dunzo, and Porter. Automatic status mirroring and multi-provider fallback flows.",
+    },
+    {
+        icon: BarChart3,
+        title: "Intelligent Analytics",
+        description: "Deep insights into delivery times, costs, and efficiency. AI Chatbot allows you to query operations using natural language.",
+    },
+    {
+        icon: Truck,
+        title: "Dedicated Driver Apps",
+        description: "Comprehensive apps for driver onboarding, order management, and route navigation with automated payout tracking.",
     },
 ]
 
@@ -61,10 +62,35 @@ export function Features() {
                         >
                             <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-3xl" />
 
-                            {/* Decorative Image for first 3 items */}
-                            {i < 3 && (
-                                <div className="absolute top-0 right-0 w-32 h-32 opacity-10 group-hover:opacity-20 transition-opacity -mr-8 -mt-8 rounded-full overflow-hidden">
-                                    <img src={`https://placehold.co/200x200/4c1d95/FFF?text=Feature+${i + 1}`} alt="" className="w-full h-full object-cover" />
+                            {/* Visualization Layer */}
+                            {i === 0 && (
+                                <div className="absolute top-0 right-0 w-full h-full opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none">
+                                    <div className="absolute -top-10 -right-10 w-[120%] h-[120%] rotate-12 scale-110">
+                                        {/* Using a simplified version or composition for background effect */}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Specific Illustrations for key features */}
+                            {i === 0 && (
+                                <div className="absolute top-0 right-0 w-48 h-48 opacity-20 group-hover:opacity-100 transition-all duration-500 -mr-12 -mt-12 rounded-full overflow-hidden border border-white/10 bg-neutral-900/50">
+                                    <div className="scale-75 origin-top-right">
+                                        <DriverNetwork />
+                                    </div>
+                                </div>
+                            )}
+                            {i === 1 && (
+                                <div className="absolute top-0 right-0 w-48 h-48 opacity-20 group-hover:opacity-100 transition-all duration-500 -mr-12 -mt-12 rounded-full overflow-hidden border border-white/10 bg-neutral-900/50">
+                                    <div className="scale-75 origin-top-right">
+                                        <LiveMap />
+                                    </div>
+                                </div>
+                            )}
+                            {i === 4 && (
+                                <div className="absolute top-0 right-0 w-48 h-48 opacity-20 group-hover:opacity-100 transition-all duration-500 -mr-12 -mt-12 rounded-full overflow-hidden border border-white/10 bg-neutral-900/50">
+                                    <div className="scale-75 origin-top-right">
+                                        <AnalyticsChart />
+                                    </div>
                                 </div>
                             )}
 

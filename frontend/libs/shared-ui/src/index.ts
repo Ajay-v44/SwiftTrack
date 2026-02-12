@@ -13,4 +13,8 @@ export * from './components/ui/sheet';
 export * from './components/ui/sonner';
 export * from "./components/ui/tabs"
 export * from "./components/branding/Logo";
+export * from "./components/branding/HeroBackground";
+export * from "./components/illustrations/DriverNetwork";
+export * from "./components/illustrations/LiveMap";
+export * from "./components/illustrations/AnalyticsChart";
 export * from './components/ui/textarea';

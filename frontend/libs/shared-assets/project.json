@@ -1,0 +1,25 @@
+{
+    "name": "shared-assets",
+    "$schema": "../../node_modules/nx/schemas/project-schema.json",
+    "sourceRoot": "libs/shared-assets/src",
+    "projectType": "library",
+    "tags": [],
+    "targets": {
+        "build": {
+            "executor": "@nx/js:tsc",
+            "outputs": [
+                "{options.outputPath}"
+            ],
+            "options": {
+                "outputPath": "dist/libs/shared-assets",
+                "tsConfig": "libs/shared-assets/tsconfig.lib.json",
+                "packageJson": "libs/shared-assets/package.json",
+                "main": "libs/shared-assets/src/index.ts",
+                "assets": [
+                    "libs/shared-assets/*.md",
+                    "libs/shared-assets/src/images/**/*"
+                ]
+            }
+        }
+    }
+}

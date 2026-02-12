@@ -3,6 +3,9 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/shared-ui/src",
   "projectType": "library",
+  "implicitDependencies": [
+    "shared-assets"
+  ],
   "tags": [],
   "// targets": "to see all targets run: nx show project shared-ui --web",
   "targets": {}
