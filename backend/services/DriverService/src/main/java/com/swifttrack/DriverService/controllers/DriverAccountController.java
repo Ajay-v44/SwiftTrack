@@ -119,7 +119,7 @@ public class DriverAccountController {
     public ResponseEntity<Message> respondToAssignment(@RequestHeader String token,
             @RequestBody com.swifttrack.dto.driverDto.RespondToAssignmentDto request) {
         // Validation could be added here to ensure the assignment belongs to the driver
-        driverService.respondToAssignment(request.assignmentId(), request.accept(), request.reason());
+        driverService.respondToAssignment(request.orderId(), request.accept(), request.reason());
         return ResponseEntity.ok(new Message("Response recorded successfully"));
     }
 

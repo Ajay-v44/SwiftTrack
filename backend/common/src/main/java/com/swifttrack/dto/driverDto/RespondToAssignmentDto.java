@@ -1,7 +1,9 @@
 package com.swifttrack.dto.driverDto;
 
+import java.util.UUID;
+
 public record RespondToAssignmentDto(
-        Long assignmentId,
-        boolean accept,
-        String reason) {
+                UUID orderId,
+                boolean accept,
+                String reason) {
 }
