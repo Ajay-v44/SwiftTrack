@@ -170,6 +170,9 @@ public class DriverService {
 
     @Transactional
     public DriverOrderAssignment assignOrder(UUID driverId, UUID orderId) {
+        if (driverAssignmentRepository.findByOrderId(orderId).isPresent()) {
+            throw new RuntimeException("Order is already assigned to a driver");
+        }
         DriverStatus driverStatus = driverStatusRepository.findById(driverId)
                 .orElseThrow(() -> new RuntimeException("Driver Status not found"));
 
@@ -187,27 +190,33 @@ public class DriverService {
     }
 
     @Transactional
-    public void respondToAssignment(Long assignmentId, boolean accept, String reason) {
-        DriverOrderAssignment assignment = driverAssignmentRepository.findById(assignmentId)
+    public void respondToAssignment(UUID orderId, boolean accept, String reason) {
+        DriverOrderAssignment assignment = driverAssignmentRepository.findByOrderId(orderId)
                 .orElseThrow(() -> new RuntimeException("Assignment not found"));
 
         if (assignment.getStatus() != DriverAssignmentStatus.ASSIGNED) {
             throw new RuntimeException("Assignment is not in pending state");
         }
-
+        // Mark driver as ON_TRIP
+        DriverStatus driverStatus = driverStatusRepository.findById(assignment.getDriverId())
+                .orElseThrow(() -> new RuntimeException("Driver Status not found"));
         if (accept) {
             assignment.setStatus(DriverAssignmentStatus.ACCEPTED);
 
-            // Mark driver as ON_TRIP
-            DriverStatus driverStatus = driverStatusRepository.findById(assignment.getDriverId())
-                    .orElseThrow(() -> new RuntimeException("Driver Status not found"));
             driverStatus.setStatus(DriverOnlineStatus.ON_TRIP);
             driverStatusRepository.save(driverStatus);
+            driverEventUtil.logEvent(assignment.getDriverId(), assignment.getTenantId(),
+                    com.swifttrack.enums.DriverEventType.ORDER_ACCEPTED, "Order accepted by driver");
+            driverAssignmentRepository.save(assignment);
 
         } else {
+            driverStatus.setStatus(DriverOnlineStatus.ONLINE);
+            driverStatusRepository.save(driverStatus);
             assignment.setStatus(DriverAssignmentStatus.REJECTED);
+            driverEventUtil.logEvent(assignment.getDriverId(), assignment.getTenantId(),
+                    com.swifttrack.enums.DriverEventType.ORDER_CANCELLED, "Order rejected by driver");
+            driverAssignmentRepository.delete(assignment);
         }
-        driverAssignmentRepository.save(assignment);
     }
 
     public List<com.swifttrack.dto.orderDto.GetOrdersForDriver> getMyOrders(String token, DriverAssignmentStatus status,
@@ -226,7 +235,7 @@ public class DriverService {
         if (orderIds.isEmpty()) {
             return new ArrayList<>();
         }
-
+        System.out.println("Order IDs: " + orderIds);
         return orderInterface.getOrdersForDriver(token, new com.swifttrack.dto.orderDto.GetOrdersRequest(orderIds))
                 .getBody();
     }

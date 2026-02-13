@@ -70,6 +70,9 @@ public class DriverEventUtil {
     @Async
     public void addDriverPreviousLocation(UUID driverId, UUID tenantId, BigDecimal lat, BigDecimal lng) {
         try {
+            if (lat == null || lng == null) {
+                return;
+            }
             DriverLocationHistory driverLocationHistory = new DriverLocationHistory();
             driverLocationHistory.setDriverId(driverId);
             driverLocationHistory.setTenantId(tenantId);

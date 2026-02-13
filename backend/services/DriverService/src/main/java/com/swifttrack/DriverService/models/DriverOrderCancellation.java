@@ -22,7 +22,7 @@ public class DriverOrderCancellation {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long orderId;
+    private UUID orderId;
     private UUID driverId;
     private UUID tenantId;
 

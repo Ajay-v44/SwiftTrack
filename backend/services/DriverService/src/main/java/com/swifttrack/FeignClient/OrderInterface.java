@@ -11,10 +11,10 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import com.swifttrack.dto.orderDto.GetOrdersForDriver;
 import com.swifttrack.dto.orderDto.GetOrdersRequest;
 
-@FeignClient(name = "OrderService")
+@FeignClient(name = "orderservice", url = "http://localhost:8080/orderservice")
 public interface OrderInterface {
 
-    @PostMapping("/v1/getOrdersForDriver")
+    @PostMapping("/api/order/v1/getOrdersForDriver")
     public ResponseEntity<List<GetOrdersForDriver>> getOrdersForDriver(@RequestHeader("token") String token,
             @RequestBody GetOrdersRequest request);
 }

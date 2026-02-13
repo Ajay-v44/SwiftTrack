@@ -12,11 +12,12 @@ import com.swifttrack.DriverService.models.DriverOrderAssignment;
 import com.swifttrack.enums.DriverAssignmentStatus;
 
 @Repository
-public interface DriverOrderAssignmentRepository extends JpaRepository<DriverOrderAssignment, Long> { // ID is Long,
-                                                                                                      // DriverId is
-                                                                                                      // UUID
+public interface DriverOrderAssignmentRepository extends JpaRepository<DriverOrderAssignment, Long> {
+
     Optional<DriverOrderAssignment> findByOrderIdAndDriverId(UUID orderId, UUID driverId);
 
     Page<DriverOrderAssignment> findByDriverIdAndStatus(UUID driverId, DriverAssignmentStatus status,
             Pageable pageable);
+
+    Optional<DriverOrderAssignment> findByOrderId(UUID orderId);
 }

@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-change-order-id-type
+      author: antigravity
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE driver_order_assignment ALTER COLUMN order_id TYPE UUID USING NULL;
+        - sql:
+            dbms: h2
+            sql: ALTER TABLE driver_order_assignment ALTER COLUMN order_id UUID;
