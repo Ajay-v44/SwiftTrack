@@ -1,20 +1,26 @@
 package com.swifttrack.DriverService.controllers;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.swifttrack.DriverService.dto.UpdateOrderStatusrequest;
 import com.swifttrack.DriverService.services.DriverService;
 import com.swifttrack.dto.Message;
 import com.swifttrack.dto.driverDto.AddTenantDriver;
 import com.swifttrack.dto.driverDto.GetDriverUserDetails;
 import com.swifttrack.dto.driverDto.GetTenantDrivers;
+import com.swifttrack.dto.driverDto.UpdateDriverStatusRequest;
+import com.swifttrack.enums.TrackingStatus;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
@@ -119,7 +125,7 @@ public class DriverAccountController {
     public ResponseEntity<Message> respondToAssignment(@RequestHeader String token,
             @RequestBody com.swifttrack.dto.driverDto.RespondToAssignmentDto request) {
         // Validation could be added here to ensure the assignment belongs to the driver
-        driverService.respondToAssignment(request.orderId(), request.accept(), request.reason());
+        driverService.respondToAssignment(token, request.orderId(), request.accept(), request.reason());
         return ResponseEntity.ok(new Message("Response recorded successfully"));
     }
 
@@ -142,5 +148,17 @@ public class DriverAccountController {
             @org.springframework.web.bind.annotation.RequestParam(defaultValue = "0") int page,
             @org.springframework.web.bind.annotation.RequestParam(defaultValue = "10") int limit) {
         return ResponseEntity.ok(driverService.getMyOrders(token, status, page, limit));
+    }
+
+    @PostMapping("/v1/updateOrderStatus")
+    @Operation(summary = "Update Order Status", description = "Update the status of an order")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Order status updated successfully"),
+            @ApiResponse(responseCode = "401", description = "Invalid token/Unauthorized"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    public ResponseEntity<Message> updateOrderStatus(@RequestHeader String token,
+            @RequestBody UpdateOrderStatusrequest request) {
+        return ResponseEntity.ok(driverService.updateOrderStatus(token, request));
     }
 }

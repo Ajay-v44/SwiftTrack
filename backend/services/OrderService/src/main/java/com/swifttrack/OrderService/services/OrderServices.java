@@ -29,6 +29,7 @@ import com.swifttrack.OrderService.models.Order;
 import com.swifttrack.OrderService.models.OrderLocation;
 import com.swifttrack.OrderService.models.OrderQuote;
 import com.swifttrack.OrderService.models.OrderQuoteSession;
+import com.swifttrack.OrderService.models.OrderTrackingState;
 import com.swifttrack.OrderService.models.enums.LocationType;
 import com.swifttrack.OrderService.models.enums.OrderStatus;
 import com.swifttrack.OrderService.models.enums.OrderType;
@@ -36,6 +37,7 @@ import com.swifttrack.OrderService.models.enums.QuoteSessionStatus;
 import com.swifttrack.OrderService.repositories.OrderQuoteRepository;
 import com.swifttrack.OrderService.repositories.OrderQuoteSessionRepository;
 import com.swifttrack.OrderService.repositories.OrderRepository;
+import com.swifttrack.OrderService.repositories.OrderTrackingStateRepository;
 import com.swifttrack.dto.map.ApiResponse;
 import com.swifttrack.dto.map.DistanceResult;
 import com.swifttrack.dto.map.NormalizedLocation;
@@ -66,6 +68,7 @@ public class OrderServices {
     OrderQuoteSessionRepository orderQuoteSessionRepository;
     OrderQuoteRepository orderQuoteRepository;
     AuthInterface authInterface;
+    OrderTrackingStateRepository orderTrackingStateRepository;
     private final org.springframework.kafka.core.KafkaTemplate<String, Object> kafkaTemplate;
 
     @Value("")
@@ -77,6 +80,7 @@ public class OrderServices {
             OrderRepository orderRepository, RestTemplate restTemplate,
             OrderQuoteSessionRepository orderQuoteSessionRepository,
             OrderQuoteRepository orderQuoteRepository, AuthInterface authInterface,
+            OrderTrackingStateRepository orderTrackingStateRepository,
             org.springframework.kafka.core.KafkaTemplate<String, Object> kafkaTemplate) {
         this.providerInterface = providerInterface;
         this.mapInterface = mapInterface;
@@ -85,6 +89,7 @@ public class OrderServices {
         this.orderQuoteSessionRepository = orderQuoteSessionRepository;
         this.orderQuoteRepository = orderQuoteRepository;
         this.authInterface = authInterface;
+        this.orderTrackingStateRepository = orderTrackingStateRepository;
         this.kafkaTemplate = kafkaTemplate;
     }
 
@@ -328,9 +333,12 @@ public class OrderServices {
                     ? dropoff.getLongitude().doubleValue()
                     : null;
 
+            String orderStatus = order.getOrderStatus().name();
+
             result.add(new GetOrdersForDriver(
                     order.getId(),
                     order.getCustomerReferenceId(),
+                    orderStatus,
                     city,
                     state,
                     pickupLat,
@@ -339,5 +347,13 @@ public class OrderServices {
                     dropoffLng));
         }
         return result;
+    }
+
+    public String getOrderStatus(String token, UUID orderId) {
+        OrderTrackingState orderTrackingState = orderTrackingStateRepository.findById(orderId).orElse(null);
+        if (orderTrackingState == null) {
+            return null;
+        }
+        return orderTrackingState.getCurrentStatus().name();
     }
 }

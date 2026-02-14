@@ -7,6 +7,7 @@ import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -56,5 +57,10 @@ public class OrderController {
     public ResponseEntity<List<GetOrdersForDriver>> getOrdersForDriver(@RequestHeader String token,
             @RequestBody com.swifttrack.dto.orderDto.GetOrdersRequest request) {
         return ResponseEntity.ok(orderServices.getOrdersForDriver(token, request));
+    }
+
+    @GetMapping("/v1/getOrderStatus/{orderId}")
+    public ResponseEntity<String> getOrderStatus(@RequestHeader String token, @PathVariable UUID orderId) {
+        return ResponseEntity.ok(orderServices.getOrderStatus(token, orderId));
     }
 }

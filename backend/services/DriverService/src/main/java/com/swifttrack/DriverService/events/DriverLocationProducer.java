@@ -4,6 +4,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
+import com.swifttrack.DriverService.models.DriverEvent;
+
 import lombok.extern.slf4j.Slf4j;
 
 @Component
@@ -24,7 +26,7 @@ public class DriverLocationProducer {
 
     private static final String EVENT_TOPIC = "driver.events";
 
-    public void publishDriverEvent(com.swifttrack.DriverService.models.DriverEvent event) {
+    public void publishDriverEvent(DriverEvent event) {
         kafkaTemplate.send(EVENT_TOPIC, event.getDriverId().toString(), event);
         log.info("Published driver event: {}", event);
     }

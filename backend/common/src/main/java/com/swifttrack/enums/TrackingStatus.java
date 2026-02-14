@@ -1,4 +1,4 @@
-package com.swifttrack.OrderService.models.enums;
+package com.swifttrack.enums;
 
 public enum TrackingStatus {
     PICKED_UP,
@@ -6,5 +6,4 @@ public enum TrackingStatus {
     OUT_FOR_DELIVERY,
     DELIVERED,
     FAILED
-
 }
