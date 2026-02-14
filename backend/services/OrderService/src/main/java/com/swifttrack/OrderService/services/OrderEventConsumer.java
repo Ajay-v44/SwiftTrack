@@ -24,6 +24,7 @@ import com.swifttrack.OrderService.repositories.OrderTrackingStateRepository;
 import com.swifttrack.OrderService.repositories.OrderTrackingEventRepository;
 import com.swifttrack.OrderService.models.enums.TrackingStatus;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 public class OrderEventConsumer {
@@ -98,6 +99,21 @@ public class OrderEventConsumer {
             e.printStackTrace();
         }
 
+    }
+
+    @KafkaListener(topics = "driver-canceled", groupId = "order-service-group")
+    public void handleDriverCanceled(UUID orderId) {
+        System.out.println("Driver Canceled for Order: " + orderId);
+        // Update order status and notify user
+        try {
+            Order order = orderRepository.findById(orderId)
+                    .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
+            order.setOrderStatus(OrderStatus.CREATED);
+            orderRepository.save(order);
+        } catch (Exception e) {
+            System.err.println("Error updating order status: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     @KafkaListener(topics = "driver-location-updates", groupId = "order-service-group")

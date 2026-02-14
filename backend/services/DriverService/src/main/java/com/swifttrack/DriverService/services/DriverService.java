@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.swifttrack.DriverService.models.DriverVehicleDetails;
+import com.swifttrack.DriverService.dto.UpdateOrderStatusrequest;
 import com.swifttrack.DriverService.models.DriverLocationLive;
 import com.swifttrack.DriverService.models.DriverOrderAssignment;
 import com.swifttrack.DriverService.models.DriverStatus;
@@ -27,10 +28,13 @@ import com.swifttrack.dto.driverDto.AddTenantDriver;
 import com.swifttrack.dto.driverDto.AddTennatDriverResponse;
 import com.swifttrack.dto.driverDto.GetDriverUserDetails;
 import com.swifttrack.dto.driverDto.GetTenantDrivers;
+import com.swifttrack.dto.driverDto.UpdateDriverStatusRequest;
 import com.swifttrack.DriverService.repositories.DriverStatusRepository;
 import com.swifttrack.enums.DriverAssignmentStatus;
 import com.swifttrack.enums.DriverOnlineStatus;
+import com.swifttrack.enums.TrackingStatus;
 import com.swifttrack.enums.UserType;
+import com.swifttrack.events.DriverLocationUpdates;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -106,6 +110,9 @@ public class DriverService {
 
     @Autowired
     private com.swifttrack.DriverService.utils.DriverEventUtil driverEventUtil;
+
+    @Autowired
+    private com.swifttrack.DriverService.utils.KafkaProducerUtil kafkaProducerUtil;
 
     @Transactional
     public void toggleOnlineStatus(UUID driverId, boolean isOnline) {
@@ -190,7 +197,7 @@ public class DriverService {
     }
 
     @Transactional
-    public void respondToAssignment(UUID orderId, boolean accept, String reason) {
+    public void respondToAssignment(String token, UUID orderId, boolean accept, String reason) {
         DriverOrderAssignment assignment = driverAssignmentRepository.findByOrderId(orderId)
                 .orElseThrow(() -> new RuntimeException("Assignment not found"));
 
@@ -209,6 +216,24 @@ public class DriverService {
                     com.swifttrack.enums.DriverEventType.ORDER_ACCEPTED, "Order accepted by driver");
             driverAssignmentRepository.save(assignment);
 
+            // Fetch Driver Details from Auth Service
+            TokenResponse userDetails = authInterface.getUserDetails(token).getBody();
+            DriverVehicleDetails vehicleDetails = driverVehicleDetailsRepository
+                    .findByDriverId(assignment.getDriverId())
+                    .orElse(new DriverVehicleDetails());
+
+            // Create and Send DriverAssignedEvent
+            com.swifttrack.events.DriverAssignedEvent event = com.swifttrack.events.DriverAssignedEvent.builder()
+                    .orderId(orderId)
+                    .driverName(userDetails.name())
+                    .driverPhone(userDetails.mobile())
+                    .vehicleNumber(vehicleDetails.getLicenseNumber()) // Assuming licenseNumber is vehicle number
+                    .providerCode(userDetails.providerId().map(UUID::toString)
+                            .orElse(userDetails.tenantId().map(UUID::toString).orElse("UNKNOWN")))
+                    .build();
+
+            kafkaProducerUtil.sendMessage("driver-assigned", event);
+
         } else {
             driverStatus.setStatus(DriverOnlineStatus.ONLINE);
             driverStatusRepository.save(driverStatus);
@@ -216,6 +241,9 @@ public class DriverService {
             driverEventUtil.logEvent(assignment.getDriverId(), assignment.getTenantId(),
                     com.swifttrack.enums.DriverEventType.ORDER_CANCELLED, "Order rejected by driver");
             driverAssignmentRepository.delete(assignment);
+
+            // Send Driver Canceled Event
+            kafkaProducerUtil.sendMessage("driver-canceled", orderId);
         }
     }
 
@@ -321,5 +349,28 @@ public class DriverService {
             }
         }
         return driverDetailsList;
+    }
+
+    public Message updateOrderStatus(String token, UpdateOrderStatusrequest request) {
+        String orderStatus = orderInterface.getOrderStatus(token, request.orderId()).getBody();
+        TokenResponse userDetails = authInterface.getUserDetails(token).getBody();
+        DriverLocationLive driverLocationLive = driverLocationLiveRepository.findById(userDetails.id())
+                .orElseThrow(() -> new RuntimeException("Driver location not found"));
+        if (orderStatus.equals("PICKED_UP") && request.status() != TrackingStatus.IN_TRANSIT) {
+            throw new RuntimeException("Invalid status transition, order is not picked up");
+        } else if (orderStatus.equals("IN_TRANSIT") && request.status() != TrackingStatus.OUT_FOR_DELIVERY) {
+            throw new RuntimeException("Invalid status transition, order is not in transit");
+        } else if (orderStatus.equals("OUT_FOR_DELIVERY") && request.status() != TrackingStatus.DELIVERED) {
+            throw new RuntimeException("Invalid status transition, order is not out for delivery");
+        }
+
+        DriverLocationUpdates driverLocationUpdates = new DriverLocationUpdates().builder()
+                .orderId(request.orderId())
+                .status(request.status().toString())
+                .latitude(driverLocationLive.getLatitude())
+                .longitude(driverLocationLive.getLongitude())
+                .build();
+        kafkaProducerUtil.sendMessage("driver-location-updates", driverLocationUpdates);
+        return new Message("Order status updated successfully");
     }
 }
