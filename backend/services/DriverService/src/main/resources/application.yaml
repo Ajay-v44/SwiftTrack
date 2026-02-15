@@ -37,7 +37,7 @@ spring:
       port: 6379
 
 server:
-  port: ${SERVER_PORT:8006}
+  port: ${SERVER_PORT:8007}
 eureka:
   client:
     service-url:

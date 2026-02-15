@@ -176,7 +176,14 @@ public class DriverService {
     }
 
     @Transactional
-    public DriverOrderAssignment assignOrder(UUID driverId, UUID orderId) {
+    public DriverOrderAssignment assignOrder(String token, UUID driverId, UUID orderId) {
+        // Check if order exists
+        try {
+            orderInterface.getOrderById(token, orderId);
+        } catch (Exception e) {
+            throw new RuntimeException("Order not found or invalid Order ID");
+        }
+
         if (driverAssignmentRepository.findByOrderId(orderId).isPresent()) {
             throw new RuntimeException("Order is already assigned to a driver");
         }
@@ -362,6 +369,12 @@ public class DriverService {
             throw new RuntimeException("Invalid status transition, order is not in transit");
         } else if (orderStatus.equals("OUT_FOR_DELIVERY") && request.status() != TrackingStatus.DELIVERED) {
             throw new RuntimeException("Invalid status transition, order is not out for delivery");
+        }
+        if (orderStatus.equals("DELIVERED")) {
+            DriverStatus driverStatus = driverStatusRepository.findById(userDetails.id())
+                    .orElseThrow(() -> new RuntimeException("Driver Status not found"));
+            driverStatus.setStatus(DriverOnlineStatus.ONLINE);
+            driverStatusRepository.save(driverStatus);
         }
 
         DriverLocationUpdates driverLocationUpdates = new DriverLocationUpdates().builder()
