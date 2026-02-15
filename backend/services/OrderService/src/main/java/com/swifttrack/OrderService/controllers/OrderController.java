@@ -63,4 +63,10 @@ public class OrderController {
     public ResponseEntity<String> getOrderStatus(@RequestHeader String token, @PathVariable UUID orderId) {
         return ResponseEntity.ok(orderServices.getOrderStatus(token, orderId));
     }
+
+    @GetMapping("/v1/getOrderById/{orderId}")
+    public ResponseEntity<com.swifttrack.dto.orderDto.OrderDetailsResponse> getOrderById(@RequestHeader String token,
+            @PathVariable UUID orderId) {
+        return ResponseEntity.ok(orderServices.getOrderById(token, orderId));
+    }
 }

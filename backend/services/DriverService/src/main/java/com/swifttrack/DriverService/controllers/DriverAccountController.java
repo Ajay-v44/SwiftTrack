@@ -116,8 +116,9 @@ public class DriverAccountController {
     @PostMapping("/v1/assign-order")
     @Operation(summary = "Assign Order", description = "Assign an order to a specific driver")
     public ResponseEntity<com.swifttrack.DriverService.models.DriverOrderAssignment> assignOrder(
+            @RequestHeader String token,
             @RequestBody com.swifttrack.dto.driverDto.AssignOrderRequest request) {
-        return ResponseEntity.ok(driverService.assignOrder(request.driverId(), request.orderId()));
+        return ResponseEntity.ok(driverService.assignOrder(token, request.driverId(), request.orderId()));
     }
 
     @PostMapping("/v1/respond-assignment")

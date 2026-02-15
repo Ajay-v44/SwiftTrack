@@ -29,7 +29,7 @@ public class NotificationService {
         TokenResponse tokenResponse = authInterface.getUserDetails(token).getBody();
         NotificationPreferences notificationPreferences = notificationRepository.findByTenantId(
                 tokenResponse.tenantId().orElseThrow(() -> new RuntimeException("Tenant ID not found in token")));
-        if(notificationPreferences==null)
+        if (notificationPreferences == null)
             throw new CustomException(HttpStatus.NOT_FOUND, "Notification preferences not found");
         return notificationMapper.toNotificationPreferenceDto(notificationPreferences);
     }

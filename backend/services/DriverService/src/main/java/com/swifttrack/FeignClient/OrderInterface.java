@@ -24,4 +24,9 @@ public interface OrderInterface {
         @GetMapping("/api/order/v1/getOrderStatus/{orderId}")
         public ResponseEntity<String> getOrderStatus(@RequestHeader("token") String token,
                         @PathVariable UUID orderId);
+
+        @GetMapping("/api/order/v1/getOrderById/{orderId}")
+        public ResponseEntity<com.swifttrack.dto.orderDto.OrderDetailsResponse> getOrderById(
+                        @RequestHeader("token") String token,
+                        @PathVariable UUID orderId);
 }
