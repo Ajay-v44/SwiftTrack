@@ -55,4 +55,11 @@ springdoc:
     show-extensions: true
   show-actuator: false
   cache:
-    disabled: true
+    type: redis
+    redis:
+      time-to-live: 60000 
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+

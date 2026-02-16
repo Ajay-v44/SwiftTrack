@@ -59,4 +59,7 @@ springdoc:
     show-extensions: true
   show-actuator: false
   cache:
-    disabled: true
+    type: redis
+    redis:
+      time-to-live: 60000 
+

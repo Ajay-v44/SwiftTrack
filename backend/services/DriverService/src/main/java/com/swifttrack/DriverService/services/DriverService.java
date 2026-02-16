@@ -60,6 +60,9 @@ public class DriverService {
     @Autowired
     com.swifttrack.FeignClient.OrderInterface orderInterface;
 
+    @Autowired
+    private org.springframework.data.redis.core.RedisTemplate<String, Object> redisTemplate;
+
     @Transactional
     public Message createDriverProfile(String token, AddTenantDriver entity) {
         AddTennatDriverResponse response = authInterface.addTenantDrivers(token, entity).getBody();
@@ -271,8 +274,33 @@ public class DriverService {
             return new ArrayList<>();
         }
         System.out.println("Order IDs: " + orderIds);
-        return orderInterface.getOrdersForDriver(token, new com.swifttrack.dto.orderDto.GetOrdersRequest(orderIds))
-                .getBody();
+
+        // Check Redis Cache first
+        String cacheKey = "driverOrders::" + orderIds.toString();
+        List<com.swifttrack.dto.orderDto.GetOrdersForDriver> cachedOrders = (List<com.swifttrack.dto.orderDto.GetOrdersForDriver>) redisTemplate
+                .opsForValue().get(cacheKey);
+
+        if (cachedOrders != null) {
+            System.out.println("Fetching orders from Redis Cache: " + cacheKey);
+            return cachedOrders;
+        }
+
+        System.out.println("Cache miss. Fetching from Order Service: " + cacheKey);
+        List<com.swifttrack.dto.orderDto.GetOrdersForDriver> orders = orderInterface
+                .getOrdersForDriver(token, new com.swifttrack.dto.orderDto.GetOrdersRequest(orderIds)).getBody();
+
+        // Cache the result
+        // Note: OrderService might already be caching it, but if we want to be sure or
+        // control TTL from here:
+        // redisTemplate.opsForValue().set(cacheKey, orders);
+        // Since OrderService uses @Cacheable with same key, it should ideally populate
+        // it.
+        // But if we want to ensure *this* service populates it if missed:
+        if (orders != null) {
+            redisTemplate.opsForValue().set(cacheKey, orders);
+        }
+
+        return orders;
     }
 
     public Page<DriverVehicleDetails> getDriversByTenant(UUID tenantId, Pageable pageable) {
@@ -359,7 +387,18 @@ public class DriverService {
     }
 
     public Message updateOrderStatus(String token, UpdateOrderStatusrequest request) {
-        String orderStatus = orderInterface.getOrderStatus(token, request.orderId()).getBody();
+        String cacheKey = "orderStatus::" + request.orderId().toString();
+        String orderStatus = (String) redisTemplate.opsForValue().get(cacheKey);
+
+        if (orderStatus == null) {
+            System.out.println("Cache miss for OrderStatus. Fetching from Order Service: " + cacheKey);
+            orderStatus = orderInterface.getOrderStatus(token, request.orderId()).getBody();
+            if (orderStatus != null) {
+                redisTemplate.opsForValue().set(cacheKey, orderStatus);
+            }
+        } else {
+            System.out.println("Fetching OrderStatus from Redis Cache: " + cacheKey);
+        }
         TokenResponse userDetails = authInterface.getUserDetails(token).getBody();
         DriverLocationLive driverLocationLive = driverLocationLiveRepository.findById(userDetails.id())
                 .orElseThrow(() -> new RuntimeException("Driver location not found"));

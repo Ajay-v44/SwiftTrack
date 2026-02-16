@@ -57,6 +57,9 @@ import jakarta.transaction.Transactional;
 
 import com.swifttrack.FeignClient.AuthInterface;
 import com.swifttrack.dto.TokenResponse;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.CacheEvict;
 
 @Service
 @Transactional
@@ -313,6 +316,7 @@ public class OrderServices {
                 return new FinalCreateOrderResponse(order.getId(), response.providerCode(), response.totalAmount());
         }
 
+        @CacheEvict(value = { "orderStatus", "orders" }, key = "#orderId")
         public Message cancelOrder(String token, UUID orderId, String providerCode) {
                 TokenResponse userDetails = authInterface.getUserDetails(token).getBody();
                 if (orderRepository.findById(orderId, userDetails.id()).isPresent()) {
@@ -323,6 +327,7 @@ public class OrderServices {
                 throw new RuntimeException("Order not found");
         }
 
+        @Cacheable(value = "driverOrders", key = "#request.orderIds().toString()")
         public List<GetOrdersForDriver> getOrdersForDriver(String token,
                         GetOrdersRequest request) {
                 TokenResponse userDetails = authInterface.getUserDetails(token).getBody();
@@ -370,6 +375,7 @@ public class OrderServices {
                 return result;
         }
 
+        @Cacheable(value = "orderStatus", key = "#orderId")
         public String getOrderStatus(String token, UUID orderId) {
                 OrderTrackingState orderTrackingState = orderTrackingStateRepository.findById(orderId).orElse(null);
                 if (orderTrackingState == null) {
@@ -378,6 +384,7 @@ public class OrderServices {
                 return orderTrackingState.getCurrentStatus().name();
         }
 
+        @Cacheable(value = "orders", key = "#orderId")
         public com.swifttrack.dto.orderDto.OrderDetailsResponse getOrderById(String token, UUID orderId) {
                 TokenResponse userDetails = authInterface.getUserDetails(token).getBody();
                 Order order = orderRepository.findById(orderId)
