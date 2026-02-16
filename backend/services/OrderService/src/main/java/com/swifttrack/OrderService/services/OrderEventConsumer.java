@@ -3,6 +3,7 @@ package com.swifttrack.OrderService.services;
 import java.math.BigDecimal;
 
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import com.swifttrack.events.OrderCreatedEvent;
 import com.swifttrack.FeignClient.MapInterface;
@@ -86,6 +87,7 @@ public class OrderEventConsumer {
     }
 
     @KafkaListener(topics = "driver-assigned", groupId = "order-service-group")
+    @CacheEvict(value = { "orderStatus", "orders" }, key = "#event.orderId")
     public void handleDriverAssigned(DriverAssignedEvent event) {
         System.out.println("Driver Assigned for Order: " + event.getOrderId() + ", Driver: " + event.getDriverName());
         // Update order status and notify user
@@ -102,6 +104,7 @@ public class OrderEventConsumer {
     }
 
     @KafkaListener(topics = "driver-canceled", groupId = "order-service-group")
+    @CacheEvict(value = { "orderStatus", "orders" }, key = "#orderId")
     public void handleDriverCanceled(UUID orderId) {
         System.out.println("Driver Canceled for Order: " + orderId);
         // Update order status and notify user
@@ -117,6 +120,7 @@ public class OrderEventConsumer {
     }
 
     @KafkaListener(topics = "driver-location-updates", groupId = "order-service-group")
+    @CacheEvict(value = { "orderStatus", "orders" }, key = "#event.orderId")
     public void handleDriverLocationUpdate(DriverLocationUpdates event) {
         System.out.println("Processing Driver Location Update for Order: " + event.getOrderId());
         try {

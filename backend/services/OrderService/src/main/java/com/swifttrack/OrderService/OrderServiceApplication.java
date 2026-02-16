@@ -12,6 +12,7 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 @org.springframework.context.annotation.Import(com.swifttrack.OrderService.conf.EnvConfiguration.class)
 @EnableDiscoveryClient
 @EnableFeignClients(basePackages = "com.swifttrack.FeignClient")
+@org.springframework.cache.annotation.EnableCaching
 public class OrderServiceApplication {
 
 	public static void main(String[] args) {
