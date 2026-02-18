@@ -26,6 +26,7 @@ import com.swifttrack.AuthService.util.UserMapper;
 import com.swifttrack.dto.AddTenantUsers;
 import com.swifttrack.dto.ListOfTenantUsers;
 import com.swifttrack.dto.Message;
+import com.swifttrack.dto.RegisterDriverResponse;
 import com.swifttrack.dto.driverDto.AddTenantDriver;
 import com.swifttrack.dto.driverDto.AddTennatDriverResponse;
 import com.swifttrack.enums.UserType;
@@ -241,5 +242,26 @@ public class UserServices {
             return userModel1.stream().map(userMapper::toTenantUser).collect(Collectors.toList());
         }
         throw new CustomException(HttpStatus.UNAUTHORIZED, "Invalid Token");
+    }
+
+    public RegisterDriverResponse registerDriver(RegisterUser registerUser) {
+        // validation
+        if (userRepo.findByEmail(registerUser.email()) != null)
+            throw new CustomException(HttpStatus.CONFLICT, "Email already taken");
+        if (userRepo.findByMobile(registerUser.mobile()) != null)
+            throw new CustomException(HttpStatus.CONFLICT, "Mobile already taken");
+        UserModel userModel = new UserModel();
+        userModel.setName(registerUser.name());
+        userModel.setEmail(registerUser.email());
+        userModel.setMobile(registerUser.mobile());
+        userModel.setPasswordHash(cryptography.encode(registerUser.password()));
+        if (registerUser.userType() == UserType.PROVIDER_USER) {
+            userModel.setStatus(false);
+        }
+        userModel.setType(registerUser.userType());
+        userModel.setVerificationStatus(VerificationStatus.PENDING);
+        userRepo.save(userModel);
+
+        return new RegisterDriverResponse(userModel.getId());
     }
 }
