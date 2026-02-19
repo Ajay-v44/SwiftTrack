@@ -431,17 +431,15 @@ public class DriverService {
     public Message registerDriver(RegisterDriver input) {
         UUID driverId = authInterface.registerUser(new RegisterUser(input.name(), input.password(), input.email(),
                 input.mobile(), UserType.TENANT_DRIVER)).getBody().id();
-        DriverVehicleDetails driverVehicleDetails = new DriverVehicleDetails().builder()
-                .driverId(driverId)
-                .vehicleType(input.vehicleType())
-                .vehicleNumber(input.vehicleNumber())
-                .driverLicensNumber(input.driverLicensNumber())
-                .build();
+        DriverVehicleDetails driverVehicleDetails = new DriverVehicleDetails();
+        driverVehicleDetails.setDriverId(driverId);
+        driverVehicleDetails.setVehicleType(input.vehicleType());
+        driverVehicleDetails.setLicenseNumber(input.vehicleNumber());
+        driverVehicleDetails.setDriverLicensNumber(input.driverLicensNumber());
         driverVehicleDetailsRepository.save(driverVehicleDetails);
-        DriverStatus driverStatus = new DriverStatus().builder()
-                .driverId(driverId)
-                .status(DriverOnlineStatus.OFFLINE)
-                .build();
+        DriverStatus driverStatus = new DriverStatus();
+        driverStatus.setDriverId(driverId);
+        driverStatus.setStatus(DriverOnlineStatus.OFFLINE);
         driverStatusRepository.save(driverStatus);
         return new Message("Driver registered successfully");
     }
