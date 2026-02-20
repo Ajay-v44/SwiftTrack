@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.swifttrack.DriverService.dto.RegisterDriver;
 import com.swifttrack.DriverService.dto.UpdateOrderStatusrequest;
 import com.swifttrack.DriverService.services.DriverService;
 import com.swifttrack.dto.Message;
@@ -161,5 +162,10 @@ public class DriverAccountController {
     public ResponseEntity<Message> updateOrderStatus(@RequestHeader String token,
             @RequestBody UpdateOrderStatusrequest request) {
         return ResponseEntity.ok(driverService.updateOrderStatus(token, request));
+    }
+
+    @PostMapping("/v1/register")
+    public ResponseEntity<Message> registerDriver(@RequestBody RegisterDriver input) {
+        return ResponseEntity.ok(driverService.registerDriver(input));
     }
 }

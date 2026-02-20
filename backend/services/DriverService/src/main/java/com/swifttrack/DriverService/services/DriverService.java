@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.swifttrack.DriverService.models.DriverVehicleDetails;
+import com.swifttrack.DriverService.dto.RegisterDriver;
 import com.swifttrack.DriverService.dto.UpdateOrderStatusrequest;
 import com.swifttrack.DriverService.models.DriverLocationLive;
 import com.swifttrack.DriverService.models.DriverOrderAssignment;
@@ -23,6 +24,7 @@ import com.swifttrack.DriverService.repositories.DriverVehicleDetailsRepository;
 import com.swifttrack.FeignClient.AuthInterface;
 import com.swifttrack.dto.ListOfTenantUsers;
 import com.swifttrack.dto.Message;
+import com.swifttrack.dto.RegisterUser;
 import com.swifttrack.dto.TokenResponse;
 import com.swifttrack.dto.driverDto.AddTenantDriver;
 import com.swifttrack.dto.driverDto.AddTennatDriverResponse;
@@ -416,7 +418,7 @@ public class DriverService {
             driverStatusRepository.save(driverStatus);
         }
 
-        DriverLocationUpdates driverLocationUpdates = new DriverLocationUpdates().builder()
+        DriverLocationUpdates driverLocationUpdates = DriverLocationUpdates.builder()
                 .orderId(request.orderId())
                 .status(request.status().toString())
                 .latitude(driverLocationLive.getLatitude())
@@ -424,5 +426,21 @@ public class DriverService {
                 .build();
         kafkaProducerUtil.sendMessage("driver-location-updates", driverLocationUpdates);
         return new Message("Order status updated successfully");
+    }
+
+    public Message registerDriver(RegisterDriver input) {
+        UUID driverId = authInterface.registerUser(new RegisterUser(input.name(), input.password(), input.email(),
+                input.mobile(), UserType.TENANT_DRIVER)).getBody().id();
+        DriverVehicleDetails driverVehicleDetails = new DriverVehicleDetails();
+        driverVehicleDetails.setDriverId(driverId);
+        driverVehicleDetails.setVehicleType(input.vehicleType());
+        driverVehicleDetails.setLicenseNumber(input.vehicleNumber());
+        driverVehicleDetails.setDriverLicensNumber(input.driverLicensNumber());
+        driverVehicleDetailsRepository.save(driverVehicleDetails);
+        DriverStatus driverStatus = new DriverStatus();
+        driverStatus.setDriverId(driverId);
+        driverStatus.setStatus(DriverOnlineStatus.OFFLINE);
+        driverStatusRepository.save(driverStatus);
+        return new Message("Driver registered successfully");
     }
 }
