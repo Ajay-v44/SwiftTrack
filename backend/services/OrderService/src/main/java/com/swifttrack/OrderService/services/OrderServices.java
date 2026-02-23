@@ -74,9 +74,9 @@ public class OrderServices {
         OrderTrackingStateRepository orderTrackingStateRepository;
         private final org.springframework.kafka.core.KafkaTemplate<String, Object> kafkaTemplate;
 
-        @Value("")
+        @Value("${ML_SERVICES_URL:}")
         String mlServicesUrl;
-        @Value("ML_MODEL_THRESHOLD")
+        @Value("${ML_MODEL_THRESHOLD:0.0}")
         String mlThreshold;
 
         public OrderServices(ProviderInterface providerInterface, MapInterface mapInterface,
