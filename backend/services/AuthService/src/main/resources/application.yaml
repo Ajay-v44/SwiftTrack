@@ -2,9 +2,9 @@ spring:
   application:
     name: AuthService
   datasource:
-    url: jdbc:postgresql://localhost:5432/swifttrack
-    username: postgres
-    password: 1234
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}?currentSchema=authentication
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
   jpa:

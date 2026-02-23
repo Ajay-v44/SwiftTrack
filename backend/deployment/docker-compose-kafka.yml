@@ -41,4 +41,5 @@ services:
 
 networks:
   swifttrack-network:
+    name: swifttrack-network
     driver: bridge
