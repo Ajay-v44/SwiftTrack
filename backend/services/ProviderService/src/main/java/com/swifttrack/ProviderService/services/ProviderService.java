@@ -104,18 +104,26 @@ public class ProviderService {
 
     public Message configureTenantProviders(String token, List<UUID> providers) {
         TokenResponse tokenResponse = authInterface.getUserDetails(token).getBody();
-        if (tokenResponse == null || tokenResponse.tenantId() == null)
+        if (tokenResponse == null || tokenResponse.tenantId() == null || tokenResponse.tenantId().isEmpty())
             throw new CustomException(HttpStatus.FORBIDDEN, "Unauthorized");
         for (UUID providerId : providers) {
             Provider provider = providerRepository.findById(providerId).orElse(null);
             if (provider != null) {
-                TenantProviderConfig tenantProviderConfig = new TenantProviderConfig();
-                tenantProviderConfig.setProvider(provider);
-                tenantProviderConfig.setTenantId(tokenResponse.tenantId().get());
-                tenantProviderConfig.setEnabled(true);
-                tenantProviderConfig.setCreatedBy(tokenResponse.id());
-                tenantProviderConfig.setUpdatedBy(tokenResponse.id());
-                tenantProviderConfigRepository.save(tenantProviderConfig);
+                TenantProviderConfig existingConfig = tenantProviderConfigRepository
+                        .findByTenantIdAndProviderId(tokenResponse.tenantId().get(), providerId);
+                if (existingConfig == null) {
+                    TenantProviderConfig tenantProviderConfig = new TenantProviderConfig();
+                    tenantProviderConfig.setProvider(provider);
+                    tenantProviderConfig.setTenantId(tokenResponse.tenantId().get());
+                    tenantProviderConfig.setEnabled(true);
+                    tenantProviderConfig.setCreatedBy(tokenResponse.id());
+                    tenantProviderConfig.setUpdatedBy(tokenResponse.id());
+                    tenantProviderConfigRepository.save(tenantProviderConfig);
+                } else {
+                    existingConfig.setEnabled(true);
+                    existingConfig.setUpdatedBy(tokenResponse.id());
+                    tenantProviderConfigRepository.save(existingConfig);
+                }
             }
         }
         return new Message("Providers configured successfully");
@@ -124,7 +132,7 @@ public class ProviderService {
 
     public List<GetProviders> getTenantProviders(String token) {
         TokenResponse tokenResponse = authInterface.getUserDetails(token).getBody();
-        if (tokenResponse == null || tokenResponse.tenantId() == null)
+        if (tokenResponse == null || tokenResponse.tenantId() == null || tokenResponse.tenantId().isEmpty())
             throw new CustomException(HttpStatus.FORBIDDEN, "Unauthorized");
         return tenantProviderConfigRepository.findByTenantId(tokenResponse.tenantId().get()).stream()
                 .map(tenantProviderConfig -> new GetProviders(tenantProviderConfig.getProvider().getId(),

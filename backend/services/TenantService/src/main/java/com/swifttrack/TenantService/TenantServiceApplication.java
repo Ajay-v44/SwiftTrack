@@ -8,8 +8,9 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 @SpringBootApplication
+@org.springframework.context.annotation.Import(com.swifttrack.TenantService.conf.EnvConfiguration.class)
 @EnableFeignClients(basePackages = "com.swifttrack.FeignClients")
-@ComponentScan(basePackages = {"com.swifttrack"})
+@ComponentScan(basePackages = { "com.swifttrack" })
 @EnableJpaRepositories(basePackages = "com.swifttrack.repositories")
 @EntityScan(basePackages = "com.swifttrack.Models")
 public class TenantServiceApplication {

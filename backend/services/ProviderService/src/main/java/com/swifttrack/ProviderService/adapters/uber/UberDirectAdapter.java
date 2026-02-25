@@ -159,8 +159,9 @@ public class UberDirectAdapter implements DeliveryProvider {
                         HttpEntity<UberQuoteRequest> httpRequest = new HttpEntity<>(request, headers);
 
                         // Build the full API URL from .env values
-                        String fullUrl = baseUrl + quotesEndpoint.replace("{customerId}", customerId);
-
+                        String fullUrl = baseUrl + quotesEndpoint.replace("{customer_id}", customerId);
+                        System.out.println("Customer Id: " + customerId);
+                        log.info("Uber Direct quote URL: {}", fullUrl);
                         ResponseEntity<UberQuoteResponse> response = restTemplate.postForEntity(
                                         fullUrl,
                                         httpRequest,
@@ -304,7 +305,7 @@ public class UberDirectAdapter implements DeliveryProvider {
 
                 try {
                         // Build the full API URL from .env values
-                        String fullUrl = baseUrl + deliveriesEndpoint.replace("{customerId}", customerId);
+                        String fullUrl = baseUrl + deliveriesEndpoint.replace("{customer_id}", customerId);
                         return new CreateOrderResponse("UBR-" + getUUID.getUUID(), "UBER_DIRECT",
                                         new BigDecimal(120));
                         // ResponseEntity<UberCreateOrderResponse> response =
@@ -340,7 +341,7 @@ public class UberDirectAdapter implements DeliveryProvider {
                 }
                 try {
                         getToken();
-                        String fullUrl = baseUrl + deliveriesEndpoint.replace("{customerId}", customerId)
+                        String fullUrl = baseUrl + deliveriesEndpoint.replace("{customer_id}", customerId)
                                         + "/deliveries/" + orderId + "/cancel";
 
                         HttpHeaders headers = new HttpHeaders();

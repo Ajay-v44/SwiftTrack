@@ -2,7 +2,7 @@ package com.swifttrack.AuthService.Services;
 
 import java.util.Map;
 import java.util.Objects;
-
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -127,18 +127,32 @@ public class UserServices {
         throw new CustomException(HttpStatus.UNAUTHORIZED, "Invalid Token");
     }
 
-    public Message assignAdmin(String token, UUID tenantId) {
+    public Message assignAdmin(String token, UUID id) {
         Map<String, Object> map = jwtUtil.decodeToken(token);
         if (map.containsKey("mobile")) {
             String mobileNum = (String) map.get("mobile");
-            UserModel userModel = userRepo.findByMobile(mobileNum);
-            if (userModel == null)
-                throw new ResourceNotFoundException("User account doesn't exist");
+            UserModel callingUser = userRepo.findByMobile(mobileNum);
+            if (callingUser == null)
+                throw new ResourceNotFoundException("Calling user account doesn't exist");
 
-            if (userModel.getStatus() == false)
-                throw new CustomException(HttpStatus.FORBIDDEN, "User account is not verified");
-            userModel.setTenantId(tenantId);
+            if (callingUser.getStatus() == false)
+                throw new CustomException(HttpStatus.FORBIDDEN, "Calling user account is not verified");
+
+            if (callingUser.getType() != UserType.SUPER_ADMIN && callingUser.getType() != UserType.SYSTEM_ADMIN
+                    && callingUser.getType() != UserType.SYSTEM_USER) {
+                throw new CustomException(HttpStatus.FORBIDDEN, "User does not have permission to assign admin");
+            }
+
+            Optional<UserModel> optionalUser = userRepo.findById(id);
+            if (!optionalUser.isPresent()) {
+                throw new ResourceNotFoundException("User to be updated doesn't exist");
+            }
+            UserModel userModel = optionalUser.get();
+
             userModel.setType(UserType.TENANT_ADMIN);
+            userModel.setTenantId(userModel.getId());
+            userModel.setStatus(true);
+            userModel.setVerificationStatus(VerificationStatus.APPROVED);
             userRepo.save(userModel);
             return new Message("Admin role assigned successfully");
 
@@ -228,12 +242,19 @@ public class UserServices {
 
             if (userModel.getStatus() == false)
                 throw new CustomException(HttpStatus.FORBIDDEN, "User account is not verified");
-            if (userModel.getTenantId() == null)
+            if (userModel.getTenantId() == null && userModel.getType() != UserType.SUPER_ADMIN
+                    && userModel.getType() != UserType.SYSTEM_ADMIN)
                 throw new CustomException(HttpStatus.FORBIDDEN, "You are not part of any organization");
 
             // if (userModel.getType() != com.swifttrack.enums.UserType.TENANT_ADMIN)
             // throw new CustomException(HttpStatus.FORBIDDEN, "User is not a tenant
             // admin");
+            if (userModel.getType() == UserType.SUPER_ADMIN || userModel.getType() == UserType.SYSTEM_ADMIN) {
+                List<UserType> userTypes = Arrays.asList(UserType.TENANT_ADMIN, UserType.TENANT_USER,
+                        UserType.TENANT_DRIVER);
+                List<UserModel> userModel1 = userRepo.findByType(userTypes);
+                return userModel1.stream().map(userMapper::toTenantUser).collect(Collectors.toList());
+            }
             UUID tenantId = userModel.getTenantId();
             // if (userModel.getType() == UserType.TENANT_ADMIN)
             // tenantId = userModel.getId();

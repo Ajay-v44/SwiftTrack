@@ -87,8 +87,8 @@ public class UserController {
                         @ApiResponse(responseCode = "401", description = "Invalid credentials"),
                         @ApiResponse(responseCode = "403", description = "Account not activated")
         })
-        public ResponseEntity<Message> assignAdmin(@RequestParam String token, @RequestParam UUID tenantId) {
-                return ResponseEntity.ok(userService.assignAdmin(token, tenantId));
+        public ResponseEntity<Message> assignAdmin(@RequestParam String token, @RequestParam UUID id) {
+                return ResponseEntity.ok(userService.assignAdmin(token, id));
         }
 
         @PostMapping("v1/addTenantUsers")

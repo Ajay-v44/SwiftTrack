@@ -5,6 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 
 @SpringBootApplication
+@org.springframework.context.annotation.Import(com.mircoservice.GateWay.conf.EnvConfiguration.class)
 @EnableDiscoveryClient
 public class GateWayApplication {
 

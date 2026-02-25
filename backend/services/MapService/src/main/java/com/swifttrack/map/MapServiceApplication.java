@@ -10,7 +10,8 @@ import org.springframework.scheduling.annotation.EnableAsync;
 /**
  * SwiftTrack Map Service Application
  * 
- * This microservice provides comprehensive geospatial APIs powered by OpenStreetMap:
+ * This microservice provides comprehensive geospatial APIs powered by
+ * OpenStreetMap:
  * - Geocoding (Forward & Reverse)
  * - Routing & Directions
  * - Distance Matrix calculations
@@ -24,9 +25,10 @@ import org.springframework.scheduling.annotation.EnableAsync;
  * - Redis for caching
  */
 @SpringBootApplication(scanBasePackages = {
-    "com.swifttrack.map",
-    "com.swifttrack.http"
+        "com.swifttrack.map",
+        "com.swifttrack.http"
 })
+@org.springframework.context.annotation.Import(com.swifttrack.map.conf.EnvConfiguration.class)
 @EnableDiscoveryClient
 @EnableFeignClients(basePackages = "com.swifttrack.FeignClient")
 @EnableCaching

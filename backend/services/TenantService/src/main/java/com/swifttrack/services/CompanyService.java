@@ -27,7 +27,7 @@ public class CompanyService {
         this.authInterface = authInterface;
     }
 
-    public Message registerCompany(String token, RegisterOrg registerOrg) {
+    public Message registerCompany(String token, java.util.UUID id, RegisterOrg registerOrg) {
         // validation
         if (companyRepository.findByTenantCode(registerOrg.tenantCode()) != null
                 || companyRepository.findByOrganizationName(registerOrg.organizationName()) != null
@@ -36,7 +36,7 @@ public class CompanyService {
                 || companyRepository.findByOrganizationWebsite(registerOrg.organizationWebsite()) != null)
             throw new CustomException(HttpStatus.BAD_REQUEST, "Company already exists");
         TenantModel company = companyRepository.save(companyMapper.toEntity(registerOrg));
-        authInterface.assignAdmin(token, company.getId());
+        authInterface.assignAdmin(token, company.getId(), id);
 
         return new Message("Company Registered Successfully");
     }
