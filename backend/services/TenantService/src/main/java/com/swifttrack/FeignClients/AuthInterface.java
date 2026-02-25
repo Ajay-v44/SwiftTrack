@@ -33,7 +33,8 @@ public interface AuthInterface {
     public ResponseEntity<TokenResponse> getUserDetails(@RequestParam String token);
 
     @PostMapping("/api/users/v1/assignAdmin")
-    public ResponseEntity<Message> assignAdmin(@RequestParam String token, @RequestParam UUID tenantId);
+    public ResponseEntity<Message> assignAdmin(@RequestParam("token") String token,
+            @RequestParam("tenantId") UUID tenantId, @RequestParam("id") UUID id);
 
     @PostMapping("/api/users/v1/addTenantUsers")
     public ResponseEntity<Message> addTenantUsers(@RequestParam String token,

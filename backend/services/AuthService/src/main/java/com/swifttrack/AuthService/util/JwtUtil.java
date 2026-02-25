@@ -19,7 +19,7 @@ import com.swifttrack.exception.CustomException;
 
 @Component
 public class JwtUtil {
-    private static final long EXPIRATION_TIME = 1000 * 60 * 60; // 1 hour
+    private static final long EXPIRATION_TIME = 1000 * 60 * 450; // 7.5 hours
     private static final String SECRET = "GpwEjc0vvHsjtisOgFIZ2tN7MZz2piuEM3QMKIdZ6Oo=";
 
     private SecretKey getSigningKey() {

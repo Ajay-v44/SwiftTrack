@@ -36,9 +36,9 @@ public class PorterAdapter implements DeliveryProvider {
     private final RestTemplate restTemplate;
     private final GetUUID getUUID;
 
-    @Value("${PORTER_API_URL}")
+    @Value("${PORTER_API_URL:}")
     private String porterApiUrl;
-    @Value("${PORTER_API_KEY}")
+    @Value("${PORTER_API_KEY:}")
     private String porterApiKey;
 
     @Value("${ENV}")
@@ -53,6 +53,10 @@ public class PorterAdapter implements DeliveryProvider {
     @Override
     public QuoteResponse getQuote(QuoteInput quoteInput) {
         try {
+            System.out.println("env: " + env);
+            // if (env.equals("dev")) {
+            // return new QuoteResponse(120.0f, "INR");
+            // }
             // Build request object
             PorterGetQuoteInp porterGetQuoteInp = new PorterGetQuoteInp();
             porterGetQuoteInp.setPickupDetails(

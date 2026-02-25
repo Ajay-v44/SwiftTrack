@@ -19,4 +19,7 @@ public interface UserRepo extends JpaRepository<UserModel, UUID> {
 
     @Query("SELECT u FROM UserModel u WHERE u.tenantId = :tenantId AND u.type = :userType")
     List<UserModel> findByTenantId(@Param("tenantId") UUID tenantId, @Param("userType") UserType userType);
+
+    @Query("SELECT u FROM UserModel u WHERE u.type in (:userType)")
+    List<UserModel> findByType(@Param("userType") List<UserType> userType);
 }

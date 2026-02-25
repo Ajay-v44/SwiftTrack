@@ -10,3 +10,6 @@
 
    test2@gamil.com
    test2
+
+   admin@swifttrack.com
+   admin123

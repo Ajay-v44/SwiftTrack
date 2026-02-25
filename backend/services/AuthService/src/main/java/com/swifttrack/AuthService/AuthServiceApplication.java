@@ -5,6 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 
 @SpringBootApplication
+@org.springframework.context.annotation.Import(com.swifttrack.AuthService.conf.EnvConfiguration.class)
 @EnableDiscoveryClient
 public class AuthServiceApplication {
 

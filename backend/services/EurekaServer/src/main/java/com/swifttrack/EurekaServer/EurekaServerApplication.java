@@ -5,6 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.netflix.eureka.server.EnableEurekaServer;
 
 @SpringBootApplication
+@org.springframework.context.annotation.Import(com.swifttrack.EurekaServer.conf.EnvConfiguration.class)
 @EnableEurekaServer
 public class EurekaServerApplication {
 

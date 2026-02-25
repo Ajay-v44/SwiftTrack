@@ -1,6 +1,7 @@
 package com.swifttrack.controllers;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -27,8 +28,9 @@ public class CompanyController {
     }
 
     @PostMapping("/v1/register")
-    public ResponseEntity<Message> registerCompany(@RequestParam String token, @RequestBody RegisterOrg registerOrg) {
-        return ResponseEntity.ok(companyService.registerCompany(token, registerOrg));
+    public ResponseEntity<Message> registerCompany(@RequestParam String token, @RequestParam UUID id,
+            @RequestBody RegisterOrg registerOrg) {
+        return ResponseEntity.ok(companyService.registerCompany(token, id, registerOrg));
     }
 
     @PostMapping("/v1/addTenantUsers")
