@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-make-tenant-optional
+      author: swifttrack-dev
+      changes:
+        - dropNotNullConstraint:
+            columnDataType: UUID
+            columnName: tenant_id
+            tableName: driver_vehicle_details

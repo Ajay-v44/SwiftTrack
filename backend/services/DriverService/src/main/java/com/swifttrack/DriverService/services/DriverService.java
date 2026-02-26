@@ -24,6 +24,7 @@ import com.swifttrack.DriverService.repositories.DriverVehicleDetailsRepository;
 import com.swifttrack.FeignClient.AuthInterface;
 import com.swifttrack.dto.ListOfTenantUsers;
 import com.swifttrack.dto.Message;
+import com.swifttrack.dto.RegisterDriverResponse;
 import com.swifttrack.dto.RegisterUser;
 import com.swifttrack.dto.TokenResponse;
 import com.swifttrack.dto.driverDto.AddTenantDriver;
@@ -429,16 +430,21 @@ public class DriverService {
     }
 
     public Message registerDriver(RegisterDriver input) {
-        UUID driverId = authInterface.registerUser(new RegisterUser(input.name(), input.password(), input.email(),
-                input.mobile(), UserType.TENANT_DRIVER)).getBody().id();
+        RegisterDriverResponse driverId = authInterface
+                .registerUser(new RegisterUser(input.name(), input.password(), input.email(),
+                        input.mobile(), UserType.DRIVER_USER))
+                .getBody();
+        if (driverId == null) {
+            throw new RuntimeException("Driver registration failed");
+        }
         DriverVehicleDetails driverVehicleDetails = new DriverVehicleDetails();
-        driverVehicleDetails.setDriverId(driverId);
+        driverVehicleDetails.setDriverId(driverId.id());
         driverVehicleDetails.setVehicleType(input.vehicleType());
         driverVehicleDetails.setLicenseNumber(input.vehicleNumber());
         driverVehicleDetails.setDriverLicensNumber(input.driverLicensNumber());
         driverVehicleDetailsRepository.save(driverVehicleDetails);
         DriverStatus driverStatus = new DriverStatus();
-        driverStatus.setDriverId(driverId);
+        driverStatus.setDriverId(driverId.id());
         driverStatus.setStatus(DriverOnlineStatus.OFFLINE);
         driverStatusRepository.save(driverStatus);
         return new Message("Driver registered successfully");
