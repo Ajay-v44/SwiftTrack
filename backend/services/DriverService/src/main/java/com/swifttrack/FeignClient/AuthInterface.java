@@ -40,6 +40,6 @@ public interface AuthInterface {
         public ResponseEntity<List<ListOfTenantUsers>> getTenantUsers(@RequestParam String token,
                         @RequestParam UserType userType);
 
-        @PostMapping("/api/users/v1/register")
+        @PostMapping("/api/users/v1/registerDriver")
         public ResponseEntity<RegisterDriverResponse> registerUser(@RequestBody RegisterUser input);
 }

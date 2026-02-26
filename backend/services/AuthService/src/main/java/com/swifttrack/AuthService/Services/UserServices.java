@@ -276,9 +276,7 @@ public class UserServices {
         userModel.setEmail(registerUser.email());
         userModel.setMobile(registerUser.mobile());
         userModel.setPasswordHash(cryptography.encode(registerUser.password()));
-        if (registerUser.userType() == UserType.PROVIDER_USER) {
-            userModel.setStatus(false);
-        }
+        userModel.setStatus(false);
         userModel.setType(registerUser.userType());
         userModel.setVerificationStatus(VerificationStatus.PENDING);
         userRepo.save(userModel);

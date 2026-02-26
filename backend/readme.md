@@ -13,3 +13,6 @@
 
    admin@swifttrack.com
    admin123
+
+   thalapthy@gmail.com
+   thalapthy
