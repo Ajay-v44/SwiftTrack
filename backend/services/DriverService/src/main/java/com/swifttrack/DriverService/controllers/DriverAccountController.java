@@ -18,10 +18,12 @@ import com.swifttrack.DriverService.dto.UpdateOrderStatusrequest;
 import com.swifttrack.DriverService.services.DriverService;
 import com.swifttrack.dto.Message;
 import com.swifttrack.dto.driverDto.AddTenantDriver;
+import com.swifttrack.dto.driverDto.GetAllDriverUser;
 import com.swifttrack.dto.driverDto.GetDriverUserDetails;
 import com.swifttrack.dto.driverDto.GetTenantDrivers;
 import com.swifttrack.dto.driverDto.UpdateDriverStatusRequest;
 import com.swifttrack.enums.TrackingStatus;
+import com.swifttrack.enums.VerificationStatus;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
@@ -167,5 +169,11 @@ public class DriverAccountController {
     @PostMapping("/v1/register")
     public ResponseEntity<Message> registerDriver(@RequestBody RegisterDriver input) {
         return ResponseEntity.ok(driverService.registerDriver(input));
+    }
+
+    @PostMapping("/v1/getDriverUsers")
+    public ResponseEntity<List<GetAllDriverUser>> getDriverUsers(@RequestParam String token,
+            @RequestParam VerificationStatus verificationStatus) {
+        return ResponseEntity.ok(driverService.getDriverUsers(token, verificationStatus));
     }
 }

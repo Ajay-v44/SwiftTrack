@@ -36,37 +36,40 @@ public class OrderController {
     }
 
     @PostMapping("/v1/getQuote")
-    public ResponseEntity<OrderQuoteResponse> getQuote(@RequestHeader String token,
+    public ResponseEntity<OrderQuoteResponse> getQuote(@RequestHeader("token") String token,
             @RequestBody QuoteInput quoteInput) {
         return ResponseEntity.ok(orderServices.getQuote(token, quoteInput));
     }
 
     @PostMapping("/v1/createOrder")
-    public ResponseEntity<FinalCreateOrderResponse> createOrder(@RequestHeader String token,
-            @RequestParam UUID quoteSessionId, @RequestBody CreateOrderRequest createOrderRequest) {
+    public ResponseEntity<FinalCreateOrderResponse> createOrder(@RequestHeader("token") String token,
+            @RequestParam("quoteSessionId") UUID quoteSessionId, @RequestBody CreateOrderRequest createOrderRequest) {
         return ResponseEntity.ok(orderServices.createOrder(token, quoteSessionId, createOrderRequest));
     }
 
     @PostMapping("/v1/cancelOrder")
-    public ResponseEntity<Message> cancelOrder(@RequestHeader String token, @RequestParam UUID orderId,
-            @RequestParam String providerCode) {
+    public ResponseEntity<Message> cancelOrder(@RequestHeader("token") String token,
+            @RequestParam("orderId") UUID orderId,
+            @RequestParam("providerCode") String providerCode) {
         return ResponseEntity.ok(orderServices.cancelOrder(token, orderId, providerCode));
     }
 
     @PostMapping("/v1/getOrdersForDriver")
-    public ResponseEntity<List<GetOrdersForDriver>> getOrdersForDriver(@RequestHeader String token,
+    public ResponseEntity<List<GetOrdersForDriver>> getOrdersForDriver(@RequestHeader("token") String token,
             @RequestBody com.swifttrack.dto.orderDto.GetOrdersRequest request) {
         return ResponseEntity.ok(orderServices.getOrdersForDriver(token, request));
     }
 
     @GetMapping("/v1/getOrderStatus/{orderId}")
-    public ResponseEntity<String> getOrderStatus(@RequestHeader String token, @PathVariable UUID orderId) {
+    public ResponseEntity<String> getOrderStatus(@RequestHeader("token") String token,
+            @PathVariable("orderId") UUID orderId) {
         return ResponseEntity.ok(orderServices.getOrderStatus(token, orderId));
     }
 
     @GetMapping("/v1/getOrderById/{orderId}")
-    public ResponseEntity<com.swifttrack.dto.orderDto.OrderDetailsResponse> getOrderById(@RequestHeader String token,
-            @PathVariable UUID orderId) {
+    public ResponseEntity<com.swifttrack.dto.orderDto.OrderDetailsResponse> getOrderById(
+            @RequestHeader("token") String token,
+            @PathVariable("orderId") UUID orderId) {
         return ResponseEntity.ok(orderServices.getOrderById(token, orderId));
     }
 }
