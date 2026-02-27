@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -16,9 +17,11 @@ import com.swifttrack.dto.MobileNumAuth;
 import com.swifttrack.dto.RegisterDriverResponse;
 import com.swifttrack.dto.RegisterUser;
 import com.swifttrack.dto.TokenResponse;
+import com.swifttrack.dto.authDto.GetDriverUsers;
 import com.swifttrack.dto.driverDto.AddTenantDriver;
 import com.swifttrack.dto.driverDto.AddTennatDriverResponse;
 import com.swifttrack.enums.UserType;
+import com.swifttrack.enums.VerificationStatus;
 
 @FeignClient(name = "authservice", url = "http://localhost:8080/authservice")
 public interface AuthInterface {
@@ -42,4 +45,8 @@ public interface AuthInterface {
 
         @PostMapping("/api/users/v1/registerDriver")
         public ResponseEntity<RegisterDriverResponse> registerUser(@RequestBody RegisterUser input);
+
+        @GetMapping("/api/users/v1/getDriverUsers")
+        public ResponseEntity<List<GetDriverUsers>> getDriverUsers(@RequestParam String token,
+                        @RequestParam VerificationStatus status);
 }

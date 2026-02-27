@@ -27,8 +27,10 @@ import com.swifttrack.dto.Message;
 import com.swifttrack.dto.RegisterDriverResponse;
 import com.swifttrack.dto.RegisterUser;
 import com.swifttrack.dto.TokenResponse;
+import com.swifttrack.dto.authDto.GetDriverUsers;
 import com.swifttrack.dto.driverDto.AddTenantDriver;
 import com.swifttrack.dto.driverDto.AddTennatDriverResponse;
+import com.swifttrack.dto.driverDto.GetAllDriverUser;
 import com.swifttrack.dto.driverDto.GetDriverUserDetails;
 import com.swifttrack.dto.driverDto.GetTenantDrivers;
 import com.swifttrack.dto.driverDto.UpdateDriverStatusRequest;
@@ -37,6 +39,7 @@ import com.swifttrack.enums.DriverAssignmentStatus;
 import com.swifttrack.enums.DriverOnlineStatus;
 import com.swifttrack.enums.TrackingStatus;
 import com.swifttrack.enums.UserType;
+import com.swifttrack.enums.VerificationStatus;
 import com.swifttrack.events.DriverLocationUpdates;
 
 import lombok.extern.slf4j.Slf4j;
@@ -183,11 +186,28 @@ public class DriverService {
 
     @Transactional
     public DriverOrderAssignment assignOrder(String token, UUID driverId, UUID orderId) {
-        // Check if order exists
+        // Check if order exists in Redis cache first
+        String cacheKey = "orders::" + orderId.toString();
+        com.swifttrack.dto.orderDto.OrderDetailsResponse cachedOrder = null;
+
         try {
-            orderInterface.getOrderById(token, orderId);
+            cachedOrder = (com.swifttrack.dto.orderDto.OrderDetailsResponse) redisTemplate.opsForValue().get(cacheKey);
         } catch (Exception e) {
-            throw new RuntimeException("Order not found or invalid Order ID");
+            log.warn("Error fetching order from Redis: {}", e.getMessage());
+        }
+
+        if (cachedOrder != null) {
+            System.out.println("Fetching order from Redis Cache: " + cacheKey);
+        } else {
+            System.out.println("Cache miss. Fetching from Order Service: " + cacheKey);
+            try {
+                cachedOrder = orderInterface.getOrderById(token, orderId).getBody();
+                if (cachedOrder != null) {
+                    redisTemplate.opsForValue().set(cacheKey, cachedOrder);
+                }
+            } catch (Exception e) {
+                throw new RuntimeException("Order not found or invalid Order ID");
+            }
         }
 
         if (driverAssignmentRepository.findByOrderId(orderId).isPresent()) {
@@ -417,6 +437,10 @@ public class DriverService {
                     .orElseThrow(() -> new RuntimeException("Driver Status not found"));
             driverStatus.setStatus(DriverOnlineStatus.ONLINE);
             driverStatusRepository.save(driverStatus);
+            DriverOrderAssignment driverOrderAssignment = driverAssignmentRepository.findByOrderId(request.orderId())
+                    .orElseThrow(() -> new RuntimeException("Driver Order Assignment not found"));
+            driverOrderAssignment.setStatus(DriverAssignmentStatus.COMPLETED);
+            driverAssignmentRepository.save(driverOrderAssignment);
         }
 
         DriverLocationUpdates driverLocationUpdates = DriverLocationUpdates.builder()
@@ -448,5 +472,28 @@ public class DriverService {
         driverStatus.setStatus(DriverOnlineStatus.OFFLINE);
         driverStatusRepository.save(driverStatus);
         return new Message("Driver registered successfully");
+    }
+
+    public List<GetAllDriverUser> getDriverUsers(String token, VerificationStatus verificationStatus) {
+        List<GetDriverUsers> driverUsers = authInterface.getDriverUsers(token, verificationStatus).getBody();
+        List<GetAllDriverUser> driverDetailsList = new ArrayList<>();
+        if (driverUsers != null) {
+            for (GetDriverUsers user : driverUsers) {
+                DriverVehicleDetails vehicleDetails = driverVehicleDetailsRepository
+                        .findByDriverId(user.id())
+                        .orElse(new DriverVehicleDetails());
+
+                GetAllDriverUser dto = new GetAllDriverUser(
+                        user.id(),
+                        user.name(),
+                        user.email(),
+                        user.mobile(),
+                        vehicleDetails.getVehicleType(),
+                        vehicleDetails.getLicenseNumber(),
+                        vehicleDetails.getDriverLicensNumber());
+                driverDetailsList.add(dto);
+            }
+        }
+        return driverDetailsList;
     }
 }

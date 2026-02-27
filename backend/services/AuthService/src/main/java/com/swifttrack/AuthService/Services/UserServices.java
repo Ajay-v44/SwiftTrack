@@ -27,6 +27,7 @@ import com.swifttrack.dto.AddTenantUsers;
 import com.swifttrack.dto.ListOfTenantUsers;
 import com.swifttrack.dto.Message;
 import com.swifttrack.dto.RegisterDriverResponse;
+import com.swifttrack.dto.authDto.GetDriverUsers;
 import com.swifttrack.dto.driverDto.AddTenantDriver;
 import com.swifttrack.dto.driverDto.AddTennatDriverResponse;
 import com.swifttrack.enums.UserType;
@@ -282,5 +283,31 @@ public class UserServices {
         userRepo.save(userModel);
 
         return new RegisterDriverResponse(userModel.getId());
+    }
+
+    public List<GetDriverUsers> getDriverUsers(String token, VerificationStatus status) {
+
+        Map<String, Object> map = jwtUtil.decodeToken(token);
+        if (map.containsKey("mobile")) {
+            String mobileNum = (String) map.get("mobile");
+            UserModel userModel = userRepo.findByMobile(mobileNum);
+            if (userModel == null)
+                throw new ResourceNotFoundException("User account doesn't exist");
+
+            if (userModel.getStatus() == false)
+                throw new CustomException(HttpStatus.FORBIDDEN, "User account is not verified");
+            if (userModel.getTenantId() == null && userModel.getType() != UserType.SUPER_ADMIN
+                    && userModel.getType() != UserType.SYSTEM_ADMIN)
+                throw new CustomException(HttpStatus.FORBIDDEN, "You are not part of any organization");
+
+            // if (userModel.getType() != com.swifttrack.enums.UserType.TENANT_ADMIN)
+            // throw new CustomException(HttpStatus.FORBIDDEN, "User is not a tenant
+            // admin");
+            if (userModel.getType() == UserType.SUPER_ADMIN || userModel.getType() == UserType.SYSTEM_ADMIN) {
+                return userRepo.findByDriverTypeAndStatus(UserType.DRIVER_USER, status).stream()
+                        .map(userMapper::toDriverUser).collect(Collectors.toList());
+            }
+        }
+        throw new CustomException(HttpStatus.UNAUTHORIZED, "Invalid Token");
     }
 }

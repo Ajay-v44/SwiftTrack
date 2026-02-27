@@ -6,6 +6,7 @@ import java.util.UUID;
 import com.swifttrack.enums.UserType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,11 +22,13 @@ import com.swifttrack.AuthService.Dto.LoginUser;
 import com.swifttrack.AuthService.Dto.MobileNumAuth;
 import com.swifttrack.AuthService.Dto.RegisterUser;
 import com.swifttrack.AuthService.Dto.TokenResponse;
+import com.swifttrack.AuthService.Models.Enum.VerificationStatus;
 import com.swifttrack.AuthService.Services.UserServices;
 import com.swifttrack.dto.AddTenantUsers;
 import com.swifttrack.dto.ListOfTenantUsers;
 import com.swifttrack.dto.Message;
 import com.swifttrack.dto.RegisterDriverResponse;
+import com.swifttrack.dto.authDto.GetDriverUsers;
 import com.swifttrack.dto.driverDto.AddTenantDriver;
 import com.swifttrack.dto.driverDto.AddTennatDriverResponse;
 
@@ -135,5 +138,11 @@ public class UserController {
         })
         public ResponseEntity<RegisterDriverResponse> registerDriver(@RequestBody RegisterUser input) {
                 return ResponseEntity.ok(userService.registerDriver(input));
+        }
+
+        @GetMapping("v1/getDriverUsers")
+        public ResponseEntity<List<GetDriverUsers>> getDriverUsers(@RequestParam String token,
+                        @RequestParam VerificationStatus status) {
+                return ResponseEntity.ok(userService.getDriverUsers(token, status));
         }
 }

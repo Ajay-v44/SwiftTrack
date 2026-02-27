@@ -10,5 +10,5 @@ import com.swifttrack.dto.TokenResponse;
 @FeignClient(name = "authservice")
 public interface AuthInterface {
     @PostMapping("/api/users/v1/getUserDetails")
-    public ResponseEntity<TokenResponse> getUserDetails(@RequestParam String token);
+    public ResponseEntity<TokenResponse> getUserDetails(@RequestParam("token") String token);
 }

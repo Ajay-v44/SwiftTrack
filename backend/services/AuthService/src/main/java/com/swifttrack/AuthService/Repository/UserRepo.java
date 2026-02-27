@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.swifttrack.AuthService.Models.UserModel;
+import com.swifttrack.AuthService.Models.Enum.VerificationStatus;
 import com.swifttrack.enums.UserType;
 
 public interface UserRepo extends JpaRepository<UserModel, UUID> {
@@ -22,4 +23,8 @@ public interface UserRepo extends JpaRepository<UserModel, UUID> {
 
     @Query("SELECT u FROM UserModel u WHERE u.type in (:userType)")
     List<UserModel> findByType(@Param("userType") List<UserType> userType);
+
+    @Query("SELECT u FROM UserModel u WHERE u.type = :userType AND u.verificationStatus = :status")
+    List<UserModel> findByDriverTypeAndStatus(@Param("userType") UserType userType,
+            @Param("status") VerificationStatus status);
 }
