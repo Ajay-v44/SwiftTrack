@@ -13,13 +13,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.swifttrack.DriverService.models.DriverVehicleDetails;
+import com.swifttrack.DriverService.dto.DriverPerformanceEvent;
 import com.swifttrack.DriverService.dto.RegisterDriver;
 import com.swifttrack.DriverService.dto.UpdateOrderStatusrequest;
 import com.swifttrack.DriverService.models.DriverLocationLive;
 import com.swifttrack.DriverService.models.DriverOrderAssignment;
+import com.swifttrack.DriverService.models.DriverOrderCancellation;
 import com.swifttrack.DriverService.models.DriverStatus;
 import com.swifttrack.DriverService.repositories.DriverLocationLiveRepository;
 import com.swifttrack.DriverService.repositories.DriverOrderAssignmentRepository;
+import com.swifttrack.DriverService.repositories.DriverOrderCancellationRepository;
 import com.swifttrack.DriverService.repositories.DriverVehicleDetailsRepository;
 import com.swifttrack.FeignClient.AuthInterface;
 import com.swifttrack.dto.ListOfTenantUsers;
@@ -59,6 +62,9 @@ public class DriverService {
 
     @Autowired
     private DriverOrderAssignmentRepository driverAssignmentRepository;
+
+    @Autowired
+    private DriverOrderCancellationRepository driverOrderCancellationRepository;
 
     @Autowired
     AuthInterface authInterface;
@@ -271,12 +277,25 @@ public class DriverService {
             driverStatus.setStatus(DriverOnlineStatus.ONLINE);
             driverStatusRepository.save(driverStatus);
             assignment.setStatus(DriverAssignmentStatus.REJECTED);
+            DriverOrderCancellation cancellation = new DriverOrderCancellation();
+            cancellation.setDriverId(assignment.getDriverId());
+            cancellation.setOrderId(assignment.getOrderId());
+            cancellation.setTenantId(assignment.getTenantId());
+            cancellation.setReason(reason);
+            driverOrderCancellationRepository.save(cancellation);
             driverEventUtil.logEvent(assignment.getDriverId(), assignment.getTenantId(),
                     com.swifttrack.enums.DriverEventType.ORDER_CANCELLED, "Order rejected by driver");
             driverAssignmentRepository.delete(assignment);
 
             // Send Driver Canceled Event
             kafkaProducerUtil.sendMessage("driver-canceled", orderId);
+
+            // Emit performance event for memory embedding (async, non-blocking)
+            kafkaProducerUtil.sendMessage("driver-performance",
+                    DriverPerformanceEvent.builder()
+                            .driverId(assignment.getDriverId())
+                            .triggerType(DriverPerformanceEvent.TriggerType.ORDER_CANCELLED)
+                            .build());
         }
     }
 
@@ -441,6 +460,13 @@ public class DriverService {
                     .orElseThrow(() -> new RuntimeException("Driver Order Assignment not found"));
             driverOrderAssignment.setStatus(DriverAssignmentStatus.COMPLETED);
             driverAssignmentRepository.save(driverOrderAssignment);
+
+            // Emit performance event for memory embedding (async, non-blocking)
+            kafkaProducerUtil.sendMessage("driver-performance",
+                    DriverPerformanceEvent.builder()
+                            .driverId(userDetails.id())
+                            .triggerType(DriverPerformanceEvent.TriggerType.ORDER_COMPLETED)
+                            .build());
         }
 
         DriverLocationUpdates driverLocationUpdates = DriverLocationUpdates.builder()

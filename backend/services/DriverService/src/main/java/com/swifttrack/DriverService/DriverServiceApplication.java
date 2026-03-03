@@ -9,6 +9,7 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 @EnableDiscoveryClient
 @EnableFeignClients(basePackages = "com.swifttrack.FeignClient")
 @org.springframework.scheduling.annotation.EnableAsync
+@org.springframework.scheduling.annotation.EnableScheduling
 @org.springframework.cache.annotation.EnableCaching
 public class DriverServiceApplication {
 
