@@ -35,7 +35,8 @@ import okhttp3.Response;
  * - fallback_if_triggered
  * 
  * Creates one trace per dispatch request.
- * All trace data is sent asynchronously to avoid blocking the dispatch pipeline.
+ * All trace data is sent asynchronously to avoid blocking the dispatch
+ * pipeline.
  */
 @Component
 public class LangfuseClient {
@@ -125,10 +126,11 @@ public class LangfuseClient {
     @Async
     public void updateTraceOutput(String traceId, Object output, Map<String, Object> metadata) {
         Map<String, Object> body = Map.of(
+                "id", traceId,
                 "output", output,
                 "metadata", metadata != null ? metadata : Map.of());
 
-        sendToLangfuse("/api/public/traces/" + traceId, body, "PATCH");
+        sendToLangfuse("/api/public/traces", body, "POST");
     }
 
     // ─── HTTP Helper ────────────────────────────────────────────────────────

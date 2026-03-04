@@ -25,9 +25,9 @@ import okhttp3.Response;
  * We do NOT execute models via LangSmith.
  * 
  * Prompts fetched:
- * - dispatch_system_v1       (system context)
- * - dispatch_decision_v1     (decision instructions)
- * - dispatch_validator_v1    (output validation instructions)
+ * - dispatch_system_v1 (system context)
+ * - dispatch_decision_v1 (decision instructions)
+ * - dispatch_validator_v1 (output validation instructions)
  */
 @Component
 public class LangSmithPromptFetcher {
@@ -44,10 +44,15 @@ public class LangSmithPromptFetcher {
     private OkHttpClient httpClient;
 
     /**
-     * Local cache: prompt name → template string.
-     * Prompts are immutable per version, so caching is safe.
+     * Local cache: prompt name → CacheEntry.
+     * Caches prompts for a specific duration to balance latency and freshness.
      */
-    private final Map<String, String> promptCache = new ConcurrentHashMap<>();
+    private record CacheEntry(String template, long expireAt) {
+    }
+
+    private static final long CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes TTL
+
+    private final Map<String, CacheEntry> promptCache = new ConcurrentHashMap<>();
 
     @PostConstruct
     void init() {
@@ -67,14 +72,14 @@ public class LangSmithPromptFetcher {
      */
     public String fetchPrompt(String promptName) {
         // Check cache first
-        String cached = promptCache.get(promptName);
-        if (cached != null) {
+        CacheEntry cached = promptCache.get(promptName);
+        if (cached != null && System.currentTimeMillis() < cached.expireAt()) {
             log.debug("LangSmith prompt cache hit: {}", promptName);
-            return cached;
+            return cached.template();
         }
 
         try {
-            String url = baseUrl + "/prompts/" + promptName;
+            String url = baseUrl.replace("api.smith", "api.hub") + "/commits/-/" + promptName + "/latest";
             Request request = new Request.Builder()
                     .url(url)
                     .addHeader("x-api-key", apiKey)
@@ -96,7 +101,7 @@ public class LangSmithPromptFetcher {
                 }
 
                 String template = extractTemplate(body, promptName);
-                promptCache.put(promptName, template);
+                promptCache.put(promptName, new CacheEntry(template, System.currentTimeMillis() + CACHE_TTL_MS));
                 log.info("Successfully fetched LangSmith prompt: {}", promptName);
                 return template;
             }
@@ -106,39 +111,28 @@ public class LangSmithPromptFetcher {
         }
     }
 
+    private void findTemplates(JsonNode node, StringBuilder sb) {
+        if (node.isObject()) {
+            if (node.has("template") && node.get("template").isTextual()) {
+                sb.append(node.get("template").asText()).append("\n");
+            }
+            node.elements().forEachRemaining(child -> findTemplates(child, sb));
+        } else if (node.isArray()) {
+            node.elements().forEachRemaining(child -> findTemplates(child, sb));
+        }
+    }
+
     /**
      * Parse the LangSmith API response to extract the template string.
      */
     private String extractTemplate(String responseBody, String promptName) {
         try {
             JsonNode root = objectMapper.readTree(responseBody);
+            StringBuilder sb = new StringBuilder();
+            findTemplates(root, sb);
 
-            // Try common LangSmith response structures
-            JsonNode manifest = root.path("manifest");
-            if (!manifest.isMissingNode()) {
-                JsonNode lc = manifest.path("lc_kwargs");
-                if (!lc.isMissingNode()) {
-                    JsonNode messages = lc.path("messages");
-                    if (messages.isArray() && !messages.isEmpty()) {
-                        StringBuilder sb = new StringBuilder();
-                        for (JsonNode msg : messages) {
-                            JsonNode prompt = msg.path("lc_kwargs").path("prompt");
-                            if (!prompt.isMissingNode()) {
-                                JsonNode template = prompt.path("lc_kwargs").path("template");
-                                if (!template.isMissingNode()) {
-                                    sb.append(template.asText()).append("\n");
-                                }
-                            }
-                        }
-                        if (!sb.isEmpty()) return sb.toString().trim();
-                    }
-                }
-            }
-
-            // Simple template field
-            JsonNode template = root.path("template");
-            if (!template.isMissingNode()) {
-                return template.asText();
+            if (!sb.isEmpty()) {
+                return sb.toString().trim();
             }
 
             log.warn("Could not parse LangSmith response structure for '{}', using raw body", promptName);
@@ -174,7 +168,7 @@ public class LangSmithPromptFetcher {
     private static final String FALLBACK_SYSTEM_PROMPT = """
             You are an AI dispatch optimizer for a logistics platform called SwiftTrack.
             Your role is to analyze driver metrics and select the optimal driver for order assignment.
-            
+
             You must consider:
             - Driver distance to pickup (lower is better)
             - Acceptance rate (higher is better)
@@ -183,20 +177,20 @@ public class LangSmithPromptFetcher {
             - Driver rating (higher is better)
             - Idle time (longer idle time = higher priority to keep drivers active)
             - Historical behavioral memory summaries (RAG context)
-            
+
             You must respond with ONLY a JSON object. No markdown. No commentary. No extra text.
             """;
 
     private static final String FALLBACK_DECISION_PROMPT = """
             Analyze the following driver profiles and their behavioral memory summaries.
             Select the single most optimal driver for dispatch.
-            
+
             DRIVER PROFILES:
             {driver_profiles}
-            
+
             DRIVER MEMORY SUMMARIES:
             {driver_memories}
-            
+
             SCORING WEIGHTS:
             - Distance: 25%
             - Acceptance Rate: 20%
@@ -204,7 +198,7 @@ public class LangSmithPromptFetcher {
             - SLA Adherence: 15%
             - Rating: 10%
             - Idle Time: 10%
-            
+
             Respond with ONLY this JSON format, nothing else:
             {
               "driver_id": "<selected_driver_uuid>",
@@ -218,10 +212,10 @@ public class LangSmithPromptFetcher {
             - driver_id (string, UUID format)
             - confidence (number, 0.0 to 1.0)
             - reason (string, brief explanation)
-            
+
             The raw output was:
             {raw_output}
-            
+
             Extract or fix the JSON. Respond with ONLY the corrected JSON object. Nothing else.
             {
               "driver_id": "<uuid>",

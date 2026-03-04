@@ -51,7 +51,7 @@ public class DriverDataSerializer {
                             "idle_time_minutes", p.getIdleTimeMinutes()))
                     .toList();
 
-            return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(cleanProfiles);
+            return objectMapper.writeValueAsString(cleanProfiles);
         } catch (JsonProcessingException e) {
             log.error("Failed to serialize driver profiles", e);
             return profiles.toString();
@@ -74,7 +74,7 @@ public class DriverDataSerializer {
                                     .map(DriverMemorySummary::getSummary)
                                     .toList()));
 
-            return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(cleanMemories);
+            return objectMapper.writeValueAsString(cleanMemories);
         } catch (JsonProcessingException e) {
             log.error("Failed to serialize driver memories", e);
             return memoriesMap.toString();
