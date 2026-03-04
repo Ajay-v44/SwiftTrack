@@ -16,7 +16,8 @@ import lombok.RequiredArgsConstructor;
 /**
  * LangChain-powered AI execution engine for the dispatch pipeline.
  * 
- * Replaces the old manual approach (PromptAssembler + OllamaInferenceClient) with
+ * Replaces the old manual approach (PromptAssembler + OllamaInferenceClient)
+ * with
  * Spring AI's ChatClient abstraction which handles:
  * 
  * 1. Prompt composition — SystemPromptTemplate + UserMessage with variables
@@ -68,14 +69,22 @@ public class DispatchChainExecutor {
             String systemTemplate = promptFetcher.fetchPrompt("dispatch_system_v1");
             String decisionTemplate = promptFetcher.fetchPrompt("dispatch_decision_v1");
 
-            // Step 3-6: LangChain handles template composition, variable injection,
-            //           model execution, and structured output parsing
+            // Step 3-6: LangChain templates from Hub contain raw JSON braces which crack
+            // Spring's PromptTemplate parser.
+            // We manually resolve parameters and inject literal Messages to bypass the
+            // parser constraint.
+            String resolvedDecision = decisionTemplate
+                    .replace("{driver_profiles}", driverProfilesJson != null ? driverProfilesJson : "[]")
+                    .replace("{driver_memory}", driverMemoriesJson != null ? driverMemoriesJson : "{}")
+                    .replace("{tenant_policies}", "Standard matching rules apply")
+                    .replace("{pickup_zone}", "Default Zone")
+                    .replace("{order_priority}", "Standard")
+                    .replace("{order_value}", "Medium");
+
             LlmDecision decision = chatClient.prompt()
-                    .system(systemTemplate)
-                    .user(u -> u
-                            .text(decisionTemplate)
-                            .param("driver_profiles", driverProfilesJson)
-                            .param("driver_memories", driverMemoriesJson))
+                    .messages(
+                            new org.springframework.ai.chat.messages.SystemMessage(systemTemplate),
+                            new org.springframework.ai.chat.messages.UserMessage(resolvedDecision))
                     .call()
                     .entity(LlmDecision.class);
 
@@ -112,11 +121,14 @@ public class DispatchChainExecutor {
             String systemTemplate = promptFetcher.fetchPrompt("dispatch_system_v1");
             String validatorTemplate = promptFetcher.fetchPrompt("dispatch_validator_v1");
 
+            String resolvedValidator = validatorTemplate
+                    .replace("{model_output}", rawOutput != null ? rawOutput : "")
+                    .replace("{question}", "Please parse and fix the JSON.");
+
             LlmDecision decision = chatClient.prompt()
-                    .system(systemTemplate)
-                    .user(u -> u
-                            .text(validatorTemplate)
-                            .param("raw_output", rawOutput))
+                    .messages(
+                            new org.springframework.ai.chat.messages.SystemMessage(systemTemplate),
+                            new org.springframework.ai.chat.messages.UserMessage(resolvedValidator))
                     .call()
                     .entity(LlmDecision.class);
 
@@ -150,7 +162,8 @@ public class DispatchChainExecutor {
     // ─── Private Helpers ────────────────────────────────────────────────────
 
     private String formatDecisionAsJson(LlmDecision decision) {
-        if (decision == null) return null;
+        if (decision == null)
+            return null;
         return String.format(
                 "{\"driver_id\":\"%s\",\"confidence\":%.2f,\"reason\":\"%s\"}",
                 decision.driverId(),
