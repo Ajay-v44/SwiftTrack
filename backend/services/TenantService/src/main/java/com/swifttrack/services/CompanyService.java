@@ -29,13 +29,28 @@ public class CompanyService {
 
     public Message registerCompany(String token, java.util.UUID id, RegisterOrg registerOrg) {
         // validation
-        if (companyRepository.findByTenantCode(registerOrg.tenantCode()) != null
-                || companyRepository.findByOrganizationName(registerOrg.organizationName()) != null
-                || companyRepository.findByOrganizationEmail(registerOrg.organizationEmail()) != null
-                || companyRepository.findByOrganizationPhone(registerOrg.organizationPhone()) != null
-                || companyRepository.findByOrganizationWebsite(registerOrg.organizationWebsite()) != null)
+        if (companyRepository.findByTenantCode(registerOrg.tenantCode()) != null ||
+                companyRepository.findByOrganizationName(registerOrg.organizationName()) != null ||
+                companyRepository.findByOrganizationEmail(registerOrg.organizationEmail()) != null ||
+                companyRepository.findByOrganizationPhone(registerOrg.organizationPhone()) != null ||
+                companyRepository.findByOrganizationWebsite(registerOrg.organizationWebsite()) != null)
             throw new CustomException(HttpStatus.BAD_REQUEST, "Company already exists");
-        TenantModel company = companyRepository.save(companyMapper.toEntity(registerOrg));
+        TenantModel company = new TenantModel();
+        company.setId(id);
+        company.setTenantCode(registerOrg.tenantCode());
+        company.setOrganizationName(registerOrg.organizationName());
+        company.setOrganizationEmail(registerOrg.organizationEmail());
+        company.setOrganizationPhone(registerOrg.organizationPhone());
+        company.setOrganizationWebsite(registerOrg.organizationWebsite());
+        company.setOrganizationAddress(registerOrg.organizationAddress());
+        company.setOrganizationCity(registerOrg.organizationCity());
+        company.setOrganizationCountry(registerOrg.organizationCountry());
+        company.setGstNumber(registerOrg.gstNumber());
+        company.setCinNumber(registerOrg.cinNumber());
+        company.setPanNumber(registerOrg.panNumber());
+        company.setLogoUrl(registerOrg.logoUrl());
+        company.setThemeColor(registerOrg.themeColor());
+        companyRepository.save(company);
         authInterface.assignAdmin(token, company.getId(), id);
 
         return new Message("Company Registered Successfully");

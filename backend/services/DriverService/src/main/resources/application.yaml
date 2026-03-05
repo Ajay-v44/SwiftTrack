@@ -70,5 +70,17 @@ springdoc:
   cache:
     type: redis
     redis:
-      time-to-live: 60000 
+      time-to-live: 60000
 
+dispatch:
+  redis:
+    geo-key: drivers
+  search:
+    radius-km: 5
+    max-redis-candidates: 200
+  kdtree:
+    rebuild-interval-ms: 2000
+  ai:
+    base-url: http://ai-dispatch-service:8010
+    top-drivers: 15
+    batch-size: 5

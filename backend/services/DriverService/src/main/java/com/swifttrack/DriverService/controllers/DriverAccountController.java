@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.swifttrack.DriverService.dto.RegisterDriver;
 import com.swifttrack.DriverService.dto.UpdateOrderStatusrequest;
+import com.swifttrack.DriverService.services.DriverLocationService;
 import com.swifttrack.DriverService.services.DriverService;
 import com.swifttrack.dto.Message;
 import com.swifttrack.dto.driverDto.AddTenantDriver;
@@ -35,9 +36,11 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 @Tag(name = "Driver Account", description = "Driver account management and authentication gateway service for SwiftTrack platform.")
 public class DriverAccountController {
     DriverService driverService;
+    DriverLocationService driverLocationService;
 
-    public DriverAccountController(DriverService driverService) {
+    public DriverAccountController(DriverService driverService, DriverLocationService driverLocationService) {
         this.driverService = driverService;
+        this.driverLocationService = driverLocationService;
     }
 
     @GetMapping("/v1/getDriverDetails")
@@ -113,6 +116,10 @@ public class DriverAccountController {
             @RequestBody com.swifttrack.dto.driverDto.DriverLocationUpdateDto request) {
         com.swifttrack.dto.TokenResponse userDetails = driverService.validateToken(token);
         driverService.updateDriverLocation(userDetails.id(), request.latitude(), request.longitude());
+        driverLocationService.updateDriverLocation(
+                userDetails.id().toString(),
+                request.latitude().doubleValue(),
+                request.longitude().doubleValue());
         return ResponseEntity.ok(new Message("Location updated successfully"));
     }
 
