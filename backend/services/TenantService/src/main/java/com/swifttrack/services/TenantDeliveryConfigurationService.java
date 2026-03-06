@@ -8,6 +8,7 @@ import com.swifttrack.dto.DeliveryOptionResponse;
 import com.swifttrack.dto.Message;
 import com.swifttrack.dto.TenantDeliveryPriorityInput;
 import com.swifttrack.dto.TokenResponse;
+import com.swifttrack.dto.tenantDto.TenantDeliveryConf;
 import com.swifttrack.enums.UserType;
 import com.swifttrack.exception.CustomException;
 import com.swifttrack.exception.ResourceNotFoundException;
@@ -170,5 +171,17 @@ public class TenantDeliveryConfigurationService {
 
         return tokenResponse.tenantId()
                 .orElseThrow(() -> new CustomException(HttpStatus.FORBIDDEN, "Tenant ID not found in token"));
+    }
+
+    public List<TenantDeliveryConf> getTenantDeliveryConfiguration(String token) {
+        UUID tenantId = getAuthorizedTenantId(token);
+        List<TenantDeliveryConfiguration> configurations = tenantDeliveryConfigurationRepository
+                .findByTenantId(tenantId);
+        return configurations.stream()
+                .sorted(Comparator.comparing(TenantDeliveryConfiguration::getPriority))
+                .map(configuration -> new TenantDeliveryConf(
+                        configuration.getDeliveryOption().getOptionType(),
+                        configuration.getPriority()))
+                .toList();
     }
 }
