@@ -4,6 +4,7 @@ import com.swifttrack.dto.AddDeliveryOptionInput;
 import com.swifttrack.dto.DeliveryOptionResponse;
 import com.swifttrack.dto.Message;
 import com.swifttrack.dto.TenantDeliveryPriorityInput;
+import com.swifttrack.dto.tenantDto.TenantDeliveryConf;
 import com.swifttrack.services.TenantDeliveryConfigurationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -20,7 +21,8 @@ public class TenantDeliveryConfigurationController {
 
     private final TenantDeliveryConfigurationService tenantDeliveryConfigurationService;
 
-    public TenantDeliveryConfigurationController(TenantDeliveryConfigurationService tenantDeliveryConfigurationService) {
+    public TenantDeliveryConfigurationController(
+            TenantDeliveryConfigurationService tenantDeliveryConfigurationService) {
         this.tenantDeliveryConfigurationService = tenantDeliveryConfigurationService;
     }
 
@@ -46,5 +48,12 @@ public class TenantDeliveryConfigurationController {
             @RequestBody List<TenantDeliveryPriorityInput> deliveryOptionsWithPriority) {
         return ResponseEntity.ok(
                 tenantDeliveryConfigurationService.configureTenantDeliverySystem(token, deliveryOptionsWithPriority));
+    }
+
+    @GetMapping("/v1/configure")
+    @Operation(summary = "Get tenant delivery configuration", description = "Returns the delivery configuration for the authenticated tenant")
+    @ApiResponse(responseCode = "200", description = "Successfully retrieved tenant delivery configuration")
+    public ResponseEntity<List<TenantDeliveryConf>> getTenantDeliveryConfiguration(@RequestHeader String token) {
+        return ResponseEntity.ok(tenantDeliveryConfigurationService.getTenantDeliveryConfiguration(token));
     }
 }
