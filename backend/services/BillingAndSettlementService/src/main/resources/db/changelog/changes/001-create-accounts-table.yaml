@@ -1,0 +1,81 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-accounts-table
+      author: swifttrack
+      changes:
+        - sql:
+            sql: CREATE SCHEMA IF NOT EXISTS billing;
+        - createTable:
+            schemaName: billing
+            tableName: accounts
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: account_type
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: balance
+                  type: decimal(14,2)
+                  defaultValueNumeric: 0.00
+                  constraints:
+                    nullable: false
+              - column:
+                  name: currency
+                  type: varchar(3)
+                  defaultValue: INR
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_active
+                  type: boolean
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: uuid
+              - column:
+                  name: updated_by
+                  type: uuid
+              - column:
+                  name: created_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+        - createIndex:
+            schemaName: billing
+            tableName: accounts
+            indexName: idx_accounts_user_id
+            columns:
+              - column:
+                  name: user_id
+        - createIndex:
+            schemaName: billing
+            tableName: accounts
+            indexName: idx_accounts_type
+            columns:
+              - column:
+                  name: account_type
+        - addUniqueConstraint:
+            schemaName: billing
+            tableName: accounts
+            columnNames: user_id, account_type
+            constraintName: uq_accounts_user_type

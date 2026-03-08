@@ -6,10 +6,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.swifttrack.FeignClients.AuthInterface;
+import com.swifttrack.FeignClients.BillingAndSettlementInterface;
 import com.swifttrack.Models.TenantModel;
 import com.swifttrack.dto.AddTenantUsers;
 import com.swifttrack.dto.Message;
 import com.swifttrack.dto.RegisterOrg;
+import com.swifttrack.enums.BillingAndSettlement.AccountType;
 import com.swifttrack.exception.CustomException;
 import com.swifttrack.mappers.CompanyMapper;
 import com.swifttrack.repositories.CompanyRepository;
@@ -20,11 +22,14 @@ public class CompanyService {
     private CompanyRepository companyRepository;
     private CompanyMapper companyMapper;
     private AuthInterface authInterface;
+    private BillingAndSettlementInterface billingAndSettlementInterface;
 
-    CompanyService(CompanyRepository companyRepository, CompanyMapper companyMapper, AuthInterface authInterface) {
+    CompanyService(CompanyRepository companyRepository, CompanyMapper companyMapper, AuthInterface authInterface,
+            BillingAndSettlementInterface billingAndSettlementInterface) {
         this.companyRepository = companyRepository;
         this.companyMapper = companyMapper;
         this.authInterface = authInterface;
+        this.billingAndSettlementInterface = billingAndSettlementInterface;
     }
 
     public Message registerCompany(String token, java.util.UUID id, RegisterOrg registerOrg) {
@@ -51,7 +56,7 @@ public class CompanyService {
         company.setLogoUrl(registerOrg.logoUrl());
         company.setThemeColor(registerOrg.themeColor());
         companyRepository.save(company);
-        authInterface.assignAdmin(token, company.getId(), id);
+        billingAndSettlementInterface.createAccount(token, id, AccountType.TENANT);
 
         return new Message("Company Registered Successfully");
     }

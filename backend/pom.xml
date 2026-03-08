@@ -49,6 +49,7 @@
         <module>services/OrderService</module>
         <module>services/DriverService</module>
         <module>services/AIDispatchService</module>
+        <module>services/BillingAndSettlementService</module>
 <!--        <module>services/user-service</module>-->
 <!--        <module>services/order-service</module>-->
 <!--        <module>infra</module>-->

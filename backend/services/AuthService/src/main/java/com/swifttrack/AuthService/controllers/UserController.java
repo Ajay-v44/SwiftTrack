@@ -29,6 +29,7 @@ import com.swifttrack.dto.ListOfTenantUsers;
 import com.swifttrack.dto.Message;
 import com.swifttrack.dto.RegisterDriverResponse;
 import com.swifttrack.dto.authDto.GetDriverUsers;
+import com.swifttrack.dto.authDto.UpdateUserStatusVerificationRequest;
 import com.swifttrack.dto.driverDto.AddTenantDriver;
 import com.swifttrack.dto.driverDto.AddTennatDriverResponse;
 
@@ -106,18 +107,6 @@ public class UserController {
                 return ResponseEntity.ok(userService.addTenantUsers(token, entity));
         }
 
-        @PostMapping("v1/addTenantDrivers")
-        @Operation(summary = "Add tenant drivers", description = "Add drivers to a tenant account")
-        @ApiResponses(value = {
-                        @ApiResponse(responseCode = "200", description = "Drivers added successfully"),
-                        @ApiResponse(responseCode = "401", description = "Invalid credentials"),
-                        @ApiResponse(responseCode = "403", description = "Account not activated")
-        })
-        public ResponseEntity<AddTennatDriverResponse> addTenantDrivers(@RequestParam String token,
-                        @RequestBody AddTenantDriver entity) {
-                return ResponseEntity.ok(userService.addTenantDrivers(token, entity));
-        }
-
         @PostMapping("v1/getTenantUsers")
         @Operation(summary = "Get tenant users", description = "Get users of a tenant")
         @ApiResponses(value = {
@@ -144,5 +133,12 @@ public class UserController {
         public ResponseEntity<List<GetDriverUsers>> getDriverUsers(@RequestParam String token,
                         @RequestParam VerificationStatus status) {
                 return ResponseEntity.ok(userService.getDriverUsers(token, status));
+        }
+
+        @PostMapping("v1/updateUserStatusAndVerification")
+        @Operation(summary = "Update user status and verification", description = "Update user active status and verification status")
+        public ResponseEntity<Message> updateUserStatusAndVerification(@RequestParam String token,
+                        @RequestBody UpdateUserStatusVerificationRequest request) {
+                return ResponseEntity.ok(userService.updateUserStatusAndVerification(token, request));
         }
 }

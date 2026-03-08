@@ -25,12 +25,14 @@ import com.swifttrack.DriverService.repositories.DriverOrderAssignmentRepository
 import com.swifttrack.DriverService.repositories.DriverOrderCancellationRepository;
 import com.swifttrack.DriverService.repositories.DriverVehicleDetailsRepository;
 import com.swifttrack.FeignClient.AuthInterface;
+import com.swifttrack.FeignClient.BillingAndSettlementInterface;
 import com.swifttrack.dto.ListOfTenantUsers;
 import com.swifttrack.dto.Message;
 import com.swifttrack.dto.RegisterDriverResponse;
 import com.swifttrack.dto.RegisterUser;
 import com.swifttrack.dto.TokenResponse;
 import com.swifttrack.dto.authDto.GetDriverUsers;
+import com.swifttrack.dto.authDto.UpdateUserStatusVerificationRequest;
 import com.swifttrack.dto.driverDto.AddTenantDriver;
 import com.swifttrack.dto.driverDto.AddTennatDriverResponse;
 import com.swifttrack.dto.driverDto.GetAllDriverUser;
@@ -43,6 +45,7 @@ import com.swifttrack.enums.DriverOnlineStatus;
 import com.swifttrack.enums.TrackingStatus;
 import com.swifttrack.enums.UserType;
 import com.swifttrack.enums.VerificationStatus;
+import com.swifttrack.enums.BillingAndSettlement.AccountType;
 import com.swifttrack.events.DriverLocationUpdates;
 
 import lombok.extern.slf4j.Slf4j;
@@ -73,14 +76,17 @@ public class DriverService {
     com.swifttrack.FeignClient.OrderInterface orderInterface;
 
     @Autowired
+    BillingAndSettlementInterface billingAndSettlementInterface;
+
+    @Autowired
     private org.springframework.data.redis.core.RedisTemplate<String, Object> redisTemplate;
 
     @Transactional
     public Message createDriverProfile(String token, AddTenantDriver entity) {
-        AddTennatDriverResponse response = authInterface.addTenantDrivers(token, entity).getBody();
+        TokenResponse response = authInterface.getUserDetails(token).getBody();
         DriverVehicleDetails driverVehicleDetails = new DriverVehicleDetails();
-        driverVehicleDetails.setDriverId(response.userId());
-        driverVehicleDetails.setTenantId(response.tenantId());
+        driverVehicleDetails.setDriverId(response.id());
+        driverVehicleDetails.setTenantId(response.tenantId().get());
         driverVehicleDetails.setVehicleType(entity.vehicleType());
         driverVehicleDetails.setLicenseNumber(entity.vehicleNumber());
         driverVehicleDetails.setDriverLicensNumber(entity.driverLicensNumber());
@@ -480,21 +486,21 @@ public class DriverService {
     }
 
     public Message registerDriver(RegisterDriver input) {
-        RegisterDriverResponse driverId = authInterface
+        RegisterDriverResponse response = authInterface
                 .registerUser(new RegisterUser(input.name(), input.password(), input.email(),
                         input.mobile(), UserType.DRIVER_USER))
                 .getBody();
-        if (driverId == null) {
+        if (response == null) {
             throw new RuntimeException("Driver registration failed");
         }
         DriverVehicleDetails driverVehicleDetails = new DriverVehicleDetails();
-        driverVehicleDetails.setDriverId(driverId.id());
+        driverVehicleDetails.setDriverId(response.id());
         driverVehicleDetails.setVehicleType(input.vehicleType());
         driverVehicleDetails.setLicenseNumber(input.vehicleNumber());
         driverVehicleDetails.setDriverLicensNumber(input.driverLicensNumber());
         driverVehicleDetailsRepository.save(driverVehicleDetails);
         DriverStatus driverStatus = new DriverStatus();
-        driverStatus.setDriverId(driverId.id());
+        driverStatus.setDriverId(response.id());
         driverStatus.setStatus(DriverOnlineStatus.OFFLINE);
         driverStatusRepository.save(driverStatus);
         return new Message("Driver registered successfully");
@@ -521,5 +527,15 @@ public class DriverService {
             }
         }
         return driverDetailsList;
+    }
+
+    public Message acceptDriver(String token, UUID driverId) {
+        UpdateUserStatusVerificationRequest request = new UpdateUserStatusVerificationRequest(
+                driverId,
+                true,
+                VerificationStatus.APPROVED);
+        authInterface.updateUserStatusAndVerification(token, request);
+        billingAndSettlementInterface.createAccountByAdmin(token, driverId, AccountType.DRIVER);
+        return new Message("Driver accepted successfully");
     }
 }

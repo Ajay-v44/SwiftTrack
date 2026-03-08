@@ -183,4 +183,11 @@ public class DriverAccountController {
             @RequestParam VerificationStatus verificationStatus) {
         return ResponseEntity.ok(driverService.getDriverUsers(token, verificationStatus));
     }
+
+    @PostMapping("/v1/acceptDriver")
+    @Operation(summary = "Accept driver", description = "Approve driver and create billing account")
+    public ResponseEntity<Message> acceptDriver(@RequestHeader String token,
+            @RequestParam UUID driverId) {
+        return ResponseEntity.ok(driverService.acceptDriver(token, driverId));
+    }
 }

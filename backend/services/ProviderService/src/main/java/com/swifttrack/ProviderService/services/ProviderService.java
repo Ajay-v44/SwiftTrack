@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.swifttrack.FeignClient.AuthInterface;
+import com.swifttrack.FeignClient.BillingAndSettlementInterface;
 import com.swifttrack.ProviderService.dto.CreateProviderAndServicableAreas;
 import com.swifttrack.ProviderService.dto.CreateServicableAreas;
 import com.swifttrack.ProviderService.dto.GetProviders;
@@ -23,6 +24,7 @@ import com.swifttrack.ProviderService.repositories.ProviderRepository;
 import com.swifttrack.ProviderService.repositories.ProviderServicableAreasRepository;
 import com.swifttrack.ProviderService.repositories.TenantProviderConfigRepository;
 import com.swifttrack.enums.UserType;
+import com.swifttrack.enums.BillingAndSettlement.AccountType;
 import com.swifttrack.dto.Message;
 import com.swifttrack.dto.TokenResponse;
 import com.swifttrack.exception.CustomException;
@@ -34,17 +36,20 @@ public class ProviderService {
     AuthInterface authInterface;
     TenantProviderConfigRepository tenantProviderConfigRepository;
     ProviderOnboardingRequestRepository providerOnboardingRequestRepository;
+    BillingAndSettlementInterface billingAndSettlementInterface;
 
     public ProviderService(ProviderRepository providerRepository,
             AuthInterface authInterface,
             TenantProviderConfigRepository tenantProviderConfigRepository,
             ProviderServicableAreasRepository providerServicableAreasRepository,
-            ProviderOnboardingRequestRepository providerOnboardingRequestRepository) {
+            ProviderOnboardingRequestRepository providerOnboardingRequestRepository,
+            BillingAndSettlementInterface billingAndSettlementInterface) {
         this.providerRepository = providerRepository;
         this.authInterface = authInterface;
         this.tenantProviderConfigRepository = tenantProviderConfigRepository;
         this.providerServicableAreasRepository = providerServicableAreasRepository;
         this.providerOnboardingRequestRepository = providerOnboardingRequestRepository;
+        this.billingAndSettlementInterface = billingAndSettlementInterface;
     }
 
     public List<GetProviders> getProviders() {
@@ -82,22 +87,26 @@ public class ProviderService {
         providerToSave.setSupportsCourier(provider.supportsCourier());
         providerToSave.setSupportsSameDay(provider.supportsSameDay());
         providerToSave.setSupportsIntercity(provider.supportsIntercity());
-        providerToSave.setActive(true);
+        providerToSave.setActive(false);
         providerToSave.setCreatedById(tokenResponse.id());
         providerToSave.setUpdatedBy(tokenResponse.id());
         providerRepository.save(providerToSave);
 
-        for (CreateServicableAreas createServicableAreas : provider.servicableAreas()) {
-            ProviderServicableAreas providerServicableAreas = new ProviderServicableAreas();
-            providerServicableAreas.setProvider(providerToSave);
-            providerServicableAreas.setCity(createServicableAreas.city());
-            providerServicableAreas.setState(createServicableAreas.state());
-            providerServicableAreas.setPinCode(createServicableAreas.pinCode());
-            providerServicableAreas.setActive(true);
-            providerServicableAreas.setCreatedBy(tokenResponse.id());
-            providerServicableAreas.setUpdatedBy(tokenResponse.id());
-            providerServicableAreasRepository.save(providerServicableAreas);
-        }
+        // for (CreateServicableAreas createServicableAreas :
+        // provider.servicableAreas()) {
+        // ProviderServicableAreas providerServicableAreas = new
+        // ProviderServicableAreas();
+        // providerServicableAreas.setProvider(providerToSave);
+        // providerServicableAreas.setCity(createServicableAreas.city());
+        // providerServicableAreas.setState(createServicableAreas.state());
+        // providerServicableAreas.setPinCode(createServicableAreas.pinCode());
+        // providerServicableAreas.setActive(true);
+        // providerServicableAreas.setCreatedBy(tokenResponse.id());
+        // providerServicableAreas.setUpdatedBy(tokenResponse.id());
+        // providerServicableAreasRepository.save(providerServicableAreas);
+        // }
+
+        billingAndSettlementInterface.createAccount(token, providerToSave.getId(), AccountType.PROVIDER);
 
         return new Message("Provider created successfully");
     }
@@ -179,5 +188,79 @@ public class ProviderService {
         providerOnboardingRequestRepository.save(providerOnboardingRequestToSave);
         return new Message("Provider onboarding requested successfully please wait for approval");
     }
+
+    public List<GetProviders> getProviderByStatus(String token, Boolean status) {
+        TokenResponse tokenResponse = authInterface.getUserDetails(token).getBody();
+        if (tokenResponse == null)
+            throw new CustomException(HttpStatus.FORBIDDEN, "Unauthorized");
+        return providerRepository.findByIsActive(status).stream()
+                .map(provider -> new GetProviders(provider.getId(),
+                        provider.getProviderName(),
+                        provider.getProviderCode(),
+                        provider.getDescription(),
+                        provider.getLogoUrl(),
+                        provider.getWebsiteUrl(),
+                        provider.isSupportsHyperlocal(),
+                        provider.isSupportsCourier(),
+                        provider.isSupportsSameDay(),
+                        provider.isSupportsIntercity(),
+                        provider.getProviderServicableAreas().stream()
+                                .map(providerServicableAreas -> providerServicableAreas.getCity())
+                                .collect(Collectors.toList())))
+                .collect(Collectors.toList());
+    }
+
+    public Message updateProviderStatus(String token, UUID providerId, Boolean status) {
+        TokenResponse tokenResponse = authInterface.getUserDetails(token).getBody();
+        if (tokenResponse == null || tokenResponse.userType() == null || tokenResponse.userType().isEmpty())
+            throw new CustomException(HttpStatus.FORBIDDEN, "Unauthorized");
+
+        UserType userType = tokenResponse.userType().get();
+        if (userType != UserType.SUPER_ADMIN && userType != UserType.SYSTEM_USER)
+            throw new CustomException(HttpStatus.FORBIDDEN, "Only SUPER_ADMIN or SYSTEM_USER can update provider status");
+        if (status == null)
+            throw new CustomException(HttpStatus.BAD_REQUEST, "status is required");
+
+        Provider provider = providerRepository.findById(providerId).orElse(null);
+        if (provider == null)
+            throw new CustomException(HttpStatus.NOT_FOUND, "Provider not found");
+
+        provider.setActive(status);
+        provider.setUpdatedBy(tokenResponse.id());
+        providerRepository.save(provider);
+        return new Message("Provider status updated successfully");
+    }
+
+    public Message setTenantProviderStatus(String token, UUID providerId, Boolean enabled, String disabledReason) {
+        TokenResponse tokenResponse = authInterface.getUserDetails(token).getBody();
+        if (tokenResponse == null || tokenResponse.tenantId() == null || tokenResponse.tenantId().isEmpty())
+            throw new CustomException(HttpStatus.FORBIDDEN, "Unauthorized");
+        if (enabled == null)
+            throw new CustomException(HttpStatus.BAD_REQUEST, "enabled flag is required");
+
+        TenantProviderConfig config = tenantProviderConfigRepository
+                .findByTenantIdAndProviderId(tokenResponse.tenantId().get(), providerId);
+        if (config == null)
+            throw new CustomException(HttpStatus.NOT_FOUND, "Provider config not found for tenant");
+
+        config.setEnabled(enabled);
+        config.setDisabledReason(enabled ? "" : (disabledReason == null ? "" : disabledReason.trim()));
+        config.setUpdatedBy(tokenResponse.id());
+        tenantProviderConfigRepository.save(config);
+        return new Message("Tenant provider status updated successfully");
+    }
+
+    public Message removeTenantProvider(String token, UUID providerId) {
+        TokenResponse tokenResponse = authInterface.getUserDetails(token).getBody();
+        if (tokenResponse == null || tokenResponse.tenantId() == null || tokenResponse.tenantId().isEmpty())
+            throw new CustomException(HttpStatus.FORBIDDEN, "Unauthorized");
+
+        TenantProviderConfig config = tenantProviderConfigRepository
+                .findByTenantIdAndProviderId(tokenResponse.tenantId().get(), providerId);
+        if (config == null)
+            throw new CustomException(HttpStatus.NOT_FOUND, "Provider config not found for tenant");
+
+        tenantProviderConfigRepository.delete(config);
+        return new Message("Tenant provider removed successfully");
+    }
 }
-// todo -> enable or disable teant providers, remove tenant providers
