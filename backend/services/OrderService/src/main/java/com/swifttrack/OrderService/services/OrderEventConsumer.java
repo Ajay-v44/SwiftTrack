@@ -3,9 +3,11 @@ package com.swifttrack.OrderService.services;
 import java.math.BigDecimal;
 
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import com.swifttrack.events.OrderCreatedEvent;
+import com.swifttrack.events.OrderDeliveredEvent;
 import com.swifttrack.FeignClient.MapInterface;
 import com.swifttrack.OrderService.models.OrderAiFeature;
 import com.swifttrack.OrderService.models.enums.OrderStatus;
@@ -35,17 +37,20 @@ public class OrderEventConsumer {
     OrderLocationRepository orderLocationRepository;
     OrderTrackingStateRepository orderTrackingStateRepository;
     OrderTrackingEventRepository orderTrackingEventRepository;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
 
     OrderEventConsumer(OrderAiFeatureRepository orderAiFeatureRepository, MapInterface mapInterface,
             OrderRepository orderRepository, OrderLocationRepository orderLocationRepository,
             OrderTrackingStateRepository orderTrackingStateRepository,
-            OrderTrackingEventRepository orderTrackingEventRepository) {
+            OrderTrackingEventRepository orderTrackingEventRepository,
+            KafkaTemplate<String, Object> kafkaTemplate) {
         this.orderAiFeatureRepository = orderAiFeatureRepository;
         this.mapInterface = mapInterface;
         this.orderRepository = orderRepository;
         this.orderLocationRepository = orderLocationRepository;
         this.orderTrackingStateRepository = orderTrackingStateRepository;
         this.orderTrackingEventRepository = orderTrackingEventRepository;
+        this.kafkaTemplate = kafkaTemplate;
     }
 
     @KafkaListener(topics = "order-created", groupId = "order-service-group")
@@ -167,6 +172,11 @@ public class OrderEventConsumer {
             try {
                 OrderStatus orderStatus = OrderStatus.valueOf(status.name());
                 orderRepository.updateOrderStatus(event.getOrderId(), orderStatus);
+
+                // Publish order-delivered event for billing
+                if (orderStatus == OrderStatus.DELIVERED) {
+                    publishOrderDeliveredEvent(event.getOrderId());
+                }
             } catch (IllegalArgumentException e) {
                 System.err.println("Invalid tracking status received: " + status);
                 System.err.println("Error updating order status: " + e.getMessage());
@@ -198,6 +208,38 @@ public class OrderEventConsumer {
             }
         } catch (Exception e) {
             System.err.println("Error adding tracking event: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Publishes an OrderDeliveredEvent to Kafka for billing processing.
+     */
+    private void publishOrderDeliveredEvent(UUID orderId) {
+        try {
+            Order order = orderRepository.findById(orderId)
+                    .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
+
+            BigDecimal distanceKm = null;
+            if (order.getAiFeature() != null) {
+                distanceKm = order.getAiFeature().getDistanceKm();
+            }
+
+            OrderDeliveredEvent deliveredEvent = OrderDeliveredEvent.builder()
+                    .orderId(order.getId())
+                    .tenantId(order.getTenantId().toString())
+                    .providerCode(order.getSelectedProviderCode())
+                    .amount(order.getPaymentAmount())
+                    .orderType(order.getOrderType() != null ? order.getOrderType().name() : null)
+                    .deliverySource("EXTERNAL_PROVIDER") // Default; can be enhanced later
+                    .distanceKm(distanceKm)
+                    .deliveredAt(LocalDateTime.now())
+                    .build();
+
+            kafkaTemplate.send("order-delivered", deliveredEvent);
+            System.out.println("Published order-delivered event for orderId=" + orderId);
+        } catch (Exception e) {
+            System.err.println("Error publishing order-delivered event: " + e.getMessage());
             e.printStackTrace();
         }
     }

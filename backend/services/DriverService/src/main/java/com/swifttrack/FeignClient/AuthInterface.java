@@ -18,6 +18,7 @@ import com.swifttrack.dto.RegisterDriverResponse;
 import com.swifttrack.dto.RegisterUser;
 import com.swifttrack.dto.TokenResponse;
 import com.swifttrack.dto.authDto.GetDriverUsers;
+import com.swifttrack.dto.authDto.UpdateUserStatusVerificationRequest;
 import com.swifttrack.dto.driverDto.AddTenantDriver;
 import com.swifttrack.dto.driverDto.AddTennatDriverResponse;
 import com.swifttrack.enums.UserType;
@@ -35,10 +36,6 @@ public interface AuthInterface {
         @PostMapping("/api/users/v1/getUserDetails")
         public ResponseEntity<TokenResponse> getUserDetails(@RequestParam("token") String token);
 
-        @PostMapping("/api/users/v1/addTenantDrivers")
-        public ResponseEntity<AddTennatDriverResponse> addTenantDrivers(@RequestParam String token,
-                        @RequestBody AddTenantDriver entity);
-
         @PostMapping("/api/users/v1/getTenantUsers")
         public ResponseEntity<List<ListOfTenantUsers>> getTenantUsers(@RequestParam String token,
                         @RequestParam UserType userType);
@@ -49,4 +46,9 @@ public interface AuthInterface {
         @GetMapping("/api/users/v1/getDriverUsers")
         public ResponseEntity<List<GetDriverUsers>> getDriverUsers(@RequestParam String token,
                         @RequestParam VerificationStatus status);
+
+        @PostMapping("/api/users/v1/updateUserStatusAndVerification")
+        public ResponseEntity<com.swifttrack.dto.Message> updateUserStatusAndVerification(
+                        @RequestParam String token,
+                        @RequestBody UpdateUserStatusVerificationRequest request);
 }

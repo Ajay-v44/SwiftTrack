@@ -23,14 +23,17 @@ import com.swifttrack.AuthService.Models.Enum.VerificationStatus;
 import com.swifttrack.AuthService.Repository.UserRepo;
 import com.swifttrack.AuthService.util.JwtUtil;
 import com.swifttrack.AuthService.util.UserMapper;
+import com.swifttrack.FeignClient.BillingAndSettlementInterface;
 import com.swifttrack.dto.AddTenantUsers;
 import com.swifttrack.dto.ListOfTenantUsers;
 import com.swifttrack.dto.Message;
 import com.swifttrack.dto.RegisterDriverResponse;
 import com.swifttrack.dto.authDto.GetDriverUsers;
+import com.swifttrack.dto.authDto.UpdateUserStatusVerificationRequest;
 import com.swifttrack.dto.driverDto.AddTenantDriver;
 import com.swifttrack.dto.driverDto.AddTennatDriverResponse;
 import com.swifttrack.enums.UserType;
+import com.swifttrack.enums.BillingAndSettlement.AccountType;
 import com.swifttrack.exception.ResourceNotFoundException;
 import com.swifttrack.exception.CustomException;
 
@@ -44,6 +47,8 @@ public class UserServices {
     private JwtUtil jwtUtil;
     @Autowired
     UserMapper userMapper;
+    @Autowired
+    BillingAndSettlementInterface billingAndSettlementInterface;
 
     public String registerUser(RegisterUser registerUser) {
         // validation
@@ -56,9 +61,7 @@ public class UserServices {
         userModel.setEmail(registerUser.email());
         userModel.setMobile(registerUser.mobile());
         userModel.setPasswordHash(cryptography.encode(registerUser.password()));
-        if (registerUser.userType() == UserType.PROVIDER_USER) {
-            userModel.setStatus(false);
-        }
+        userModel.setStatus(true);
         userModel.setType(registerUser.userType());
         userModel.setVerificationStatus(VerificationStatus.PENDING);
         userRepo.save(userModel);
@@ -173,6 +176,8 @@ public class UserServices {
                 throw new CustomException(HttpStatus.FORBIDDEN, "User account is not verified");
             if (userModel.getTenantId() == null)
                 throw new CustomException(HttpStatus.FORBIDDEN, "You are not part of any organization");
+            if (userModel.getType() != UserType.TENANT_ADMIN)
+                throw new CustomException(HttpStatus.FORBIDDEN, "User is not a tenant admin");
 
             // if (userModel.getType() != com.swifttrack.enums.UserType.TENANT_ADMIN)
             // throw new CustomException(HttpStatus.FORBIDDEN, "User is not a tenant
@@ -187,48 +192,15 @@ public class UserServices {
                 userModel1.setMobile(addTenantUser.mobile());
                 userModel1.setTenantId(userModel.getTenantId());
                 userModel1.setPasswordHash(cryptography.encode(addTenantUser.password()));
-                userModel1.setStatus(false);
+                userModel1.setStatus(true);
                 userModel1.setType(addTenantUser.userType());
                 userModel1.setVerificationStatus(VerificationStatus.APPROVED);
                 userRepo.save(userModel1);
+                if (userModel1.getType() == UserType.TENANT_DRIVER) {
+                    billingAndSettlementInterface.createAccount(token, userModel1.getId(), AccountType.TENANT_DRIVER);
+                }
             }
             return new Message("Users added successfully");
-        }
-        throw new CustomException(HttpStatus.UNAUTHORIZED, "Invalid Token");
-    }
-
-    public AddTennatDriverResponse addTenantDrivers(String token, AddTenantDriver entity) {
-        Map<String, Object> map = jwtUtil.decodeToken(token);
-        if (map.containsKey("mobile")) {
-            String mobileNum = (String) map.get("mobile");
-            UserModel userModel = userRepo.findByMobile(mobileNum);
-            if (userModel == null)
-                throw new ResourceNotFoundException("User account doesn't exist");
-
-            if (userModel.getStatus() == false)
-                throw new CustomException(HttpStatus.FORBIDDEN, "User account is not verified");
-            if (userModel.getTenantId() == null)
-                throw new CustomException(HttpStatus.FORBIDDEN, "You are not part of any organization");
-
-            // if (userModel.getType() != com.swifttrack.enums.UserType.TENANT_ADMIN)
-            // throw new CustomException(HttpStatus.FORBIDDEN, "User is not a tenant
-            // admin");
-
-            if (userRepo.findByMobile(entity.mobile()) != null
-                    || userRepo.findByEmail(entity.email()) != null)
-                throw new CustomException(HttpStatus.FORBIDDEN, "User already exists");
-            UserModel userModel1 = new UserModel();
-            userModel1.setName(entity.name());
-            userModel1.setEmail(entity.email());
-            userModel1.setMobile(entity.mobile());
-            userModel1.setTenantId(userModel.getTenantId());
-            userModel1.setPasswordHash(cryptography.encode(entity.password()));
-            userModel1.setStatus(entity.status());
-            userModel1.setType(entity.userType());
-            userModel1.setVerificationStatus(VerificationStatus.APPROVED);
-            userRepo.save(userModel1);
-            return new AddTennatDriverResponse(userModel1.getId(), userModel.getTenantId(),
-                    "Driver added successfully");
         }
         throw new CustomException(HttpStatus.UNAUTHORIZED, "Invalid Token");
     }
@@ -309,5 +281,34 @@ public class UserServices {
             }
         }
         throw new CustomException(HttpStatus.UNAUTHORIZED, "Invalid Token");
+    }
+
+    public Message updateUserStatusAndVerification(String token, UpdateUserStatusVerificationRequest request) {
+        Map<String, Object> map = jwtUtil.decodeToken(token);
+        if (!map.containsKey("mobile"))
+            throw new CustomException(HttpStatus.UNAUTHORIZED, "Invalid Token");
+
+        String mobileNum = (String) map.get("mobile");
+        UserModel callingUser = userRepo.findByMobile(mobileNum);
+        if (callingUser == null)
+            throw new ResourceNotFoundException("User account doesn't exist");
+        if (callingUser.getStatus() == false)
+            throw new CustomException(HttpStatus.FORBIDDEN, "User account is not verified");
+        if (callingUser.getType() != UserType.TENANT_ADMIN && callingUser.getType() != UserType.TENANT_USER
+                && callingUser.getType() != UserType.SUPER_ADMIN && callingUser.getType() != UserType.SYSTEM_ADMIN)
+            throw new CustomException(HttpStatus.FORBIDDEN,
+                    "Only tenant admin or tenant user or super admin or system admin can update status");
+        if (request.userId() == null || request.status() == null || request.verificationStatus() == null)
+            throw new CustomException(HttpStatus.BAD_REQUEST, "userId, status and verificationStatus are required");
+
+        UserModel targetUser = userRepo.findById(request.userId())
+                .orElseThrow(() -> new ResourceNotFoundException("User to be updated doesn't exist"));
+        if (!Objects.equals(callingUser.getTenantId(), targetUser.getTenantId()))
+            throw new CustomException(HttpStatus.FORBIDDEN, "Cannot update user from another tenant");
+
+        targetUser.setStatus(request.status());
+        targetUser.setVerificationStatus(VerificationStatus.valueOf(request.verificationStatus().name()));
+        userRepo.save(targetUser);
+        return new Message("User status and verification updated successfully");
     }
 }

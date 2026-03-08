@@ -5,12 +5,15 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
@@ -42,6 +45,30 @@ public class ProviderController {
         return ResponseEntity.ok(providerService.getProviders());
     }
 
+    @GetMapping("/v1/getProviderByStatus")
+    @Operation(summary = "Get providers by status", description = "Retrieve list of providers with the given status")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Providers retrieved successfully"),
+            @ApiResponse(responseCode = "500", description = "Internal Server error")
+    })
+    public ResponseEntity<List<GetProviders>> getProvidersByStatus(@RequestHeader String token,
+            @RequestParam Boolean status) {
+        return ResponseEntity.ok(providerService.getProviderByStatus(token, status));
+    }
+
+    @PutMapping("/v1/updateProviderStatus")
+    @Operation(summary = "Update provider status", description = "Enable or disable provider in provider table")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Provider status updated successfully"),
+            @ApiResponse(responseCode = "403", description = "Only SUPER_ADMIN or SYSTEM_USER allowed"),
+            @ApiResponse(responseCode = "404", description = "Provider not found")
+    })
+    public ResponseEntity<Message> updateProviderStatus(@RequestHeader String token,
+            @RequestParam UUID providerId,
+            @RequestParam Boolean status) {
+        return ResponseEntity.ok(providerService.updateProviderStatus(token, providerId, status));
+    }
+
     @PostMapping("/v1/create")
     @Operation(summary = "Create a new provider", description = "Create a new provider with the given details")
     @ApiResponses(value = {
@@ -70,6 +97,24 @@ public class ProviderController {
     })
     public ResponseEntity<List<GetProviders>> getTenantProviders(@RequestHeader String token) {
         return ResponseEntity.ok(providerService.getTenantProviders(token));
+    }
+
+    @PutMapping("/v1/tenantProviders/status")
+    @Operation(summary = "Enable or disable tenant provider", description = "Enable or disable a provider configured for tenant")
+    @ApiResponse(responseCode = "200", description = "Tenant provider status updated successfully")
+    public ResponseEntity<Message> setTenantProviderStatus(@RequestHeader String token,
+            @RequestParam UUID providerId,
+            @RequestParam Boolean enabled,
+            @RequestParam(required = false) String disabledReason) {
+        return ResponseEntity.ok(providerService.setTenantProviderStatus(token, providerId, enabled, disabledReason));
+    }
+
+    @DeleteMapping("/v1/tenantProviders")
+    @Operation(summary = "Remove tenant provider", description = "Remove a provider configuration for tenant")
+    @ApiResponse(responseCode = "200", description = "Tenant provider removed successfully")
+    public ResponseEntity<Message> removeTenantProvider(@RequestHeader String token,
+            @RequestParam UUID providerId) {
+        return ResponseEntity.ok(providerService.removeTenantProvider(token, providerId));
     }
 
     @PostMapping("/v1/requestProviderOnboarding")

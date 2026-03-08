@@ -1,0 +1,109 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-create-ledger-transactions-table
+      author: swifttrack
+      changes:
+        - createTable:
+            schemaName: billing
+            tableName: ledger_transactions
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: account_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: transaction_type
+                  type: varchar(10)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: amount
+                  type: decimal(14,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: reference_type
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: reference_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: order_id
+                  type: uuid
+              - column:
+                  name: description
+                  type: text
+              - column:
+                  name: idempotency_key
+                  type: varchar(255)
+              - column:
+                  name: created_by
+                  type: uuid
+              - column:
+                  name: updated_by
+                  type: uuid
+              - column:
+                  name: created_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+        - addForeignKeyConstraint:
+            baseTableSchemaName: billing
+            baseTableName: ledger_transactions
+            baseColumnNames: account_id
+            referencedTableSchemaName: billing
+            referencedTableName: accounts
+            referencedColumnNames: id
+            constraintName: fk_lt_account
+        - addUniqueConstraint:
+            schemaName: billing
+            tableName: ledger_transactions
+            columnNames: idempotency_key
+            constraintName: uq_lt_idempotency_key
+        - createIndex:
+            schemaName: billing
+            tableName: ledger_transactions
+            indexName: idx_lt_account_id
+            columns:
+              - column:
+                  name: account_id
+        - createIndex:
+            schemaName: billing
+            tableName: ledger_transactions
+            indexName: idx_lt_order_id
+            columns:
+              - column:
+                  name: order_id
+        - createIndex:
+            schemaName: billing
+            tableName: ledger_transactions
+            indexName: idx_lt_reference
+            columns:
+              - column:
+                  name: reference_type
+              - column:
+                  name: reference_id
+        - createIndex:
+            schemaName: billing
+            tableName: ledger_transactions
+            indexName: idx_lt_created_at
+            columns:
+              - column:
+                  name: created_at
