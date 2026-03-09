@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -53,5 +54,12 @@ public class AccountController {
             return ResponseEntity.ok("Balance is correct");
         }
         return ResponseEntity.ok("Balance was corrected from ledger transactions");
+    }
+
+    @PostMapping("/v1/admin/topupWallet")
+    public ResponseEntity<Account> topUpWalletByAdmin(@RequestHeader("token") String token,
+            @RequestParam UUID userId,
+            @RequestParam BigDecimal amount) {
+        return ResponseEntity.ok(accountService.topUpWalletByAdmin(token, userId, amount));
     }
 }

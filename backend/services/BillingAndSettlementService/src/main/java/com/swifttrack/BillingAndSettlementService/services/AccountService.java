@@ -1,13 +1,16 @@
 package com.swifttrack.BillingAndSettlementService.services;
 
 import com.swifttrack.BillingAndSettlementService.models.Account;
+import com.swifttrack.BillingAndSettlementService.models.enums.ReferenceType;
 import com.swifttrack.BillingAndSettlementService.models.enums.AccountType;
 import com.swifttrack.BillingAndSettlementService.repositories.AccountRepository;
 import com.swifttrack.BillingAndSettlementService.repositories.LedgerTransactionRepository;
 import com.swifttrack.FeignClient.AuthInterface;
 import com.swifttrack.dto.TokenResponse;
+import com.swifttrack.exception.CustomException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +29,7 @@ public class AccountService {
     private final AccountRepository accountRepository;
     private final LedgerTransactionRepository ledgerTransactionRepository;
     private final AuthInterface authInterface;
+    private final LedgerService ledgerService;
 
     /**
      * Resolves the authenticated user's UUID from their JWT token.
@@ -172,6 +176,39 @@ public class AccountService {
 
     public List<Account> getAccountsByType(AccountType accountType) {
         return accountRepository.findByAccountType(accountType);
+    }
+
+    @Transactional
+    public Account topUpWalletByAdmin(String token, UUID userId, BigDecimal amount) {
+        TokenResponse tokenResponse = resolveTokenResponse(token);
+        if (tokenResponse.userType().isEmpty())
+            throw new CustomException(HttpStatus.FORBIDDEN, "Unauthorized");
+        if (tokenResponse.userType().get() != UserType.SUPER_ADMIN
+                && tokenResponse.userType().get() != UserType.SYSTEM_USER)
+            throw new CustomException(HttpStatus.FORBIDDEN, "Only SUPER_ADMIN or SYSTEM_USER can top up wallet");
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0)
+            throw new CustomException(HttpStatus.BAD_REQUEST, "Amount must be greater than zero");
+
+        List<Account> accounts = accountRepository.findByUserId(userId);
+        if (accounts.isEmpty())
+            throw new CustomException(HttpStatus.NOT_FOUND, "User account not found");
+
+        Account account = accounts.stream()
+                .filter(a -> Boolean.TRUE.equals(a.getIsActive()))
+                .findFirst()
+                .orElse(accounts.get(0));
+
+        ledgerService.credit(
+                account.getId(),
+                amount,
+                ReferenceType.WALLET_TOPUP,
+                UUID.randomUUID(),
+                null,
+                "Admin wallet top-up",
+                null,
+                tokenResponse.id());
+
+        return accountRepository.findById(account.getId()).orElse(account);
     }
 
     /**

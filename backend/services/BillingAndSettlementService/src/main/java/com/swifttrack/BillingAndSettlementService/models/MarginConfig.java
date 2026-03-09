@@ -39,6 +39,18 @@ public class MarginConfig {
     @Column(name = "value", nullable = false, precision = 14, scale = 4)
     private BigDecimal value;
 
+    @Column(name = "base_fare", precision = 14, scale = 2)
+    private BigDecimal baseFare;
+
+    @Column(name = "per_km_rate", precision = 14, scale = 2)
+    private BigDecimal perKmRate;
+
+    @Column(name = "commission_percent", precision = 7, scale = 4)
+    private BigDecimal commissionPercent;
+
+    @Column(name = "minimum_platform_fee", precision = 14, scale = 2)
+    private BigDecimal minimumPlatformFee;
+
     @Column(name = "is_active", nullable = false)
     private Boolean isActive;
 

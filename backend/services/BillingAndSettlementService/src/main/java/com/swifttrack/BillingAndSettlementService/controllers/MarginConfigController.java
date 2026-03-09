@@ -1,14 +1,14 @@
 package com.swifttrack.BillingAndSettlementService.controllers;
 
-import com.swifttrack.BillingAndSettlementService.models.MarginConfig;
+import com.swifttrack.BillingAndSettlementService.dto.MarginConfigRequest;
+import com.swifttrack.BillingAndSettlementService.dto.MarginConfigResponse;
+import com.swifttrack.BillingAndSettlementService.dto.UserMarginConfigResponse;
 import com.swifttrack.BillingAndSettlementService.models.enums.MarginType;
-import com.swifttrack.BillingAndSettlementService.models.enums.OrganizationType;
 import com.swifttrack.BillingAndSettlementService.services.MarginConfigService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -20,36 +20,35 @@ public class MarginConfigController {
     private final MarginConfigService marginConfigService;
 
     @PostMapping
-    public ResponseEntity<MarginConfig> createConfig(@RequestHeader("token") String token,
-                                                      @RequestParam UUID userId,
-                                                      @RequestParam OrganizationType organizationType,
-                                                      @RequestParam MarginType marginType,
-                                                      @RequestParam String key,
-                                                      @RequestParam BigDecimal value) {
-        MarginConfig config = marginConfigService.createOrUpdateConfig(
-                token, userId, organizationType, marginType, key, value);
+    public ResponseEntity<MarginConfigResponse> createConfig(@RequestHeader("token") String token,
+            @RequestBody MarginConfigRequest request) {
+        MarginConfigResponse config = marginConfigService.createConfig(token, request);
+        return ResponseEntity.ok(config);
+    }
+
+    @PutMapping("/{configId}")
+    public ResponseEntity<MarginConfigResponse> updateConfig(@RequestHeader("token") String token,
+            @PathVariable UUID configId,
+            @RequestBody MarginConfigRequest request) {
+        MarginConfigResponse config = marginConfigService.updateConfig(token, configId, request);
         return ResponseEntity.ok(config);
     }
 
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<MarginConfig>> getActiveConfigsByUser(@PathVariable UUID userId) {
-        return ResponseEntity.ok(marginConfigService.getActiveConfigsByUserId(userId));
-    }
-
-    @GetMapping("/user/{userId}/type/{organizationType}")
-    public ResponseEntity<List<MarginConfig>> getActiveConfigsByUserAndOrgType(
-            @PathVariable UUID userId, @PathVariable OrganizationType organizationType) {
-        return ResponseEntity.ok(marginConfigService.getActiveConfigsByUserIdAndOrgType(userId, organizationType));
+    public ResponseEntity<UserMarginConfigResponse> getActiveConfigByUser(@PathVariable UUID userId,
+            @RequestParam(required = false) MarginType marginType) {
+        return ResponseEntity.ok(marginConfigService.getActiveConfigByUserId(userId, marginType));
     }
 
     @GetMapping("/platform")
-    public ResponseEntity<List<MarginConfig>> getPlatformConfigs() {
-        return ResponseEntity.ok(marginConfigService.getPlatformConfigs());
+    public ResponseEntity<MarginConfigResponse> getPlatformConfigs(
+            @RequestParam(required = false) MarginType marginType) {
+        return ResponseEntity.ok(marginConfigService.getPlatformConfigs(marginType));
     }
 
-    @DeleteMapping("/{configId}")
+    @PatchMapping("/{configId}/inactive")
     public ResponseEntity<String> deactivateConfig(@RequestHeader("token") String token,
-                                                     @PathVariable UUID configId) {
+            @PathVariable UUID configId) {
         marginConfigService.deactivateConfig(token, configId);
         return ResponseEntity.ok("Config deactivated");
     }

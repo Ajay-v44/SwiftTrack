@@ -1,0 +1,76 @@
+databaseChangeLog:
+  - changeSet:
+      id: 008-create-margin-config-add-request-table
+      author: swifttrack
+      changes:
+        - createTable:
+            schemaName: billing
+            tableName: margin_config_add_request
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: tenant_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: requested_by
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: key
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: value
+                  type: decimal(14,4)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: base_fare
+                  type: decimal(14,2)
+              - column:
+                  name: per_km_rate
+                  type: decimal(14,2)
+              - column:
+                  name: status
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: acted_by
+                  type: uuid
+              - column:
+                  name: created_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+        - createIndex:
+            schemaName: billing
+            tableName: margin_config_add_request
+            indexName: idx_mcar_tenant_status
+            columns:
+              - column:
+                  name: tenant_id
+              - column:
+                  name: status
+        - createIndex:
+            schemaName: billing
+            tableName: margin_config_add_request
+            indexName: idx_mcar_status
+            columns:
+              - column:
+                  name: status

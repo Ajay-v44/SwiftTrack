@@ -11,3 +11,7 @@ databaseChangeLog:
       file: db/changelog/changes/005-create-settlements-table.yaml
   - include:
       file: db/changelog/changes/006-create-settlement-transactions-table.yaml
+  - include:
+      file: db/changelog/changes/007-add-margin-fields-to-margin-config.yaml
+  - include:
+      file: db/changelog/changes/008-create-margin-config-add-request-table.yaml
