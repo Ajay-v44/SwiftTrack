@@ -21,13 +21,20 @@ public class PricingSnapshotService {
 
     @Transactional
     public PricingSnapshot createSnapshot(UUID orderId, BigDecimal providerCost, BigDecimal driverCost,
-                                           BigDecimal platformMargin, BigDecimal tenantCharge,
-                                           PricingSource pricingSource) {
+            BigDecimal platformMargin, BigDecimal tenantCharge,
+            PricingSource pricingSource) {
         // Check if snapshot already exists for this order
         Optional<PricingSnapshot> existing = pricingSnapshotRepository.findByOrderId(orderId);
         if (existing.isPresent()) {
-            log.warn("Pricing snapshot already exists for orderId={}. Returning existing.", orderId);
-            return existing.get();
+            existing.get().setProviderCost(providerCost);
+            existing.get().setDriverCost(driverCost);
+            existing.get().setPlatformMargin(platformMargin);
+            existing.get().setTenantCharge(tenantCharge);
+            existing.get().setPricingSource(pricingSource);
+            PricingSnapshot saved = pricingSnapshotRepository.save(existing.get());
+            log.info("Updated pricing snapshot id={} for orderId={} source={} tenantCharge={} margin={}",
+                    saved.getId(), orderId, pricingSource, tenantCharge, platformMargin);
+            return saved;
         }
 
         PricingSnapshot snapshot = PricingSnapshot.builder()

@@ -6,6 +6,8 @@ import com.swifttrack.dto.providerDto.QuoteResponse;
 
 public record OrderQuoteResponse(
         QuoteResponse quoteResponse,
-        UUID quoteSessionId) {
+        UUID quoteSessionId,
+        String selectedType,
+        String providerCode) {
 
 }

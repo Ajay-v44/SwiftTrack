@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import com.swifttrack.DriverService.enums.DriverType;
 import com.swifttrack.DriverService.models.DriverOrderAssignment;
 import com.swifttrack.DriverService.repositories.RedisGeoRepository;
 import com.swifttrack.DriverService.dto.spatial.AiDispatchRequest;
@@ -46,23 +47,47 @@ public class DriverLocationService {
         this.dispatchBatchSize = dispatchBatchSize;
     }
 
-    public Message updateDriverLocation(String driverId, double latitude, double longitude) {
+    /**
+     * Updates a driver's location scoped to a category (platform or
+     * tenant-specific).
+     *
+     * @param driverId   driver identifier
+     * @param latitude   driver latitude
+     * @param longitude  driver longitude
+     * @param tenantId   tenant UUID string (nullable for platform drivers)
+     * @param driverType TENANT_DRIVER or PLATFORM_DRIVER
+     */
+    public Message updateDriverLocation(String driverId, double latitude, double longitude,
+            String tenantId, DriverType driverType) {
         validateCoordinates(latitude, longitude);
 
+        String categoryKey = buildCategoryKey(tenantId, driverType);
+
         // GEO index is the coarse filter source for candidate extraction.
-        redisGeoRepository.updateDriverLocation(driverId, longitude, latitude);
+        redisGeoRepository.updateDriverLocation(driverId, longitude, latitude, categoryKey);
 
         // In-memory map update is lock-free and rebuilds are deferred to scheduler.
-        driverSpatialIndexService.updateDriverLocation(driverId, latitude, longitude);
+        driverSpatialIndexService.updateDriverLocation(driverId, latitude, longitude, tenantId, driverType);
         return new Message("Driver location updated successfully");
     }
 
-    public List<String> findNearestDrivers(double pickupLat, double pickupLon, int k) {
+    /**
+     * Finds the nearest drivers scoped by driver type and tenant.
+     *
+     * @param pickupLat  pickup latitude
+     * @param pickupLon  pickup longitude
+     * @param k          max drivers to return
+     * @param tenantId   tenant UUID string (nullable for platform)
+     * @param driverType TENANT_DRIVER or PLATFORM_DRIVER
+     */
+    public List<String> findNearestDrivers(double pickupLat, double pickupLon, int k,
+            String tenantId, DriverType driverType) {
         validateCoordinates(pickupLat, pickupLon);
-        return driverSpatialIndexService.findNearestDrivers(pickupLat, pickupLon, k);
+        return driverSpatialIndexService.findNearestDrivers(pickupLat, pickupLon, k, tenantId, driverType);
     }
 
-    public Optional<DriverOrderAssignment> dispatchNearestDrivers(List<String> nearestDrivers, UUID orderId, String token) {
+    public Optional<DriverOrderAssignment> dispatchNearestDrivers(List<String> nearestDrivers, UUID orderId,
+            String token) {
         if (nearestDrivers == null || nearestDrivers.isEmpty()) {
             return Optional.empty();
         }
@@ -100,7 +125,8 @@ public class DriverLocationService {
 
     private AiDispatchResponse callAiDispatch(List<String> batch) {
         try {
-            ResponseEntity<AiDispatchResponse> responseEntity = aiDispatchInterface.assign(new AiDispatchRequest(batch));
+            ResponseEntity<AiDispatchResponse> responseEntity = aiDispatchInterface
+                    .assign(new AiDispatchRequest(batch));
             return responseEntity.getBody();
         } catch (Exception ex) {
             log.warn("AI dispatch request failed for batch size {}: {}", batch.size(), ex.getMessage());
@@ -112,5 +138,11 @@ public class DriverLocationService {
         if (lat < -90.0d || lat > 90.0d || lon < -180.0d || lon > 180.0d) {
             throw new IllegalArgumentException("Invalid latitude/longitude");
         }
+    }
+
+    private static String buildCategoryKey(String tenantId, DriverType driverType) {
+        return driverType == DriverType.PLATFORM_DRIVER
+                ? "platform"
+                : "tenant:" + tenantId;
     }
 }

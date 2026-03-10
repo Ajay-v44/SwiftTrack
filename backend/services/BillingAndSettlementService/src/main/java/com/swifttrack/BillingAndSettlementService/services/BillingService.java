@@ -1,165 +1,178 @@
 package com.swifttrack.BillingAndSettlementService.services;
 
-import com.swifttrack.BillingAndSettlementService.models.Account;
-import com.swifttrack.BillingAndSettlementService.models.PricingSnapshot;
-import com.swifttrack.BillingAndSettlementService.models.enums.AccountType;
+import com.swifttrack.BillingAndSettlementService.dto.MarginConfigResponse;
+import com.swifttrack.BillingAndSettlementService.dto.QuoteRequest;
+import com.swifttrack.BillingAndSettlementService.dto.QuoteResponse;
+import com.swifttrack.BillingAndSettlementService.dto.UserMarginConfigResponse;
+import com.swifttrack.BillingAndSettlementService.models.enums.MarginType;
 import com.swifttrack.BillingAndSettlementService.models.enums.PricingSource;
-import com.swifttrack.BillingAndSettlementService.models.enums.ReferenceType;
+import com.swifttrack.BillingAndSettlementService.models.enums.SelectedType;
+import com.swifttrack.exception.CustomException;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class BillingService {
 
-        private final LedgerService ledgerService;
-        private final AccountService accountService;
-        private final PricingSnapshotService pricingSnapshotService;
+    private static final BigDecimal ONE_HUNDRED = new BigDecimal("100");
 
-        @Transactional(isolation = Isolation.SERIALIZABLE)
-        public PricingSnapshot processExternalProviderOrder(String token, UUID orderId, UUID tenantId,
-                        UUID providerId, BigDecimal providerCost,
-                        BigDecimal platformMargin) {
-                UUID createdBy = accountService.resolveUserId(token);
-                BigDecimal tenantCharge = providerCost.add(platformMargin);
+    private final MarginConfigService marginConfigService;
+    private final PricingSnapshotService pricingSnapshotService;
 
-                // 1. Create pricing snapshot
-                PricingSnapshot snapshot = pricingSnapshotService.createSnapshot(
-                                orderId, providerCost, null, platformMargin, tenantCharge, PricingSource.PROVIDER);
+    @Transactional
+    public QuoteResponse getQuote(QuoteRequest request) {
+        validateRequest(request);
+        SelectedType selectedType = SelectedType.fromValue(request.getSelectedType());
 
-                // 2. Ensure accounts exist
-                Account tenantAccount = accountService.getAccountByUserIdAndType(tenantId, AccountType.TENANT)
-                                .orElseGet(() -> accountService.createAccountInternal(tenantId, AccountType.TENANT,
-                                                createdBy));
-                Account providerAccount = accountService.getAccountByUserIdAndType(providerId, AccountType.PROVIDER)
-                                .orElseGet(() -> accountService.createAccountInternal(providerId, AccountType.PROVIDER,
-                                                createdBy));
-                Account platformAccount = getPlatformAccount(createdBy);
+        return switch (selectedType) {
+            case TENANT_DRIVERS ->
+                getTenantDriverQuote(request.getUserId(), request.getDistance().get(), request.getQuoteSessionId());
+            case LOCAL_DRIVERS -> getLocalDriverQuote(request.getDistance().get(), request.getQuoteSessionId());
+            case EXTERNAL_PROVIDERS -> getExternalProviderQuote(request.getPrice().get(), request.getQuoteSessionId());
+        };
+    }
 
-                // 3. Record ledger entries
-                String baseKey = "ORDER-" + orderId;
+    private QuoteResponse getTenantDriverQuote(UUID userId, BigDecimal distance, UUID quoteSessionId) {
+        UserMarginConfigResponse marginConfig = marginConfigService.getActiveConfigByUserId(userId,
+                MarginType.DISTANCE_RATE);
+        BigDecimal safeDistance = toNonNegative(distance);
 
-                ledgerService.debit(tenantAccount.getId(), tenantCharge, ReferenceType.ORDER,
-                                orderId, orderId, "Order charge for external provider delivery",
-                                baseKey + "-TENANT-DEBIT", createdBy);
+        BigDecimal baseFare = toNonNegative(marginConfig.getBaseFare());
+        BigDecimal perKmRate = toNonNegative(marginConfig.getPerKmRate());
+        BigDecimal commissionPercent = toNonNegative(marginConfig.getCommissionPercent());
 
-                ledgerService.credit(providerAccount.getId(), providerCost, ReferenceType.ORDER,
-                                orderId, orderId, "Provider payout for delivery",
-                                baseKey + "-PROVIDER-CREDIT", createdBy);
+        BigDecimal driverCost = baseFare.add(safeDistance.multiply(perKmRate));
+        BigDecimal platformMargin = percentageOf(driverCost, commissionPercent);
+        BigDecimal minimumPlatformFee = toNonNegative(marginConfig.getMinimumPlatformFee());
 
-                ledgerService.credit(platformAccount.getId(), platformMargin, ReferenceType.ORDER,
-                                orderId, orderId, "Platform margin on external provider order",
-                                baseKey + "-PLATFORM-CREDIT", createdBy);
+        platformMargin = platformMargin.compareTo(minimumPlatformFee) < 0
+                ? minimumPlatformFee
+                : platformMargin;
+        BigDecimal tenantCharge = driverCost.add(platformMargin);
 
-                log.info("Processed external provider billing for orderId={} tenantCharge={} providerCost={} margin={} by={}",
-                                orderId, tenantCharge, providerCost, platformMargin, createdBy);
+        pricingSnapshotService.createSnapshot(
+                quoteSessionId,
+                bdZero(),
+                money(driverCost),
+                money(platformMargin),
+                money(tenantCharge),
+                PricingSource.TENANT_DRIVER);
 
-                return snapshot;
+        return QuoteResponse.builder()
+                .driverCost(money(driverCost))
+                .platformMargin(money(platformMargin))
+                .providerCost(bdZero())
+                .tenantCharge(money(tenantCharge))
+                .build();
+    }
+
+    private QuoteResponse getLocalDriverQuote(BigDecimal distance, UUID quoteSessionId) {
+        MarginConfigResponse marginConfig = marginConfigService.getPlatformConfigs(MarginType.DISTANCE_RATE);
+        BigDecimal safeDistance = toNonNegative(distance);
+
+        BigDecimal baseFare = toNonNegative(marginConfig.getBaseFare());
+        BigDecimal perKmRate = toNonNegative(marginConfig.getPerKmRate());
+        BigDecimal commissionPercent = toNonNegative(marginConfig.getCommissionPercent());
+
+        BigDecimal driverCost = baseFare.add(safeDistance.multiply(perKmRate));
+        BigDecimal platformMargin = percentageOf(driverCost, commissionPercent);
+        BigDecimal minimumPlatformFee = toNonNegative(marginConfig.getMinimumPlatformFee());
+
+        platformMargin = platformMargin.compareTo(minimumPlatformFee) < 0
+                ? minimumPlatformFee
+                : platformMargin;
+        BigDecimal tenantCharge = driverCost.add(platformMargin);
+
+        pricingSnapshotService.createSnapshot(
+                quoteSessionId,
+                bdZero(),
+                money(driverCost),
+                money(platformMargin),
+                money(tenantCharge),
+                PricingSource.GIG_DRIVER);
+
+        return QuoteResponse.builder()
+                .driverCost(money(driverCost))
+                .platformMargin(money(platformMargin))
+                .providerCost(bdZero())
+                .tenantCharge(money(tenantCharge))
+                .build();
+    }
+
+    private QuoteResponse getExternalProviderQuote(BigDecimal price, UUID quoteSessionId) {
+        if (price == null) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "price is required for EXTERNAL_PROVIDERS");
         }
 
-        /**
-         * Process billing for a Tenant Driver order.
-         *
-         * Flow: Distance × Rate → Platform margin → Tenant charged
-         * Tenant DEBIT, Driver CREDIT, Platform CREDIT
-         */
-        @Transactional(isolation = Isolation.SERIALIZABLE)
-        public PricingSnapshot processTenantDriverOrder(String token, UUID orderId, UUID tenantId,
-                        UUID driverId, BigDecimal driverCost,
-                        BigDecimal platformMargin) {
-                UUID createdBy = accountService.resolveUserId(token);
-                BigDecimal tenantCharge = driverCost.add(platformMargin);
+        MarginConfigResponse marginConfig = marginConfigService.getPlatformConfigs(MarginType.ORDER_RATE);
+        BigDecimal providerCost = toNonNegative(price);
 
-                PricingSnapshot snapshot = pricingSnapshotService.createSnapshot(
-                                orderId, null, driverCost, platformMargin, tenantCharge, PricingSource.TENANT_DRIVER);
+        BigDecimal commissionPercent = toNonNegative(marginConfig.getCommissionPercent());
+        BigDecimal baseFare = toNonNegative(marginConfig.getBaseFare());
+        BigDecimal minimumPlatformFee = toNonNegative(marginConfig.getMinimumPlatformFee());
 
-                Account tenantAccount = accountService.getAccountByUserIdAndType(tenantId, AccountType.TENANT)
-                                .orElseGet(() -> accountService.createAccountInternal(tenantId, AccountType.TENANT,
-                                                createdBy));
-                Account driverAccount = accountService.getAccountByUserIdAndType(driverId, AccountType.DRIVER)
-                                .orElseGet(() -> accountService.createAccountInternal(driverId, AccountType.DRIVER,
-                                                createdBy));
-                Account platformAccount = getPlatformAccount(createdBy);
+        BigDecimal commission = percentageOf(providerCost, commissionPercent);
+        BigDecimal commissionPlusBaseFare = commission.add(baseFare);
 
-                String baseKey = "ORDER-" + orderId;
+        BigDecimal platformMargin = commissionPlusBaseFare.compareTo(minimumPlatformFee) < 0
+                ? minimumPlatformFee
+                : commissionPlusBaseFare;
+        BigDecimal tenantCharge = providerCost.add(platformMargin);
 
-                ledgerService.debit(tenantAccount.getId(), tenantCharge, ReferenceType.ORDER,
-                                orderId, orderId, "Order charge for tenant driver delivery",
-                                baseKey + "-TENANT-DEBIT", createdBy);
+        pricingSnapshotService.createSnapshot(
+                quoteSessionId,
+                money(providerCost),
+                bdZero(),
+                money(platformMargin),
+                money(tenantCharge),
+                PricingSource.PROVIDER);
 
-                ledgerService.credit(driverAccount.getId(), driverCost, ReferenceType.ORDER,
-                                orderId, orderId, "Driver payout for tenant delivery",
-                                baseKey + "-DRIVER-CREDIT", createdBy);
+        return QuoteResponse.builder()
+                .driverCost(bdZero())
+                .platformMargin(money(platformMargin))
+                .providerCost(money(providerCost))
+                .tenantCharge(money(tenantCharge))
+                .build();
+    }
 
-                ledgerService.credit(platformAccount.getId(), platformMargin, ReferenceType.ORDER,
-                                orderId, orderId, "Platform margin on tenant driver order",
-                                baseKey + "-PLATFORM-CREDIT", createdBy);
-
-                log.info("Processed tenant driver billing for orderId={} tenantCharge={} driverCost={} margin={} by={}",
-                                orderId, tenantCharge, driverCost, platformMargin, createdBy);
-
-                return snapshot;
+    private void validateRequest(QuoteRequest request) {
+        if (request == null) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "Request body is required");
         }
-
-        /**
-         * Process billing for a SwiftTrack Gig Driver order.
-         *
-         * Flow: Base pay + per-km pay → Platform commission → Tenant charged
-         * Tenant DEBIT, Driver CREDIT, Platform CREDIT
-         */
-        @Transactional(isolation = Isolation.SERIALIZABLE)
-        public PricingSnapshot processGigDriverOrder(String token, UUID orderId, UUID tenantId,
-                        UUID driverId, BigDecimal driverEarning,
-                        BigDecimal platformCommission) {
-                UUID createdBy = accountService.resolveUserId(token);
-                BigDecimal tenantCharge = driverEarning.add(platformCommission);
-
-                PricingSnapshot snapshot = pricingSnapshotService.createSnapshot(
-                                orderId, null, driverEarning, platformCommission, tenantCharge,
-                                PricingSource.GIG_DRIVER);
-
-                Account tenantAccount = accountService.getAccountByUserIdAndType(tenantId, AccountType.TENANT)
-                                .orElseGet(() -> accountService.createAccountInternal(tenantId, AccountType.TENANT,
-                                                createdBy));
-                Account driverAccount = accountService.getAccountByUserIdAndType(driverId, AccountType.DRIVER)
-                                .orElseGet(() -> accountService.createAccountInternal(driverId, AccountType.DRIVER,
-                                                createdBy));
-                Account platformAccount = getPlatformAccount(createdBy);
-
-                String baseKey = "ORDER-" + orderId;
-
-                ledgerService.debit(tenantAccount.getId(), tenantCharge, ReferenceType.ORDER,
-                                orderId, orderId, "Order charge for gig driver delivery",
-                                baseKey + "-TENANT-DEBIT", createdBy);
-
-                ledgerService.credit(driverAccount.getId(), driverEarning, ReferenceType.ORDER,
-                                orderId, orderId, "Gig driver earning for delivery",
-                                baseKey + "-DRIVER-CREDIT", createdBy);
-
-                ledgerService.credit(platformAccount.getId(), platformCommission, ReferenceType.ORDER,
-                                orderId, orderId, "Platform commission on gig driver order",
-                                baseKey + "-PLATFORM-CREDIT", createdBy);
-
-                log.info("Processed gig driver billing for orderId={} tenantCharge={} driverEarning={} commission={} by={}",
-                                orderId, tenantCharge, driverEarning, platformCommission, createdBy);
-
-                return snapshot;
+        if (request.getUserId() == null) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "userId is required");
         }
-
-        /**
-         * Get or create the SwiftTrack platform account (singleton).
-         */
-        private Account getPlatformAccount(UUID createdBy) {
-                UUID platformUserId = UUID.fromString("00000000-0000-0000-0000-000000000001");
-                return accountService.getAccountByUserIdAndType(platformUserId, AccountType.PLATFORM)
-                                .orElseGet(() -> accountService.createAccountInternal(platformUserId,
-                                                AccountType.PLATFORM, createdBy));
+        if (request.getSelectedType() == null || request.getSelectedType().isBlank()) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "selectedType is required");
         }
+    }
+
+    private BigDecimal percentageOf(BigDecimal amount, BigDecimal percent) {
+        return amount.multiply(percent).divide(ONE_HUNDRED, 6, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal toNonNegative(BigDecimal value) {
+        if (value == null) {
+            return BigDecimal.ZERO;
+        }
+        if (value.compareTo(BigDecimal.ZERO) < 0) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "negative values are not allowed");
+        }
+        return value;
+    }
+
+    private BigDecimal money(BigDecimal value) {
+        return value.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal bdZero() {
+        return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+    }
 }

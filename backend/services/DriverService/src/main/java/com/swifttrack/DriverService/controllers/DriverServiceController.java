@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.swifttrack.DriverService.dto.spatial.FindNearestDriversRequest;
 import com.swifttrack.DriverService.dto.spatial.FindNearestDriversResponse;
+import com.swifttrack.DriverService.enums.DriverType;
 import com.swifttrack.DriverService.services.DriverLocationService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,16 +32,28 @@ public class DriverServiceController {
     }
 
     @PostMapping("/assign-nearest")
-    @Operation(summary = "Assign nearest driver", description = "Find nearest and assign via AI dispatch + order assignment")
+    @Operation(summary = "Assign nearest driver", description = "Find nearest drivers scoped by driver type (TENANT_DRIVER / PLATFORM_DRIVER) and assign via AI dispatch + order assignment")
     public ResponseEntity<FindNearestDriversResponse> assignNearestDrivers(
             @RequestHeader("token") String token,
             @Valid @RequestBody FindNearestDriversRequest request) {
 
+        String tenantId = request.tenantId() != null ? request.tenantId().toString() : null;
+        DriverType driverType = request.driverType();
+
+        // Validate: TENANT_DRIVER requests must include a tenantId
+        if (driverType == DriverType.TENANT_DRIVER && tenantId == null) {
+            return ResponseEntity.badRequest().build();
+        }
+
         List<String> nearestDrivers = driverLocationService.findNearestDrivers(
                 request.pickupLat(),
                 request.pickupLon(),
-                DEFAULT_K);
-        System.out.println("Nearest drivers: " + nearestDrivers);
+                DEFAULT_K,
+                tenantId,
+                driverType);
+
+        System.out.println("Nearest drivers (" + driverType + "): " + nearestDrivers);
+
         // AI dispatch runs in batches of 5 over top 15 nearest drivers.
         driverLocationService.dispatchNearestDrivers(nearestDrivers, request.orderId(), token);
 

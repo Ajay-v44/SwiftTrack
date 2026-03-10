@@ -35,6 +35,9 @@ public class OrderQuote {
     @Column(name = "provider_code", length = 50)
     private String providerCode;
 
+    @Column(name = "selected_type", length = 50)
+    private String selectedType;
+
     @Column(precision = 10, scale = 2)
     private BigDecimal price;
 

@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: 011-add-selected-type-to-order-quotes
+      author: swifttrack
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: order_quotes
+                columnName: selected_type
+      changes:
+        - addColumn:
+            tableName: order_quotes
+            columns:
+              - column:
+                  name: selected_type
+                  type: varchar(50)
