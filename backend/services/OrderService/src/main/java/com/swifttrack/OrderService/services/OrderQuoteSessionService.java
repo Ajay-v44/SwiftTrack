@@ -27,7 +27,10 @@ public class OrderQuoteSessionService {
         }
         List<OrderQuote> orderQuotes = orderQuoteSession.getQuotes();
         List<OrderQuoteSessionResponse> orderQuoteSessionResponses = orderQuotes.stream()
-                .map(orderQuote -> new OrderQuoteSessionResponse(orderQuote.getProviderCode(), orderQuote.getCurrency(),
+                .map(orderQuote -> new OrderQuoteSessionResponse(orderQuote.getProviderCode(),
+                        orderQuote.getSelectedType(),
+                        orderQuote.getPrice(),
+                        orderQuote.getCurrency(),
                         orderQuote.getAiScore()))
                 .toList();
         return orderQuoteSessionResponses;

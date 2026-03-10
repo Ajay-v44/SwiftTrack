@@ -20,27 +20,44 @@ import com.swifttrack.DriverService.spatial.DriverDistance;
 public class RedisGeoRepository {
 
     private final StringRedisTemplate stringRedisTemplate;
-    private final String geoKey;
+    private final String geoKeyPrefix;
 
     public RedisGeoRepository(
             StringRedisTemplate stringRedisTemplate,
-            @Value("${dispatch.redis.geo-key:drivers}") String geoKey) {
+            @Value("${dispatch.redis.geo-key-prefix:drivers}") String geoKeyPrefix) {
         this.stringRedisTemplate = stringRedisTemplate;
-        this.geoKey = geoKey;
+        this.geoKeyPrefix = geoKeyPrefix;
     }
 
-    public void updateDriverLocation(String driverId, double longitude, double latitude) {
+    /**
+     * Builds the Redis GEO key for a given category.
+     * Example: "drivers:platform" or "drivers:tenant:abc-123".
+     */
+    private String geoKeyFor(String categoryKey) {
+        return geoKeyPrefix + ":" + categoryKey;
+    }
+
+    /**
+     * Updates the driver location in the Redis GEO set scoped by category.
+     *
+     * @param driverId    driver identifier
+     * @param longitude   driver longitude
+     * @param latitude    driver latitude
+     * @param categoryKey "platform" or "tenant:{tenantId}"
+     */
+    public void updateDriverLocation(String driverId, double longitude, double latitude, String categoryKey) {
         GeoOperations<String, String> geo = stringRedisTemplate.opsForGeo();
-        geo.add(geoKey, new Point(longitude, latitude), driverId);
+        geo.add(geoKeyFor(categoryKey), new Point(longitude, latitude), driverId);
     }
 
-    public List<String> findNearbyDriverIds(double longitude, double latitude, double radiusKm, int maxResults) {
-        return findNearbyDriverDistances(longitude, latitude, radiusKm, maxResults)
+    public List<String> findNearbyDriverIds(double longitude, double latitude, double radiusKm,
+            int maxResults, String categoryKey) {
+        return findNearbyDriverDistances(longitude, latitude, radiusKm, maxResults, categoryKey)
                 .stream().map(DriverDistance::driverId).toList();
     }
 
     public List<DriverDistance> findNearbyDriverDistances(double longitude, double latitude, double radiusKm,
-            int maxResults) {
+            int maxResults, String categoryKey) {
         GeoOperations<String, String> geo = stringRedisTemplate.opsForGeo();
 
         RedisGeoCommands.GeoRadiusCommandArgs args = RedisGeoCommands.GeoRadiusCommandArgs
@@ -50,7 +67,7 @@ public class RedisGeoRepository {
                 .limit(maxResults);
 
         GeoResults<RedisGeoCommands.GeoLocation<String>> results = geo.radius(
-                geoKey,
+                geoKeyFor(categoryKey),
                 new Circle(new Point(longitude, latitude), new Distance(radiusKm, Metrics.KILOMETERS)),
                 args);
 

@@ -7,9 +7,12 @@ import java.util.concurrent.TimeoutException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -21,6 +24,8 @@ import org.springframework.web.client.RestTemplate;
 
 import com.swifttrack.FeignClient.MapInterface;
 import com.swifttrack.FeignClient.ProviderInterface;
+import com.swifttrack.FeignClient.TenantInterface;
+import com.swifttrack.FeignClient.BillingInterface;
 import com.swifttrack.OrderService.dto.MLPredictionRequest;
 import com.swifttrack.OrderService.dto.MLPredictionResponse;
 import com.swifttrack.OrderService.dto.MLPredictionResponse.Prediction;
@@ -52,6 +57,8 @@ import com.swifttrack.dto.GetProviders;
 import com.swifttrack.dto.Message;
 import com.swifttrack.dto.providerDto.QuoteInput;
 import com.swifttrack.dto.providerDto.QuoteResponse;
+import com.swifttrack.dto.tenantDto.TenantDeliveryConf;
+import com.swifttrack.dto.billingDto.QuoteRequest;
 
 import jakarta.transaction.Transactional;
 
@@ -66,6 +73,8 @@ import org.springframework.cache.annotation.CacheEvict;
 public class OrderServices {
         ProviderInterface providerInterface;
         MapInterface mapInterface;
+        TenantInterface tenantInterface;
+        BillingInterface billingInterface;
         OrderRepository orderRepository;
         RestTemplate restTemplate;
         OrderQuoteSessionRepository orderQuoteSessionRepository;
@@ -80,6 +89,7 @@ public class OrderServices {
         String mlThreshold;
 
         public OrderServices(ProviderInterface providerInterface, MapInterface mapInterface,
+                        TenantInterface tenantInterface, BillingInterface billingInterface,
                         OrderRepository orderRepository, RestTemplate restTemplate,
                         OrderQuoteSessionRepository orderQuoteSessionRepository,
                         OrderQuoteRepository orderQuoteRepository, AuthInterface authInterface,
@@ -87,6 +97,8 @@ public class OrderServices {
                         org.springframework.kafka.core.KafkaTemplate<String, Object> kafkaTemplate) {
                 this.providerInterface = providerInterface;
                 this.mapInterface = mapInterface;
+                this.tenantInterface = tenantInterface;
+                this.billingInterface = billingInterface;
                 this.orderRepository = orderRepository;
                 this.restTemplate = restTemplate;
                 this.orderQuoteSessionRepository = orderQuoteSessionRepository;
@@ -99,6 +111,9 @@ public class OrderServices {
         public OrderQuoteResponse getQuote(String token, QuoteInput quoteInput) {
                 try {
                         TokenResponse tokenResponse = authInterface.getUserDetails(token).getBody();
+                        if (tokenResponse == null || tokenResponse.tenantId().isEmpty()) {
+                                throw new RuntimeException("Tenant details are required to fetch quote");
+                        }
 
                         OrderQuoteSession orderQuoteSession = new OrderQuoteSession();
                         orderQuoteSession.setTenantId(tokenResponse.tenantId().get());
@@ -107,147 +122,255 @@ public class OrderServices {
                         orderQuoteSession.setCreatedAt(LocalDateTime.now());
                         orderQuoteSession = orderQuoteSessionRepository.save(orderQuoteSession);
 
-                        CompletableFuture<ApiResponse<NormalizedLocation>> dropoffFuture = CompletableFuture
-                                        .supplyAsync(() -> mapInterface.reverseGeocode(quoteInput.dropoffLat(),
-                                                        quoteInput.dropoffLng()));
+                        List<TenantDeliveryConf> deliveryConfig = Optional
+                                        .ofNullable(tenantInterface.getTenantDeliveryConfiguration(token))
+                                        .map(ResponseEntity::getBody)
+                                        .orElse(Collections.emptyList())
+                                        .stream()
+                                        .sorted(Comparator.comparingInt(TenantDeliveryConf::priority))
+                                        .toList();
 
-                        CompletableFuture<ApiResponse<NormalizedLocation>> pickupFuture = CompletableFuture
-                                        .supplyAsync(() -> mapInterface.reverseGeocode(quoteInput.pickupLat(),
-                                                        quoteInput.pickupLng()));
+                        if (deliveryConfig.isEmpty()) {
+                                deliveryConfig = List.of(
+                                                new TenantDeliveryConf("EXTERNAL_PROVIDERS", 1),
+                                                new TenantDeliveryConf("LOCAL_DRIVERS", 2),
+                                                new TenantDeliveryConf("TENANT_DRIVERS", 3));
+                        }
+
+                        boolean hasExternalOption = deliveryConfig.stream()
+                                        .anyMatch(config -> "EXTERNAL_PROVIDERS".equalsIgnoreCase(config.optionType()));
 
                         CompletableFuture<ApiResponse<DistanceResult>> distanceFuture = CompletableFuture
                                         .supplyAsync(() -> mapInterface.calculateDistance(quoteInput.pickupLat(),
                                                         quoteInput.pickupLng(),
                                                         quoteInput.dropoffLat(), quoteInput.dropoffLng()));
 
-                        CompletableFuture<List<GetProviders>> providersFuture = CompletableFuture
-                                        .supplyAsync(() -> providerInterface.getTenantProviders(token));
+                        CompletableFuture<ApiResponse<NormalizedLocation>> dropoffFuture = hasExternalOption
+                                        ? CompletableFuture.supplyAsync(
+                                                        () -> mapInterface.reverseGeocode(quoteInput.dropoffLat(),
+                                                                        quoteInput.dropoffLng()))
+                                        : CompletableFuture.completedFuture(null);
 
-                        // Wait for all to complete with a timeout of 5 seconds
-                        CompletableFuture.allOf(dropoffFuture, pickupFuture, distanceFuture, providersFuture)
+                        CompletableFuture<ApiResponse<NormalizedLocation>> pickupFuture = hasExternalOption
+                                        ? CompletableFuture.supplyAsync(
+                                                        () -> mapInterface.reverseGeocode(quoteInput.pickupLat(),
+                                                                        quoteInput.pickupLng()))
+                                        : CompletableFuture.completedFuture(null);
+
+                        CompletableFuture<List<GetProviders>> providersFuture = hasExternalOption
+                                        ? CompletableFuture.supplyAsync(() -> providerInterface.getTenantProviders(token))
+                                        : CompletableFuture.completedFuture(Collections.emptyList());
+
+                        CompletableFuture.allOf(distanceFuture, dropoffFuture, pickupFuture, providersFuture)
                                         .get(5, TimeUnit.SECONDS);
 
+                        ApiResponse<DistanceResult> distance = distanceFuture.get();
                         ApiResponse<NormalizedLocation> dropoffLocation = dropoffFuture.get();
                         ApiResponse<NormalizedLocation> pickupLocation = pickupFuture.get();
-                        ApiResponse<DistanceResult> distance = distanceFuture.get();
                         List<GetProviders> providers = providersFuture.get();
 
-                        List<ModelQuoteInput> modelQuoteInputList = new ArrayList<>();
-                        System.out.println("dropoffLocation: " + dropoffLocation.getData().getState());
-                        System.out.println("pickupLocation: " + pickupLocation.getData().getState());
-                        System.out.println("distance: " + distance.getData());
-                        // same state and local delivery
-                        if (dropoffLocation.getData().getState().equals(pickupLocation.getData().getState())) {
-                                for (GetProviders provider : providers) {
-                                        if (provider.supportsHyperlocal() && provider.supportsIntercity()) {
-                                                int count = orderRepository
-                                                                .countActiveOrdersByProvider(provider.providerCode());
-                                                ModelQuoteInput modelQuoteInput = new ModelQuoteInput(
-                                                                provider.providerCode(),
-                                                                distance.getData().getDistanceMeters(), 2,
-                                                                count > 10 ? true : false, count);
-                                                modelQuoteInputList.add(modelQuoteInput);
-                                        }
-                                }
-                        } else if (dropoffLocation.getData().getCountry()
-                                        .equals(pickupLocation.getData().getCountry())) {
-                                for (GetProviders provider : providers) {
-                                        if (provider.supportsIntercity()) {
-                                                int count = orderRepository
-                                                                .countActiveOrdersByProvider(provider.providerCode());
-                                                ModelQuoteInput modelQuoteInput = new ModelQuoteInput(
-                                                                provider.providerName(),
-                                                                distance.getData().getDistanceMeters(), 2,
-                                                                count > 10 ? true : false, count);
-                                                modelQuoteInputList.add(modelQuoteInput);
-                                        }
-                                }
-                        } else {
-                                throw new RuntimeException("International delivery Coming soon");
-                        }
-                        System.out.println(modelQuoteInputList);
+                        BigDecimal distanceKm = BigDecimal.valueOf(distance.getData().getDistanceMeters())
+                                        .divide(BigDecimal.valueOf(1000), 3, RoundingMode.HALF_UP);
 
-                        // Call ML Service for predictions
-                        String mlUrl = mlServicesUrl + "/predict/assignment";
-                        MLPredictionRequest mlRequest = new MLPredictionRequest(modelQuoteInputList);
+                        for (TenantDeliveryConf config : deliveryConfig) {
+                                String selectedType = config.optionType().toUpperCase();
+                                try {
+                                        if ("EXTERNAL_PROVIDERS".equals(selectedType)) {
+                                                ExternalProviderSelection selection = selectExternalProvider(token,
+                                                                quoteInput, providers, distance, pickupLocation,
+                                                                dropoffLocation);
+                                                if (selection == null) {
+                                                        continue;
+                                                }
 
-                        // Create headers
-                        HttpHeaders headers = new HttpHeaders();
-                        headers.setContentType(MediaType.APPLICATION_JSON);
-                        headers.set("accept", "application/json");
+                                                com.swifttrack.dto.billingDto.QuoteResponse billingQuote = billingInterface
+                                                                .getQuote(new QuoteRequest(
+                                                                                orderQuoteSession.getId(),
+                                                                                Optional.of(BigDecimal.valueOf(
+                                                                                                selection.quoteResponse()
+                                                                                                                .price())),
+                                                                                Optional.of(selection.providerCode()),
+                                                                                Optional.empty(),
+                                                                                tokenResponse.id(),
+                                                                                selectedType))
+                                                                .getBody();
 
-                        HttpEntity<MLPredictionRequest> requestEntity = new HttpEntity<>(
-                                        mlRequest, headers);
+                                                if (billingQuote == null || billingQuote.tenantCharge() == null) {
+                                                        continue;
+                                                }
 
-                        try {
-                                ResponseEntity<MLPredictionResponse> response = restTemplate
-                                                .postForEntity(mlUrl, requestEntity, MLPredictionResponse.class);
-
-                                if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                                        MLPredictionResponse predictionResponse = response.getBody();
-                                        System.out.println("ML Response: " + predictionResponse);
-                                        Prediction prediction = predictionResponse.getPredictions().stream()
-                                                        .max(Comparator.comparing(Prediction::getSuccessProbability))
-                                                        .orElse(null);
-
-                                        if (prediction != null && prediction.getSuccessProbability() > Double
-                                                        .parseDouble(mlThreshold)) {
-                                                System.out.println("Selected provider via ML: "
-                                                                + prediction.getProvider());
-                                                QuoteResponse quoteResponse = providerInterface.getQuote(token,
-                                                                prediction.getProvider(),
-                                                                quoteInput);
-                                                OrderQuote orderQuote = new OrderQuote();
-                                                orderQuote.setProviderCode(prediction.getProvider());
-                                                orderQuote.setQuoteSession(orderQuoteSession);
-                                                orderQuote.setPrice(BigDecimal.valueOf(quoteResponse.price()));
-                                                orderQuote.setCurrency("INR");
-                                                orderQuote.setAiScore(
-                                                                BigDecimal.valueOf(prediction.getSuccessProbability()));
-                                                orderQuote.setIsSelected(true);
-                                                orderQuoteRepository.save(orderQuote);
-                                                return new OrderQuoteResponse(quoteResponse, orderQuoteSession.getId());
-                                        } else {
-                                                System.out.println(
-                                                                "ML output below threshold or empty. Falling back to default logic.");
+                                                QuoteResponse finalQuoteResponse = new QuoteResponse(
+                                                                billingQuote.tenantCharge().floatValue(),
+                                                                selection.quoteResponse().currency());
+                                                saveOrderQuote(orderQuoteSession, selectedType,
+                                                                selection.providerCode(),
+                                                                finalQuoteResponse.currency(),
+                                                                billingQuote.tenantCharge(),
+                                                                selection.aiScore());
+                                                return new OrderQuoteResponse(finalQuoteResponse, orderQuoteSession.getId(),
+                                                                selectedType, selection.providerCode());
                                         }
 
-                                } else {
-                                        System.err.println("ML Service returned non-success status: "
-                                                        + response.getStatusCode());
+                                        if ("LOCAL_DRIVERS".equals(selectedType) || "TENANT_DRIVERS".equals(
+                                                        selectedType)) {
+                                                com.swifttrack.dto.billingDto.QuoteResponse billingQuote = billingInterface
+                                                                .getQuote(new QuoteRequest(
+                                                                                orderQuoteSession.getId(),
+                                                                                Optional.empty(),
+                                                                                Optional.empty(),
+                                                                                Optional.of(distanceKm),
+                                                                                tokenResponse.id(),
+                                                                                selectedType))
+                                                                .getBody();
+
+                                                if (billingQuote == null || billingQuote.tenantCharge() == null) {
+                                                        continue;
+                                                }
+
+                                                QuoteResponse finalQuoteResponse = new QuoteResponse(
+                                                                billingQuote.tenantCharge().floatValue(),
+                                                                "INR");
+                                                saveOrderQuote(orderQuoteSession, selectedType, null,
+                                                                finalQuoteResponse.currency(),
+                                                                billingQuote.tenantCharge(),
+                                                                null);
+                                                return new OrderQuoteResponse(finalQuoteResponse, orderQuoteSession.getId(),
+                                                                selectedType, null);
+                                        }
+                                } catch (Exception optionError) {
+                                        System.err.println("Quote option failed for " + selectedType + ": "
+                                                        + optionError.getMessage());
                                 }
-                        } catch (Exception e) {
-                                System.err.println("Failed to call ML Service: " + e.getMessage());
-                                // Non-blocking failure: proceed with default logic if ML fails
                         }
 
-                        // Fallback logic: Select provider with minimum load (active orders)
-                        // If modelQuoteInputList is empty, this means no providers supported the route.
-                        if (modelQuoteInputList.isEmpty()) {
-                                throw new RuntimeException("No suitable providers found for this route.");
-                        }
-
-                        ModelQuoteInput fallbackProvider = modelQuoteInputList.stream()
-                                        .min(Comparator.comparingInt(ModelQuoteInput::provider_load))
-                                        .orElse(modelQuoteInputList.get(0));
-                        QuoteResponse quoteResponse = providerInterface.getQuote(token, fallbackProvider.provider(),
-                                        quoteInput);
-                        OrderQuote orderQuote = new OrderQuote();
-                        orderQuote.setProviderCode(fallbackProvider.provider());
-                        orderQuote.setQuoteSession(orderQuoteSession);
-                        orderQuote.setPrice(BigDecimal.valueOf(quoteResponse.price()));
-                        orderQuote.setCurrency("INR");
-                        orderQuote.setAiScore(BigDecimal.valueOf(fallbackProvider.provider_load()));
-                        orderQuote.setIsSelected(true);
-                        orderQuoteRepository.save(orderQuote);
-                        System.out.println("Selected fallback provider: " + fallbackProvider.provider());
-                        return new OrderQuoteResponse(quoteResponse, orderQuoteSession.getId());
+                        throw new RuntimeException("No quote could be generated for configured options");
 
                 } catch (TimeoutException e) {
                         throw new RuntimeException("Timeout while fetching data from external services", e);
                 } catch (Exception e) {
                         throw new RuntimeException("Error occurred while processing quote: " + e.getMessage(), e);
                 }
+        }
+
+        private void saveOrderQuote(OrderQuoteSession orderQuoteSession, String selectedType, String providerCode,
+                        String currency, BigDecimal tenantPrice, BigDecimal aiScore) {
+                OrderQuote orderQuote = new OrderQuote();
+                orderQuote.setProviderCode(providerCode);
+                orderQuote.setSelectedType(selectedType);
+                orderQuote.setQuoteSession(orderQuoteSession);
+                orderQuote.setPrice(tenantPrice);
+                orderQuote.setCurrency(currency);
+                orderQuote.setAiScore(aiScore);
+                orderQuote.setIsSelected(true);
+                orderQuoteRepository.save(orderQuote);
+        }
+
+        private ExternalProviderSelection selectExternalProvider(String token, QuoteInput quoteInput,
+                        List<GetProviders> providers, ApiResponse<DistanceResult> distance,
+                        ApiResponse<NormalizedLocation> pickupLocation,
+                        ApiResponse<NormalizedLocation> dropoffLocation) {
+                List<ModelQuoteInput> modelQuoteInputList = buildProviderCandidates(providers, distance, pickupLocation,
+                                dropoffLocation);
+                if (modelQuoteInputList.isEmpty()) {
+                        return null;
+                }
+
+                Prediction prediction = getMlPrediction(modelQuoteInputList);
+                String providerCode = null;
+                BigDecimal aiScore = null;
+
+                if (prediction != null && prediction.getSuccessProbability() > parseMlThreshold()) {
+                        providerCode = prediction.getProvider();
+                        aiScore = BigDecimal.valueOf(prediction.getSuccessProbability());
+                }
+
+                if (providerCode == null || providerCode.isBlank()) {
+                        ModelQuoteInput fallbackProvider = modelQuoteInputList.stream()
+                                        .min(Comparator.comparingInt(ModelQuoteInput::provider_load))
+                                        .orElse(modelQuoteInputList.get(0));
+                        providerCode = fallbackProvider.provider();
+                }
+
+                QuoteResponse quoteResponse = providerInterface.getQuote(token, providerCode, quoteInput);
+                return new ExternalProviderSelection(providerCode, quoteResponse, aiScore);
+        }
+
+        private List<ModelQuoteInput> buildProviderCandidates(List<GetProviders> providers,
+                        ApiResponse<DistanceResult> distance,
+                        ApiResponse<NormalizedLocation> pickupLocation,
+                        ApiResponse<NormalizedLocation> dropoffLocation) {
+                if (providers == null || pickupLocation == null || dropoffLocation == null || distance == null) {
+                        return Collections.emptyList();
+                }
+
+                List<ModelQuoteInput> modelQuoteInputList = new ArrayList<>();
+                String pickupState = pickupLocation.getData().getState();
+                String dropoffState = dropoffLocation.getData().getState();
+                String pickupCountry = pickupLocation.getData().getCountry();
+                String dropoffCountry = dropoffLocation.getData().getCountry();
+
+                if (dropoffState.equals(pickupState)) {
+                        for (GetProviders provider : providers) {
+                                if (provider.supportsHyperlocal() && provider.supportsIntercity()) {
+                                        int count = orderRepository.countActiveOrdersByProvider(provider.providerCode());
+                                        modelQuoteInputList.add(new ModelQuoteInput(
+                                                        provider.providerCode(),
+                                                        distance.getData().getDistanceMeters(), 2,
+                                                        count > 10, count));
+                                }
+                        }
+                } else if (dropoffCountry.equals(pickupCountry)) {
+                        for (GetProviders provider : providers) {
+                                if (provider.supportsIntercity()) {
+                                        int count = orderRepository.countActiveOrdersByProvider(provider.providerCode());
+                                        modelQuoteInputList.add(new ModelQuoteInput(
+                                                        provider.providerCode(),
+                                                        distance.getData().getDistanceMeters(), 2,
+                                                        count > 10, count));
+                                }
+                        }
+                } else {
+                        throw new RuntimeException("International delivery Coming soon");
+                }
+                return modelQuoteInputList;
+        }
+
+        private Prediction getMlPrediction(List<ModelQuoteInput> modelQuoteInputList) {
+                if (modelQuoteInputList.isEmpty() || mlServicesUrl == null || mlServicesUrl.isBlank()) {
+                        return null;
+                }
+
+                String mlUrl = mlServicesUrl + "/predict/assignment";
+                MLPredictionRequest mlRequest = new MLPredictionRequest(modelQuoteInputList);
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                headers.set("accept", "application/json");
+                HttpEntity<MLPredictionRequest> requestEntity = new HttpEntity<>(mlRequest, headers);
+
+                try {
+                        ResponseEntity<MLPredictionResponse> response = restTemplate.postForEntity(
+                                        mlUrl, requestEntity, MLPredictionResponse.class);
+                        if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null
+                                        && response.getBody().getPredictions() != null) {
+                                return response.getBody().getPredictions().stream()
+                                                .max(Comparator.comparing(Prediction::getSuccessProbability))
+                                                .orElse(null);
+                        }
+                } catch (Exception e) {
+                        System.err.println("Failed to call ML Service: " + e.getMessage());
+                }
+                return null;
+        }
+
+        private double parseMlThreshold() {
+                        try {
+                                return Double.parseDouble(mlThreshold);
+                        } catch (Exception e) {
+                                return 0.0;
+                        }
+        }
+
+        private record ExternalProviderSelection(String providerCode, QuoteResponse quoteResponse, BigDecimal aiScore) {
         }
 
         public FinalCreateOrderResponse createOrder(String token, UUID quoteSessionId,

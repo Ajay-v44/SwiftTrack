@@ -23,7 +23,9 @@ import com.swifttrack.dto.driverDto.GetAllDriverUser;
 import com.swifttrack.dto.driverDto.GetDriverUserDetails;
 import com.swifttrack.dto.driverDto.GetTenantDrivers;
 import com.swifttrack.dto.driverDto.UpdateDriverStatusRequest;
+import com.swifttrack.DriverService.enums.DriverType;
 import com.swifttrack.enums.TrackingStatus;
+import com.swifttrack.enums.UserType;
 import com.swifttrack.enums.VerificationStatus;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -116,10 +118,20 @@ public class DriverAccountController {
             @RequestBody com.swifttrack.dto.driverDto.DriverLocationUpdateDto request) {
         com.swifttrack.dto.TokenResponse userDetails = driverService.validateToken(token);
         driverService.updateDriverLocation(userDetails.id(), request.latitude(), request.longitude());
+
+        // Determine driver type from authenticated user's role
+        DriverType driverType = userDetails.userType()
+                .filter(ut -> ut == UserType.TENANT_DRIVER)
+                .map(ut -> DriverType.TENANT_DRIVER)
+                .orElse(DriverType.PLATFORM_DRIVER);
+        String tenantId = userDetails.tenantId().map(java.util.UUID::toString).orElse(null);
+
         driverLocationService.updateDriverLocation(
                 userDetails.id().toString(),
                 request.latitude().doubleValue(),
-                request.longitude().doubleValue());
+                request.longitude().doubleValue(),
+                tenantId,
+                driverType);
         return ResponseEntity.ok(new Message("Location updated successfully"));
     }
 
