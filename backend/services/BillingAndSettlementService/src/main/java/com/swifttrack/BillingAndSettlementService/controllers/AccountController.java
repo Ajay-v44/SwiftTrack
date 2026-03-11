@@ -23,25 +23,29 @@ public class AccountController {
 
     @PostMapping("/v1/createAccount")
     public ResponseEntity<Account> createAccount(@RequestHeader("token") String token,
-                                                  @RequestParam UUID userId,
-                                                  @RequestParam AccountType accountType) {
+            @RequestParam UUID userId,
+            @RequestParam AccountType accountType) {
         Account account = accountService.createAccount(token, userId, accountType);
         return ResponseEntity.ok(account);
     }
+
     @PostMapping("/v1/admin")
     public ResponseEntity<Account> createAccountByAdmin(@RequestHeader("token") String token,
-                                                  @RequestParam UUID userId,
-                                                  @RequestParam AccountType accountType) {
+            @RequestParam UUID userId,
+            @RequestParam AccountType accountType) {
         Account account = accountService.createAccountByAdmin(token, userId, accountType);
         return ResponseEntity.ok(account);
     }
+
     @GetMapping("/v1/getMyAccount")
-    public ResponseEntity<List<Account>> getAccountsByUserId(@RequestHeader("token") String token,@RequestParam UUID userId) {
+    public ResponseEntity<Account> getAccountsByUserId(@RequestHeader("token") String token,
+            @RequestParam UUID userId) {
         return ResponseEntity.ok(accountService.getAccountsByUserId(token, userId));
     }
 
     @GetMapping("/v1/getTransactions")
-    public ResponseEntity<List<LedgerTransaction>> getTransactions(@RequestHeader("token") String token, @RequestParam UUID accountId) {
+    public ResponseEntity<List<LedgerTransaction>> getTransactions(@RequestHeader("token") String token,
+            @RequestParam UUID accountId) {
         accountService.verifyAccountAccess(token, accountId);
         return ResponseEntity.ok(ledgerService.getTransactionsByAccountId(accountId));
     }

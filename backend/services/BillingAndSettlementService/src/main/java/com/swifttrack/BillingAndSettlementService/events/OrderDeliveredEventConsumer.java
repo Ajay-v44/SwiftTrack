@@ -66,26 +66,22 @@ public class OrderDeliveredEventConsumer {
         try {
             UUID orderId = event.getOrderId();
             UUID tenantId = UUID.fromString(event.getTenantId());
-            BigDecimal totalAmount = event.getAmount();
-            String deliverySource = event.getDeliverySource();
+            PricingSnapshot snapshot = pricingSnapshotService.getByOrderId(orderId)
+                    .orElseThrow(() -> new RuntimeException("Pricing snapshot not bound for order: " + orderId));
 
-            // Determine pricing source and margins
-            PricingSource pricingSource = resolvePricingSource(deliverySource);
-            BigDecimal platformMargin = calculatePlatformMargin(totalAmount);
-            BigDecimal payeeAmount = totalAmount.subtract(platformMargin);
+            PricingSource pricingSource = snapshot.getPricingSource();
+            BigDecimal totalAmount = snapshot.getTenantCharge();
+            BigDecimal platformMargin = snapshot.getPlatformMargin();
+            BigDecimal payeeAmount = pricingSource == PricingSource.PROVIDER
+                    ? snapshot.getProviderCost()
+                    : snapshot.getDriverCost();
 
-            // 1. Create immutable pricing snapshot
-            PricingSnapshot snapshot;
-            if (pricingSource == PricingSource.PROVIDER) {
-                snapshot = pricingSnapshotService.createSnapshot(
-                        orderId, payeeAmount, null, platformMargin, totalAmount, pricingSource);
-            } else {
-                snapshot = pricingSnapshotService.createSnapshot(
-                        orderId, null, payeeAmount, platformMargin, totalAmount, pricingSource);
+            if (payeeAmount == null) {
+                throw new RuntimeException("Invalid snapshot payout amount for order: " + orderId);
             }
 
-            log.info("Created pricing snapshot for orderId={}: tenantCharge={}, payee={}, margin={}",
-                    orderId, totalAmount, payeeAmount, platformMargin);
+            log.info("Loaded pricing snapshot for orderId={}: tenantCharge={}, payee={}, margin={}, source={}",
+                    orderId, totalAmount, payeeAmount, platformMargin, pricingSource);
 
             // 2. Ensure accounts exist
             Account tenantAccount = accountService.getAccountByUserIdAndType(tenantId, AccountType.TENANT)
@@ -150,51 +146,41 @@ public class OrderDeliveredEventConsumer {
     }
 
     /**
-     * Resolve the PricingSource enum from the event's deliverySource string.
-     */
-    private PricingSource resolvePricingSource(String deliverySource) {
-        if (deliverySource == null) {
-            return PricingSource.PROVIDER; // Default
-        }
-        return switch (deliverySource.toUpperCase()) {
-            case "EXTERNAL_PROVIDER" -> PricingSource.PROVIDER;
-            case "TENANT_DRIVER" -> PricingSource.TENANT_DRIVER;
-            case "GIG_DRIVER" -> PricingSource.GIG_DRIVER;
-            default -> PricingSource.PROVIDER;
-        };
-    }
-
-    /**
-     * Calculate platform margin as 15% of total (configurable via MarginConfig in future).
-     */
-    private BigDecimal calculatePlatformMargin(BigDecimal totalAmount) {
-        return totalAmount.multiply(BigDecimal.valueOf(0.15))
-                .setScale(2, java.math.RoundingMode.HALF_UP);
-    }
-
-    /**
      * Resolve or create the payee's ledger account (provider or driver) based on delivery source.
      */
     private Account resolvePayeeAccount(OrderDeliveredEvent event, PricingSource pricingSource) {
         if (pricingSource == PricingSource.PROVIDER) {
-            // For external providers, use providerCode as a deterministic UUID
-            UUID providerUserId = deterministicUUID("provider:" + event.getProviderCode());
-            return accountService.getAccountByUserIdAndType(providerUserId, AccountType.PROVIDER)
-                    .orElseGet(() -> accountService.createAccountInternal(providerUserId, AccountType.PROVIDER, SYSTEM_USER_ID));
-        } else {
-            // For drivers (tenant or gig), use the driverId
-            UUID driverId = event.getDriverId();
-            if (driverId == null) {
-                // Fallback: generate from providerCode if driver ID not set
-                driverId = deterministicUUID("driver:" + event.getProviderCode());
+            // Prefer real provider UUID if providerCode is UUID; fallback to deterministic
+            // mapping for non-UUID provider codes.
+            UUID providerUserId = tryParseUuid(event.getProviderCode());
+            if (providerUserId != null) {
+                return accountService.getAccountByUserIdAndType(providerUserId, AccountType.PROVIDER)
+                        .orElseGet(() -> accountService.createAccountInternal(providerUserId, AccountType.PROVIDER,
+                                SYSTEM_USER_ID));
             }
-            return accountService.getAccountByUserIdAndType(driverId, AccountType.DRIVER)
-                    .orElseGet(() -> {
-                        UUID id = event.getDriverId() != null ? event.getDriverId()
-                                : deterministicUUID("driver:" + event.getProviderCode());
-                        return accountService.createAccountInternal(id, AccountType.DRIVER, SYSTEM_USER_ID);
-                    });
+            UUID derivedProviderId = deterministicUUID("provider:" + event.getProviderCode());
+            return accountService.getAccountByUserIdAndType(derivedProviderId, AccountType.PROVIDER)
+                    .orElseGet(() -> accountService.createAccountInternal(derivedProviderId, AccountType.PROVIDER,
+                            SYSTEM_USER_ID));
         }
+
+        // Driver payouts:
+        // TENANT_DRIVER pricing should prefer TENANT_DRIVER account type.
+        UUID driverId = event.getDriverId() != null
+                ? event.getDriverId()
+                : deterministicUUID("driver:" + event.getProviderCode());
+
+        if (pricingSource == PricingSource.TENANT_DRIVER) {
+            return accountService.getAccountByUserIdAndType(driverId, AccountType.TENANT_DRIVER)
+                    .or(() -> accountService.getAccountByUserIdAndType(driverId, AccountType.DRIVER))
+                    .orElseGet(() -> accountService.createAccountInternal(driverId, AccountType.TENANT_DRIVER,
+                            SYSTEM_USER_ID));
+        }
+
+        // GIG_DRIVER pricing should prefer DRIVER account type.
+        return accountService.getAccountByUserIdAndType(driverId, AccountType.DRIVER)
+                .or(() -> accountService.getAccountByUserIdAndType(driverId, AccountType.TENANT_DRIVER))
+                .orElseGet(() -> accountService.createAccountInternal(driverId, AccountType.DRIVER, SYSTEM_USER_ID));
     }
 
     /**
@@ -202,5 +188,16 @@ public class OrderDeliveredEventConsumer {
      */
     private UUID deterministicUUID(String input) {
         return UUID.nameUUIDFromBytes(input.getBytes());
+    }
+
+    private UUID tryParseUuid(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(value);
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
     }
 }

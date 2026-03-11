@@ -21,6 +21,10 @@ public class ProviderEventConsumer {
 
     @KafkaListener(topics = "order-created", groupId = "provider-service-group")
     public void handleOrderCreated(OrderCreatedEvent event) {
+        if (event.getProviderCode() == null || event.getProviderCode().isBlank()) {
+            System.out.println("Skipping order-created event without provider code: " + event.getOrderId());
+            return;
+        }
         System.out.println("Provider Service Received OrderCreatedEvent: " + event.getOrderId());
         // Logic to assign driver
         assignDriver(event);

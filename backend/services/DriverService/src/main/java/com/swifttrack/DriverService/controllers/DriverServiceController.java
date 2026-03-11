@@ -1,6 +1,7 @@
 package com.swifttrack.DriverService.controllers;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.swifttrack.DriverService.dto.spatial.FindNearestDriversRequest;
 import com.swifttrack.DriverService.dto.spatial.FindNearestDriversResponse;
+import com.swifttrack.DriverService.models.DriverOrderAssignment;
 import com.swifttrack.DriverService.enums.DriverType;
 import com.swifttrack.DriverService.services.DriverLocationService;
 
@@ -55,8 +57,40 @@ public class DriverServiceController {
         System.out.println("Nearest drivers (" + driverType + "): " + nearestDrivers);
 
         // AI dispatch runs in batches of 5 over top 15 nearest drivers.
-        driverLocationService.dispatchNearestDrivers(nearestDrivers, request.orderId(), token);
+        Optional<DriverOrderAssignment> assignment = driverLocationService.dispatchNearestDrivers(nearestDrivers,
+                request.orderId(), token);
 
-        return ResponseEntity.ok(new FindNearestDriversResponse(nearestDrivers));
+        return ResponseEntity.ok(new FindNearestDriversResponse(
+                nearestDrivers,
+                assignment.isPresent(),
+                assignment.map(DriverOrderAssignment::getDriverId).orElse(null)));
+    }
+
+    @PostMapping("/assign-nearest/internal")
+    @Operation(summary = "Assign nearest driver (internal)", description = "Internal async assignment endpoint for OrderService")
+    public ResponseEntity<FindNearestDriversResponse> assignNearestDriversInternal(
+            @Valid @RequestBody FindNearestDriversRequest request) {
+
+        String tenantId = request.tenantId() != null ? request.tenantId().toString() : null;
+        DriverType driverType = request.driverType();
+
+        if (driverType == DriverType.TENANT_DRIVER && tenantId == null) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        List<String> nearestDrivers = driverLocationService.findNearestDrivers(
+                request.pickupLat(),
+                request.pickupLon(),
+                DEFAULT_K,
+                tenantId,
+                driverType);
+
+        Optional<DriverOrderAssignment> assignment = driverLocationService.dispatchNearestDrivers(nearestDrivers,
+                request.orderId(), null);
+
+        return ResponseEntity.ok(new FindNearestDriversResponse(
+                nearestDrivers,
+                assignment.isPresent(),
+                assignment.map(DriverOrderAssignment::getDriverId).orElse(null)));
     }
 }

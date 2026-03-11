@@ -100,6 +100,7 @@ public class OrderEventConsumer {
             Order order = orderRepository.findById(event.getOrderId())
                     .orElseThrow(() -> new RuntimeException("Order not found: " + event.getOrderId()));
             order.setOrderStatus(OrderStatus.ASSIGNED);
+            order.setAssignedDriverId(event.getDriverId());
             orderRepository.save(order);
         } catch (Exception e) {
             System.err.println("Error updating order status: " + e.getMessage());
@@ -229,9 +230,10 @@ public class OrderEventConsumer {
                     .orderId(order.getId())
                     .tenantId(order.getTenantId().toString())
                     .providerCode(order.getSelectedProviderCode())
+                    .driverId(order.getAssignedDriverId())
                     .amount(order.getPaymentAmount())
                     .orderType(order.getOrderType() != null ? order.getOrderType().name() : null)
-                    .deliverySource("EXTERNAL_PROVIDER") // Default; can be enhanced later
+                    .deliverySource(resolveDeliverySource(order.getSelectedType()))
                     .distanceKm(distanceKm)
                     .deliveredAt(LocalDateTime.now())
                     .build();
@@ -242,6 +244,17 @@ public class OrderEventConsumer {
             System.err.println("Error publishing order-delivered event: " + e.getMessage());
             e.printStackTrace();
         }
+    }
+
+    private String resolveDeliverySource(String selectedType) {
+        if (selectedType == null) {
+            return "EXTERNAL_PROVIDER";
+        }
+        return switch (selectedType.toUpperCase()) {
+            case "TENANT_DRIVERS" -> "TENANT_DRIVER";
+            case "LOCAL_DRIVERS" -> "GIG_DRIVER";
+            default -> "EXTERNAL_PROVIDER";
+        };
     }
 
     private void saveLocation(Order order, LocationType type, Double lat, Double lng,

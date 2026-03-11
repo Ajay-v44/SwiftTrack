@@ -21,7 +21,10 @@ public class PricingSnapshot {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "order_id", nullable = false, unique = true)
+    @Column(name = "quote_session_id", unique = true)
+    private UUID quoteSessionId;
+
+    @Column(name = "order_id", unique = true)
     private UUID orderId;
 
     @Column(name = "provider_cost", precision = 14, scale = 2)

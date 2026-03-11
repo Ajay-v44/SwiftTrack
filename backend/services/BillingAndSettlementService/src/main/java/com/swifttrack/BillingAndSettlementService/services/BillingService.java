@@ -39,6 +39,14 @@ public class BillingService {
         };
     }
 
+    @Transactional
+    public void bindOrder(UUID quoteSessionId, UUID orderId) {
+        if (quoteSessionId == null || orderId == null) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "quoteSessionId and orderId are required");
+        }
+        pricingSnapshotService.bindOrder(quoteSessionId, orderId);
+    }
+
     private QuoteResponse getTenantDriverQuote(UUID userId, BigDecimal distance, UUID quoteSessionId) {
         UserMarginConfigResponse marginConfig = marginConfigService.getActiveConfigByUserId(userId,
                 MarginType.DISTANCE_RATE);
@@ -148,6 +156,9 @@ public class BillingService {
         }
         if (request.getUserId() == null) {
             throw new CustomException(HttpStatus.BAD_REQUEST, "userId is required");
+        }
+        if (request.getQuoteSessionId() == null) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "quoteSessionId is required");
         }
         if (request.getSelectedType() == null || request.getSelectedType().isBlank()) {
             throw new CustomException(HttpStatus.BAD_REQUEST, "selectedType is required");

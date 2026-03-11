@@ -2,6 +2,7 @@ package com.swifttrack.BillingAndSettlementService.controllers;
 
 import com.swifttrack.BillingAndSettlementService.dto.QuoteRequest;
 import com.swifttrack.BillingAndSettlementService.dto.QuoteResponse;
+import com.swifttrack.BillingAndSettlementService.dto.BindQuoteOrderRequest;
 import com.swifttrack.BillingAndSettlementService.services.BillingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,5 +18,11 @@ public class BillingController {
     @PostMapping("/getQuote")
     public ResponseEntity<QuoteResponse> getQuote(@RequestBody QuoteRequest request) {
         return ResponseEntity.ok(billingService.getQuote(request));
+    }
+
+    @PostMapping("/bind-order")
+    public ResponseEntity<Void> bindOrder(@RequestBody BindQuoteOrderRequest request) {
+        billingService.bindOrder(request.getQuoteSessionId(), request.getOrderId());
+        return ResponseEntity.ok().build();
     }
 }

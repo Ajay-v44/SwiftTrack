@@ -1,0 +1,29 @@
+databaseChangeLog:
+  - changeSet:
+      id: 009-add-quote-session-id-to-pricing-snapshots
+      author: swifttrack
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                schemaName: billing
+                tableName: pricing_snapshots
+                columnName: quote_session_id
+      changes:
+        - addColumn:
+            schemaName: billing
+            tableName: pricing_snapshots
+            columns:
+              - column:
+                  name: quote_session_id
+                  type: uuid
+        - addUniqueConstraint:
+            schemaName: billing
+            tableName: pricing_snapshots
+            columnNames: quote_session_id
+            constraintName: uq_ps_quote_session_id
+        - dropNotNullConstraint:
+            schemaName: billing
+            tableName: pricing_snapshots
+            columnName: order_id
+            columnDataType: uuid

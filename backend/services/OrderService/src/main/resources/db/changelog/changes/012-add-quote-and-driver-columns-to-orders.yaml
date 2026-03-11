@@ -1,0 +1,29 @@
+databaseChangeLog:
+  - changeSet:
+      id: 012-add-quote-and-driver-columns-to-orders
+      author: swifttrack
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: orders
+                columnName: quote_session_id
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: quote_session_id
+                  type: uuid
+              - column:
+                  name: selected_type
+                  type: varchar(50)
+              - column:
+                  name: assigned_driver_id
+                  type: uuid
+        - createIndex:
+            indexName: idx_orders_quote_session_id
+            tableName: orders
+            columns:
+              - column:
+                  name: quote_session_id

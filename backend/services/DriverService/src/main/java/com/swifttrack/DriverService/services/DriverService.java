@@ -198,30 +198,6 @@ public class DriverService {
 
     @Transactional
     public DriverOrderAssignment assignOrder(String token, UUID driverId, UUID orderId) {
-        // Check if order exists in Redis cache first
-        String cacheKey = "orders::" + orderId.toString();
-        com.swifttrack.dto.orderDto.OrderDetailsResponse cachedOrder = null;
-
-        try {
-            cachedOrder = (com.swifttrack.dto.orderDto.OrderDetailsResponse) redisTemplate.opsForValue().get(cacheKey);
-        } catch (Exception e) {
-            log.warn("Error fetching order from Redis: {}", e.getMessage());
-        }
-
-        if (cachedOrder != null) {
-            System.out.println("Fetching order from Redis Cache: " + cacheKey);
-        } else {
-            System.out.println("Cache miss. Fetching from Order Service: " + cacheKey);
-            try {
-                cachedOrder = orderInterface.getOrderById(token, orderId).getBody();
-                if (cachedOrder != null) {
-                    redisTemplate.opsForValue().set(cacheKey, cachedOrder);
-                }
-            } catch (Exception e) {
-                throw new RuntimeException("Order not found or invalid Order ID");
-            }
-        }
-
         if (driverAssignmentRepository.findByOrderId(orderId).isPresent()) {
             throw new RuntimeException("Order is already assigned to a driver");
         }
@@ -270,6 +246,7 @@ public class DriverService {
             // Create and Send DriverAssignedEvent
             com.swifttrack.events.DriverAssignedEvent event = com.swifttrack.events.DriverAssignedEvent.builder()
                     .orderId(orderId)
+                    .driverId(assignment.getDriverId())
                     .driverName(userDetails.name())
                     .driverPhone(userDetails.mobile())
                     .vehicleNumber(vehicleDetails.getLicenseNumber()) // Assuming licenseNumber is vehicle number
@@ -457,7 +434,7 @@ public class DriverService {
         } else if (orderStatus.equals("OUT_FOR_DELIVERY") && request.status() != TrackingStatus.DELIVERED) {
             throw new RuntimeException("Invalid status transition, order is not out for delivery");
         }
-        if (orderStatus.equals("DELIVERED")) {
+        if (request.status() == TrackingStatus.DELIVERED) {
             DriverStatus driverStatus = driverStatusRepository.findById(userDetails.id())
                     .orElseThrow(() -> new RuntimeException("Driver Status not found"));
             driverStatus.setStatus(DriverOnlineStatus.ONLINE);

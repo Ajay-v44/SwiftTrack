@@ -169,7 +169,7 @@ public class AccountService {
         verifyPrivilege(token, account.getUserId());
     }
 
-    public List<Account> getAccountsByUserId(String token, UUID userId) {
+    public Account getAccountsByUserId(String token, UUID userId) {
         verifyPrivilege(token, userId);
         return accountRepository.findByUserId(userId);
     }
@@ -189,14 +189,9 @@ public class AccountService {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0)
             throw new CustomException(HttpStatus.BAD_REQUEST, "Amount must be greater than zero");
 
-        List<Account> accounts = accountRepository.findByUserId(userId);
-        if (accounts.isEmpty())
-            throw new CustomException(HttpStatus.NOT_FOUND, "User account not found");
-
-        Account account = accounts.stream()
-                .filter(a -> Boolean.TRUE.equals(a.getIsActive()))
-                .findFirst()
-                .orElse(accounts.get(0));
+        Account account = accountRepository.findByUserId(userId);
+        if (account == null || !account.getIsActive())
+            throw new CustomException(HttpStatus.NOT_FOUND, "User account not found or inactive");
 
         ledgerService.credit(
                 account.getId(),
