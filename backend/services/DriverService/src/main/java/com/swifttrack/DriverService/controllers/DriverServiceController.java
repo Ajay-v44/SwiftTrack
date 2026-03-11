@@ -2,6 +2,8 @@ package com.swifttrack.DriverService.controllers;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.ArrayList;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -53,6 +55,7 @@ public class DriverServiceController {
                 DEFAULT_K,
                 tenantId,
                 driverType);
+        nearestDrivers = prioritizeExcludedDriverLast(nearestDrivers, request.excludedDriverId());
 
         System.out.println("Nearest drivers (" + driverType + "): " + nearestDrivers);
 
@@ -84,6 +87,7 @@ public class DriverServiceController {
                 DEFAULT_K,
                 tenantId,
                 driverType);
+        nearestDrivers = prioritizeExcludedDriverLast(nearestDrivers, request.excludedDriverId());
 
         Optional<DriverOrderAssignment> assignment = driverLocationService.dispatchNearestDrivers(nearestDrivers,
                 request.orderId(), null);
@@ -92,5 +96,18 @@ public class DriverServiceController {
                 nearestDrivers,
                 assignment.isPresent(),
                 assignment.map(DriverOrderAssignment::getDriverId).orElse(null)));
+    }
+
+    private List<String> prioritizeExcludedDriverLast(List<String> nearestDrivers, UUID excludedDriverId) {
+        if (excludedDriverId == null || nearestDrivers == null || nearestDrivers.isEmpty()) {
+            return nearestDrivers;
+        }
+        List<String> prioritized = new ArrayList<>(nearestDrivers);
+        String excluded = excludedDriverId.toString();
+        if (!prioritized.remove(excluded)) {
+            return prioritized;
+        }
+        prioritized.add(excluded);
+        return prioritized;
     }
 }
