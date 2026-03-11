@@ -11,4 +11,6 @@ import java.util.UUID;
 public interface PricingSnapshotRepository extends JpaRepository<PricingSnapshot, UUID> {
 
     Optional<PricingSnapshot> findByOrderId(UUID orderId);
+
+    Optional<PricingSnapshot> findByQuoteSessionId(UUID quoteSessionId);
 }

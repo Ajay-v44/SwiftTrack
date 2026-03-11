@@ -20,11 +20,13 @@ public class PricingSnapshotService {
     private final PricingSnapshotRepository pricingSnapshotRepository;
 
     @Transactional
-    public PricingSnapshot createSnapshot(UUID orderId, BigDecimal providerCost, BigDecimal driverCost,
+    public PricingSnapshot createSnapshot(UUID quoteSessionId, BigDecimal providerCost, BigDecimal driverCost,
             BigDecimal platformMargin, BigDecimal tenantCharge,
             PricingSource pricingSource) {
-        // Check if snapshot already exists for this order
-        Optional<PricingSnapshot> existing = pricingSnapshotRepository.findByOrderId(orderId);
+        if (quoteSessionId == null) {
+            throw new RuntimeException("quoteSessionId is required to create pricing snapshot");
+        }
+        Optional<PricingSnapshot> existing = pricingSnapshotRepository.findByQuoteSessionId(quoteSessionId);
         if (existing.isPresent()) {
             existing.get().setProviderCost(providerCost);
             existing.get().setDriverCost(driverCost);
@@ -32,13 +34,13 @@ public class PricingSnapshotService {
             existing.get().setTenantCharge(tenantCharge);
             existing.get().setPricingSource(pricingSource);
             PricingSnapshot saved = pricingSnapshotRepository.save(existing.get());
-            log.info("Updated pricing snapshot id={} for orderId={} source={} tenantCharge={} margin={}",
-                    saved.getId(), orderId, pricingSource, tenantCharge, platformMargin);
+            log.info("Updated pricing snapshot id={} for quoteSessionId={} source={} tenantCharge={} margin={}",
+                    saved.getId(), quoteSessionId, pricingSource, tenantCharge, platformMargin);
             return saved;
         }
 
         PricingSnapshot snapshot = PricingSnapshot.builder()
-                .orderId(orderId)
+                .quoteSessionId(quoteSessionId)
                 .providerCost(providerCost)
                 .driverCost(driverCost)
                 .platformMargin(platformMargin)
@@ -47,12 +49,27 @@ public class PricingSnapshotService {
                 .build();
 
         PricingSnapshot saved = pricingSnapshotRepository.save(snapshot);
-        log.info("Created pricing snapshot id={} for orderId={} source={} tenantCharge={} margin={}",
-                saved.getId(), orderId, pricingSource, tenantCharge, platformMargin);
+        log.info("Created pricing snapshot id={} for quoteSessionId={} source={} tenantCharge={} margin={}",
+                saved.getId(), quoteSessionId, pricingSource, tenantCharge, platformMargin);
         return saved;
     }
 
     public Optional<PricingSnapshot> getByOrderId(UUID orderId) {
         return pricingSnapshotRepository.findByOrderId(orderId);
+    }
+
+    public Optional<PricingSnapshot> getByQuoteSessionId(UUID quoteSessionId) {
+        return pricingSnapshotRepository.findByQuoteSessionId(quoteSessionId);
+    }
+
+    @Transactional
+    public PricingSnapshot bindOrder(UUID quoteSessionId, UUID orderId) {
+        PricingSnapshot snapshot = pricingSnapshotRepository.findByQuoteSessionId(quoteSessionId)
+                .orElseThrow(() -> new RuntimeException("Pricing snapshot not found for quoteSessionId: " + quoteSessionId));
+        if (snapshot.getOrderId() != null && !snapshot.getOrderId().equals(orderId)) {
+            throw new RuntimeException("quoteSessionId is already bound to a different order");
+        }
+        snapshot.setOrderId(orderId);
+        return pricingSnapshotRepository.save(snapshot);
     }
 }

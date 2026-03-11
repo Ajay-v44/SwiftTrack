@@ -41,6 +41,7 @@ import com.swifttrack.OrderService.models.enums.OrderType;
 import com.swifttrack.OrderService.models.enums.QuoteSessionStatus;
 import com.swifttrack.OrderService.repositories.OrderQuoteRepository;
 import com.swifttrack.OrderService.repositories.OrderQuoteSessionRepository;
+import com.swifttrack.OrderService.repositories.OrderLocationRepository;
 import com.swifttrack.OrderService.repositories.OrderRepository;
 import com.swifttrack.OrderService.repositories.OrderTrackingStateRepository;
 import com.swifttrack.dto.map.ApiResponse;
@@ -59,6 +60,8 @@ import com.swifttrack.dto.providerDto.QuoteInput;
 import com.swifttrack.dto.providerDto.QuoteResponse;
 import com.swifttrack.dto.tenantDto.TenantDeliveryConf;
 import com.swifttrack.dto.billingDto.QuoteRequest;
+import com.swifttrack.dto.billingDto.BindQuoteOrderRequest;
+import com.swifttrack.events.InternalDriverAssignmentEvent;
 
 import jakarta.transaction.Transactional;
 
@@ -67,6 +70,8 @@ import com.swifttrack.dto.TokenResponse;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 @Transactional
@@ -76,6 +81,7 @@ public class OrderServices {
         TenantInterface tenantInterface;
         BillingInterface billingInterface;
         OrderRepository orderRepository;
+        OrderLocationRepository orderLocationRepository;
         RestTemplate restTemplate;
         OrderQuoteSessionRepository orderQuoteSessionRepository;
         OrderQuoteRepository orderQuoteRepository;
@@ -90,7 +96,8 @@ public class OrderServices {
 
         public OrderServices(ProviderInterface providerInterface, MapInterface mapInterface,
                         TenantInterface tenantInterface, BillingInterface billingInterface,
-                        OrderRepository orderRepository, RestTemplate restTemplate,
+                        OrderRepository orderRepository, OrderLocationRepository orderLocationRepository,
+                        RestTemplate restTemplate,
                         OrderQuoteSessionRepository orderQuoteSessionRepository,
                         OrderQuoteRepository orderQuoteRepository, AuthInterface authInterface,
                         OrderTrackingStateRepository orderTrackingStateRepository,
@@ -100,6 +107,7 @@ public class OrderServices {
                 this.tenantInterface = tenantInterface;
                 this.billingInterface = billingInterface;
                 this.orderRepository = orderRepository;
+                this.orderLocationRepository = orderLocationRepository;
                 this.restTemplate = restTemplate;
                 this.orderQuoteSessionRepository = orderQuoteSessionRepository;
                 this.orderQuoteRepository = orderQuoteRepository;
@@ -376,16 +384,32 @@ public class OrderServices {
         public FinalCreateOrderResponse createOrder(String token, UUID quoteSessionId,
                         CreateOrderRequest createOrderRequest) {
                 TokenResponse userDetails = authInterface.getUserDetails(token).getBody();
-                CreateOrderResponse response = providerInterface.createOrder(token, quoteSessionId, createOrderRequest);
+                if (userDetails == null || userDetails.tenantId().isEmpty()) {
+                        throw new RuntimeException("Invalid user or tenant context");
+                }
+
+                OrderQuoteSession quoteSession = orderQuoteSessionRepository
+                                .findActiveSessionById(quoteSessionId, LocalDateTime.now())
+                                .orElseThrow(() -> new RuntimeException("Quote session not found or expired"));
+                if (!quoteSession.getTenantId().equals(userDetails.tenantId().get())) {
+                        throw new RuntimeException("Quote session does not belong to tenant");
+                }
+                OrderQuote selectedQuote = orderQuoteRepository.findByQuoteSessionIdAndIsSelectedTrue(quoteSessionId)
+                                .orElseThrow(() -> new RuntimeException("No selected quote found for quote session"));
+
+                String selectedType = Optional.ofNullable(selectedQuote.getSelectedType())
+                                .orElse("EXTERNAL_PROVIDERS")
+                                .toUpperCase();
 
                 Order order = new Order();
                 order.setTenantId(userDetails.tenantId().get());
                 order.setCustomerReferenceId(createOrderRequest.orderReference());
                 order.setOrderStatus(OrderStatus.CREATED);
                 order.setPaymentType(createOrderRequest.paymentType());
-                order.setPaymentAmount(response.totalAmount());
-                order.setSelectedProviderCode(response.providerCode());
-                order.setProviderOrderId(response.orderId());
+                order.setPaymentAmount(selectedQuote.getPrice());
+                order.setSelectedProviderCode(selectedQuote.getProviderCode());
+                order.setQuoteSessionId(quoteSession.getId());
+                order.setSelectedType(selectedType);
                 order.setCreatedBy(userDetails.id());
                 order.setCreatedAt(LocalDateTime.now());
                 order.setUpdatedAt(LocalDateTime.now());
@@ -402,41 +426,113 @@ public class OrderServices {
 
                 orderRepository.save(order);
 
-                OrderCreatedEvent.OrderCreatedEventBuilder eventBuilder = OrderCreatedEvent
-                                .builder()
+                if ("EXTERNAL_PROVIDERS".equals(selectedType)) {
+                        CreateOrderResponse providerResponse = providerInterface.createOrder(token, quoteSessionId,
+                                        createOrderRequest);
+                        order.setPaymentAmount(providerResponse.totalAmount());
+                        order.setSelectedProviderCode(providerResponse.providerCode());
+                        order.setProviderOrderId(providerResponse.orderId());
+                        orderRepository.save(order);
+                } else {
+                        saveOrderLocations(order, createOrderRequest);
+                        publishInternalAssignmentAfterCommit(order, selectedType);
+                }
+                billingInterface.bindOrder(new BindQuoteOrderRequest(quoteSessionId, order.getId()));
+
+                if ("EXTERNAL_PROVIDERS".equals(selectedType)) {
+                        OrderCreatedEvent.OrderCreatedEventBuilder eventBuilder = OrderCreatedEvent
+                                        .builder()
+                                        .orderId(order.getId())
+                                        .customerReferenceId(order.getCustomerReferenceId())
+                                        .providerCode(order.getSelectedProviderCode())
+                                        .amount(order.getPaymentAmount())
+                                        .tenantId(order.getTenantId().toString())
+                                        .createdAt(order.getCreatedAt())
+                                        .orderStatus(order.getOrderStatus().name())
+                                        .pickupLat(order.getPickupLatitude().doubleValue())
+                                        .pickupLng(order.getPickupLongitude().doubleValue())
+                                        .dropoffLat(order.getDropLatitude().doubleValue())
+                                        .dropoffLng(order.getDropLongitude().doubleValue());
+
+                        if (createOrderRequest.pickup() != null && createOrderRequest.pickup().address() != null) {
+                                var pAddr = createOrderRequest.pickup().address();
+                                eventBuilder.pickupCity(pAddr.city())
+                                                .pickupState(pAddr.state())
+                                                .pickupCountry(pAddr.country())
+                                                .pickupPincode(pAddr.pincode())
+                                                .pickupLocality(pAddr.locality());
+                        }
+
+                        if (createOrderRequest.dropoff() != null && createOrderRequest.dropoff().address() != null) {
+                                var dAddr = createOrderRequest.dropoff().address();
+                                eventBuilder.dropCity(dAddr.city())
+                                                .dropState(dAddr.state())
+                                                .dropCountry(dAddr.country())
+                                                .dropPincode(dAddr.pincode())
+                                                .dropLocality(dAddr.locality());
+                        }
+
+                        kafkaTemplate.send("order-created", eventBuilder.build());
+                }
+
+                return new FinalCreateOrderResponse(order.getId(), order.getSelectedProviderCode(),
+                                order.getPaymentAmount());
+        }
+
+        private void publishInternalAssignmentAfterCommit(Order order, String selectedType) {
+                if (order.getPickupLatitude() == null || order.getPickupLongitude() == null) {
+                        return;
+                }
+                InternalDriverAssignmentEvent event = InternalDriverAssignmentEvent.builder()
                                 .orderId(order.getId())
-                                .customerReferenceId(order.getCustomerReferenceId())
-                                .providerCode(order.getSelectedProviderCode())
-                                .amount(order.getPaymentAmount())
-                                .tenantId(order.getTenantId().toString())
-                                .createdAt(order.getCreatedAt())
-                                .orderStatus(order.getOrderStatus().name())
+                                .tenantId(order.getTenantId())
+                                .selectedType(selectedType)
                                 .pickupLat(order.getPickupLatitude().doubleValue())
                                 .pickupLng(order.getPickupLongitude().doubleValue())
-                                .dropoffLat(order.getDropLatitude().doubleValue())
-                                .dropoffLng(order.getDropLongitude().doubleValue());
+                                .attempt(0)
+                                .build();
 
+                if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                                @Override
+                                public void afterCommit() {
+                                        kafkaTemplate.send("order-driver-assignment", event);
+                                }
+                        });
+                } else {
+                        kafkaTemplate.send("order-driver-assignment", event);
+                }
+        }
+
+        private void saveOrderLocations(Order order, CreateOrderRequest createOrderRequest) {
                 if (createOrderRequest.pickup() != null && createOrderRequest.pickup().address() != null) {
                         var pAddr = createOrderRequest.pickup().address();
-                        eventBuilder.pickupCity(pAddr.city())
-                                        .pickupState(pAddr.state())
-                                        .pickupCountry(pAddr.country())
-                                        .pickupPincode(pAddr.pincode())
-                                        .pickupLocality(pAddr.locality());
+                        OrderLocation pickup = new OrderLocation();
+                        pickup.setOrder(order);
+                        pickup.setLocationType(LocationType.PICKUP);
+                        pickup.setLatitude(BigDecimal.valueOf(pAddr.latitude()));
+                        pickup.setLongitude(BigDecimal.valueOf(pAddr.longitude()));
+                        pickup.setCity(pAddr.city());
+                        pickup.setState(pAddr.state());
+                        pickup.setCountry(pAddr.country());
+                        pickup.setPincode(pAddr.pincode());
+                        pickup.setLocality(pAddr.locality());
+                        orderLocationRepository.save(pickup);
                 }
-
                 if (createOrderRequest.dropoff() != null && createOrderRequest.dropoff().address() != null) {
                         var dAddr = createOrderRequest.dropoff().address();
-                        eventBuilder.dropCity(dAddr.city())
-                                        .dropState(dAddr.state())
-                                        .dropCountry(dAddr.country())
-                                        .dropPincode(dAddr.pincode())
-                                        .dropLocality(dAddr.locality());
+                        OrderLocation drop = new OrderLocation();
+                        drop.setOrder(order);
+                        drop.setLocationType(LocationType.DROP);
+                        drop.setLatitude(BigDecimal.valueOf(dAddr.latitude()));
+                        drop.setLongitude(BigDecimal.valueOf(dAddr.longitude()));
+                        drop.setCity(dAddr.city());
+                        drop.setState(dAddr.state());
+                        drop.setCountry(dAddr.country());
+                        drop.setPincode(dAddr.pincode());
+                        drop.setLocality(dAddr.locality());
+                        orderLocationRepository.save(drop);
                 }
-
-                kafkaTemplate.send("order-created", eventBuilder.build());
-
-                return new FinalCreateOrderResponse(order.getId(), response.providerCode(), response.totalAmount());
         }
 
         @CacheEvict(value = { "orderStatus", "orders" }, key = "#orderId")
@@ -498,13 +594,15 @@ public class OrderServices {
                 return result;
         }
 
-        @Cacheable(value = "orderStatus", key = "#orderId")
+        @Cacheable(value = "orderStatus", key = "#orderId", unless = "#result == null")
         public String getOrderStatus(String token, UUID orderId) {
                 OrderTrackingState orderTrackingState = orderTrackingStateRepository.findById(orderId).orElse(null);
-                if (orderTrackingState == null) {
-                        return null;
+                if (orderTrackingState != null) {
+                        return orderTrackingState.getCurrentStatus().name();
                 }
-                return orderTrackingState.getCurrentStatus().name();
+                return orderRepository.findById(orderId)
+                                .map(order -> order.getOrderStatus().name())
+                                .orElse(null);
         }
 
         @Cacheable(value = "orders", key = "#orderId")

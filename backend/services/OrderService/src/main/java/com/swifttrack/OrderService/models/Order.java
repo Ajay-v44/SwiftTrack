@@ -64,6 +64,15 @@ public class Order {
     @Column(name = "provider_order_id", length = 100)
     private String providerOrderId;
 
+    @Column(name = "quote_session_id")
+    private UUID quoteSessionId;
+
+    @Column(name = "selected_type", length = 50)
+    private String selectedType;
+
+    @Column(name = "assigned_driver_id")
+    private UUID assignedDriverId;
+
     @Column(name = "created_by")
     private UUID createdBy;
 

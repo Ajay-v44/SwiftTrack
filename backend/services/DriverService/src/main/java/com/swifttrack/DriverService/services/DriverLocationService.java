@@ -120,6 +120,20 @@ public class DriverLocationService {
             log.debug("AI dispatch rejected batch {}-{}", start, end);
         }
 
+        // Fallback: try nearest candidates directly in order when AI could not assign.
+        for (String driverId : ranked) {
+            try {
+                DriverOrderAssignment assignment = driverService.assignOrder(
+                        token,
+                        UUID.fromString(driverId),
+                        orderId);
+                return Optional.of(assignment);
+            } catch (Exception assignEx) {
+                log.debug("Direct fallback assignment failed for driver {} order {}: {}",
+                        driverId, orderId, assignEx.getMessage());
+            }
+        }
+
         return Optional.empty();
     }
 
