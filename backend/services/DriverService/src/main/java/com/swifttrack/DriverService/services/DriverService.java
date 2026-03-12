@@ -271,7 +271,11 @@ public class DriverService {
             driverAssignmentRepository.delete(assignment);
 
             // Send Driver Canceled Event
-            kafkaProducerUtil.sendMessage("driver-canceled", orderId);
+            kafkaProducerUtil.sendMessage("driver-canceled",
+                    com.swifttrack.events.DriverCanceledEvent.builder()
+                            .orderId(orderId)
+                            .driverId(assignment.getDriverId())
+                            .build());
 
             // Emit performance event for memory embedding (async, non-blocking)
             kafkaProducerUtil.sendMessage("driver-performance",

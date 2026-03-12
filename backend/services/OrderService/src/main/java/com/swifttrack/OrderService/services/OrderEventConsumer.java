@@ -8,6 +8,7 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import com.swifttrack.events.OrderCreatedEvent;
 import com.swifttrack.events.OrderDeliveredEvent;
+import com.swifttrack.events.InternalDriverAssignmentEvent;
 import com.swifttrack.FeignClient.MapInterface;
 import com.swifttrack.OrderService.models.OrderAiFeature;
 import com.swifttrack.OrderService.models.enums.OrderStatus;
@@ -15,6 +16,7 @@ import com.swifttrack.OrderService.repositories.OrderAiFeatureRepository;
 import com.swifttrack.dto.map.ApiResponse;
 import com.swifttrack.dto.map.DistanceResult;
 import com.swifttrack.events.DriverAssignedEvent;
+import com.swifttrack.events.DriverCanceledEvent;
 
 import org.springframework.transaction.annotation.Transactional;
 import com.swifttrack.OrderService.repositories.OrderRepository;
@@ -109,9 +111,11 @@ public class OrderEventConsumer {
 
     }
 
-    @KafkaListener(topics = "driver-canceled", groupId = "order-service-group")
-    @CacheEvict(value = { "orderStatus", "orders" }, key = "#orderId")
-    public void handleDriverCanceled(UUID orderId) {
+    @KafkaListener(topics = "driver-canceled", groupId = "order-service-group", properties = {
+            "spring.json.value.default.type=com.swifttrack.events.DriverCanceledEvent" })
+    @CacheEvict(value = { "orderStatus", "orders" }, key = "#event.orderId")
+    public void handleDriverCanceled(DriverCanceledEvent event) {
+        UUID orderId = event.getOrderId();
         System.out.println("Driver Canceled for Order: " + orderId);
         // Update order status and notify user
         try {
@@ -119,6 +123,23 @@ public class OrderEventConsumer {
                     .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
             order.setOrderStatus(OrderStatus.CREATED);
             orderRepository.save(order);
+
+            if (order.getSelectedType() != null
+                    && ("TENANT_DRIVERS".equalsIgnoreCase(order.getSelectedType())
+                            || "LOCAL_DRIVERS".equalsIgnoreCase(order.getSelectedType()))
+                    && order.getPickupLatitude() != null
+                    && order.getPickupLongitude() != null) {
+                InternalDriverAssignmentEvent assignmentEvent = InternalDriverAssignmentEvent.builder()
+                        .orderId(order.getId())
+                        .tenantId(order.getTenantId())
+                        .selectedType(order.getSelectedType())
+                        .pickupLat(order.getPickupLatitude().doubleValue())
+                        .pickupLng(order.getPickupLongitude().doubleValue())
+                        .excludedDriverId(event.getDriverId())
+                        .attempt(0)
+                        .build();
+                kafkaTemplate.send("order-driver-assignment", assignmentEvent);
+            }
         } catch (Exception e) {
             System.err.println("Error updating order status: " + e.getMessage());
             e.printStackTrace();

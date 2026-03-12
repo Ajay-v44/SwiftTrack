@@ -13,5 +13,6 @@ public record FindNearestDriversRequest(
                 @Min(-180) @Max(180) double pickupLon,
                 @NotNull UUID orderId,
                 @NotNull DriverType driverType,
-                UUID tenantId) {
+                UUID tenantId,
+                UUID excludedDriverId) {
 }

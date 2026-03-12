@@ -435,7 +435,7 @@ public class OrderServices {
                         orderRepository.save(order);
                 } else {
                         saveOrderLocations(order, createOrderRequest);
-                        publishInternalAssignmentAfterCommit(order, selectedType);
+                        publishInternalAssignmentAfterCommit(order, selectedType, null);
                 }
                 billingInterface.bindOrder(new BindQuoteOrderRequest(quoteSessionId, order.getId()));
 
@@ -479,7 +479,7 @@ public class OrderServices {
                                 order.getPaymentAmount());
         }
 
-        private void publishInternalAssignmentAfterCommit(Order order, String selectedType) {
+        private void publishInternalAssignmentAfterCommit(Order order, String selectedType, UUID excludedDriverId) {
                 if (order.getPickupLatitude() == null || order.getPickupLongitude() == null) {
                         return;
                 }
@@ -489,6 +489,7 @@ public class OrderServices {
                                 .selectedType(selectedType)
                                 .pickupLat(order.getPickupLatitude().doubleValue())
                                 .pickupLng(order.getPickupLongitude().doubleValue())
+                                .excludedDriverId(excludedDriverId)
                                 .attempt(0)
                                 .build();
 

@@ -7,5 +7,6 @@ public record AssignNearestDriversRequest(
         double pickupLon,
         UUID orderId,
         String driverType,
-        UUID tenantId) {
+        UUID tenantId,
+        UUID excludedDriverId) {
 }

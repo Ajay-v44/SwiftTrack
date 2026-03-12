@@ -11,12 +11,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class InternalDriverAssignmentEvent {
+public class DriverCanceledEvent {
     private UUID orderId;
-    private UUID tenantId;
-    private String selectedType;
-    private Double pickupLat;
-    private Double pickupLng;
-    private UUID excludedDriverId;
-    private int attempt;
+    private UUID driverId;
 }

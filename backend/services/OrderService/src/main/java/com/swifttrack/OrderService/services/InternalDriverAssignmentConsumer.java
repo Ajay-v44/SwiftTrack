@@ -47,7 +47,8 @@ public class InternalDriverAssignmentConsumer {
                 event.getPickupLng(),
                 event.getOrderId(),
                 tenantDriver ? "TENANT_DRIVER" : "PLATFORM_DRIVER",
-                tenantDriver ? event.getTenantId() : null);
+                tenantDriver ? event.getTenantId() : null,
+                event.getExcludedDriverId());
 
         AssignNearestDriversResponse response = driverInterface.assignNearestDriversInternal(request).getBody();
         if (response != null && response.assigned() && response.assignedDriverId() != null) {
@@ -65,6 +66,7 @@ public class InternalDriverAssignmentConsumer {
                     .selectedType(event.getSelectedType())
                     .pickupLat(event.getPickupLat())
                     .pickupLng(event.getPickupLng())
+                    .excludedDriverId(event.getExcludedDriverId())
                     .attempt(event.getAttempt() + 1)
                     .build();
 
