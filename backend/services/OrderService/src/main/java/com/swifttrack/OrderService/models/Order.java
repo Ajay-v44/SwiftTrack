@@ -73,6 +73,9 @@ public class Order {
     @Column(name = "assigned_driver_id")
     private UUID assignedDriverId;
 
+    @Column(name = "create_order_payload")
+    private String createOrderPayload;
+
     @Column(name = "created_by")
     private UUID createdBy;
 

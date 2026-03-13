@@ -23,12 +23,22 @@ public interface ProviderInterface {
         @GetMapping("/api/providers/v1/getTenantProviders")
         public List<GetProviders> getTenantProviders(@RequestHeader String token);
 
-        @GetMapping("/api/provider/orders/v1/getQuote")
+        @GetMapping("/api/providers/v1/internal/getTenantProviders")
+        public List<GetProviders> getTenantProvidersByTenantId(@RequestParam UUID tenantId);
+
+        @PostMapping("/api/provider/orders/v1/getQuote")
         public QuoteResponse getQuote(@RequestHeader String token, @RequestParam String providerCode,
                         @RequestBody QuoteInput quoteInput);
 
-        @GetMapping("/api/provider/orders/v1/createOrder")
+        @PostMapping("/api/provider/orders/v1/internal/getQuote")
+        public QuoteResponse getQuoteInternal(@RequestParam String providerCode, @RequestBody QuoteInput quoteInput);
+
+        @PostMapping("/api/provider/orders/v1/createOrder")
         public CreateOrderResponse createOrder(@RequestHeader String token, @RequestParam UUID quoteSessionId,
+                        @RequestBody CreateOrderRequest createOrderRequest);
+
+        @PostMapping("/api/provider/orders/v1/internal/createOrder")
+        public CreateOrderResponse createOrderInternal(@RequestParam String providerCode,
                         @RequestBody CreateOrderRequest createOrderRequest);
 
         @PostMapping("/api/provider/orders/v1/cancelOrder")

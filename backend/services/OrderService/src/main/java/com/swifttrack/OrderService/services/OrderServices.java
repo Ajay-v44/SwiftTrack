@@ -72,6 +72,7 @@ import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
 @Transactional
@@ -80,6 +81,7 @@ public class OrderServices {
         MapInterface mapInterface;
         TenantInterface tenantInterface;
         BillingInterface billingInterface;
+        ObjectMapper objectMapper;
         OrderRepository orderRepository;
         OrderLocationRepository orderLocationRepository;
         RestTemplate restTemplate;
@@ -96,7 +98,7 @@ public class OrderServices {
 
         public OrderServices(ProviderInterface providerInterface, MapInterface mapInterface,
                         TenantInterface tenantInterface, BillingInterface billingInterface,
-                        OrderRepository orderRepository, OrderLocationRepository orderLocationRepository,
+                        ObjectMapper objectMapper, OrderRepository orderRepository, OrderLocationRepository orderLocationRepository,
                         RestTemplate restTemplate,
                         OrderQuoteSessionRepository orderQuoteSessionRepository,
                         OrderQuoteRepository orderQuoteRepository, AuthInterface authInterface,
@@ -106,6 +108,7 @@ public class OrderServices {
                 this.mapInterface = mapInterface;
                 this.tenantInterface = tenantInterface;
                 this.billingInterface = billingInterface;
+                this.objectMapper = objectMapper;
                 this.orderRepository = orderRepository;
                 this.orderLocationRepository = orderLocationRepository;
                 this.restTemplate = restTemplate;
@@ -414,6 +417,11 @@ public class OrderServices {
                 order.setCreatedAt(LocalDateTime.now());
                 order.setUpdatedAt(LocalDateTime.now());
                 order.setOrderType(OrderType.HYPERLOCAL);
+                try {
+                        order.setCreateOrderPayload(objectMapper.writeValueAsString(createOrderRequest));
+                } catch (Exception e) {
+                        throw new RuntimeException("Failed to serialize create order payload", e);
+                }
 
                 if (createOrderRequest.pickup() != null && createOrderRequest.pickup().address() != null) {
                         order.setPickupLatitude(BigDecimal.valueOf(createOrderRequest.pickup().address().latitude()));
@@ -435,7 +443,10 @@ public class OrderServices {
                         orderRepository.save(order);
                 } else {
                         saveOrderLocations(order, createOrderRequest);
-                        publishInternalAssignmentAfterCommit(order, selectedType, null);
+                        List<String> deliveryOptions = getTenantDeliveryOptions(token, order.getTenantId());
+                        int optionIndex = Math.max(deliveryOptions.indexOf(selectedType), 0);
+                        publishInternalAssignmentAfterCommit(order, selectedType, null, deliveryOptions, optionIndex,
+                                        null);
                 }
                 billingInterface.bindOrder(new BindQuoteOrderRequest(quoteSessionId, order.getId()));
 
@@ -479,7 +490,8 @@ public class OrderServices {
                                 order.getPaymentAmount());
         }
 
-        private void publishInternalAssignmentAfterCommit(Order order, String selectedType, UUID excludedDriverId) {
+        private void publishInternalAssignmentAfterCommit(Order order, String selectedType, UUID excludedDriverId,
+                        List<String> deliveryOptions, Integer optionIndex, BigDecimal distanceKm) {
                 if (order.getPickupLatitude() == null || order.getPickupLongitude() == null) {
                         return;
                 }
@@ -487,8 +499,11 @@ public class OrderServices {
                                 .orderId(order.getId())
                                 .tenantId(order.getTenantId())
                                 .selectedType(selectedType)
+                                .deliveryOptions(deliveryOptions)
+                                .optionIndex(optionIndex)
                                 .pickupLat(order.getPickupLatitude().doubleValue())
                                 .pickupLng(order.getPickupLongitude().doubleValue())
+                                .distanceKm(distanceKm != null ? distanceKm.doubleValue() : null)
                                 .excludedDriverId(excludedDriverId)
                                 .attempt(0)
                                 .build();
@@ -503,6 +518,32 @@ public class OrderServices {
                 } else {
                         kafkaTemplate.send("order-driver-assignment", event);
                 }
+        }
+
+        private List<String> getTenantDeliveryOptions(String token, UUID tenantId) {
+                List<TenantDeliveryConf> deliveryConfig = Optional
+                                .ofNullable(tenantInterface.getTenantDeliveryConfiguration(token))
+                                .map(ResponseEntity::getBody)
+                                .orElse(Collections.emptyList())
+                                .stream()
+                                .sorted(Comparator.comparingInt(TenantDeliveryConf::priority))
+                                .toList();
+
+                if (deliveryConfig.isEmpty()) {
+                        deliveryConfig = Optional
+                                        .ofNullable(tenantInterface.getTenantDeliveryConfigurationByTenantId(tenantId))
+                                        .map(ResponseEntity::getBody)
+                                        .orElse(Collections.emptyList())
+                                        .stream()
+                                        .sorted(Comparator.comparingInt(TenantDeliveryConf::priority))
+                                        .toList();
+                }
+
+                if (deliveryConfig.isEmpty()) {
+                        return List.of("EXTERNAL_PROVIDERS", "LOCAL_DRIVERS", "TENANT_DRIVERS");
+                }
+
+                return deliveryConfig.stream().map(conf -> conf.optionType().toUpperCase()).toList();
         }
 
         private void saveOrderLocations(Order order, CreateOrderRequest createOrderRequest) {

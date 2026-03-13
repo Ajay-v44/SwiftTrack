@@ -143,7 +143,11 @@ public class ProviderService {
         TokenResponse tokenResponse = authInterface.getUserDetails(token).getBody();
         if (tokenResponse == null || tokenResponse.tenantId() == null || tokenResponse.tenantId().isEmpty())
             throw new CustomException(HttpStatus.FORBIDDEN, "Unauthorized");
-        return tenantProviderConfigRepository.findByTenantId(tokenResponse.tenantId().get()).stream()
+        return getTenantProvidersByTenantId(tokenResponse.tenantId().get());
+    }
+
+    public List<GetProviders> getTenantProvidersByTenantId(UUID tenantId) {
+        return tenantProviderConfigRepository.findByTenantId(tenantId).stream()
                 .map(tenantProviderConfig -> new GetProviders(tenantProviderConfig.getProvider().getId(),
                         tenantProviderConfig.getProvider().getProviderName(),
                         tenantProviderConfig.getProvider().getProviderCode(),

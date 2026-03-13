@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/tenant-delivery")
@@ -55,5 +56,11 @@ public class TenantDeliveryConfigurationController {
     @ApiResponse(responseCode = "200", description = "Successfully retrieved tenant delivery configuration")
     public ResponseEntity<List<TenantDeliveryConf>> getTenantDeliveryConfiguration(@RequestHeader String token) {
         return ResponseEntity.ok(tenantDeliveryConfigurationService.getTenantDeliveryConfiguration(token));
+    }
+
+    @GetMapping("/v1/configure/internal")
+    @Operation(summary = "Get tenant delivery configuration (internal)", description = "Internal endpoint to fetch delivery configuration by tenantId")
+    public ResponseEntity<List<TenantDeliveryConf>> getTenantDeliveryConfigurationInternal(@RequestParam UUID tenantId) {
+        return ResponseEntity.ok(tenantDeliveryConfigurationService.getTenantDeliveryConfigurationByTenantId(tenantId));
     }
 }

@@ -125,6 +125,9 @@ public class UberDirectAdapter implements DeliveryProvider {
 
                 try {
                         log.info("Fetching Uber Direct quote");
+                        if (env.equals("dev")) {
+                                return new QuoteResponse(100, "INR", "UBER_DIRECT");
+                        }
 
                         // Build request with static data and dynamic times
                         Instant now = Instant.now();
@@ -178,7 +181,7 @@ public class UberDirectAdapter implements DeliveryProvider {
                                                 ? quoteResponse.getCurrencyType()
                                                 : "INR";
 
-                                return new QuoteResponse(priceInRupees, currency);
+                                return new QuoteResponse(priceInRupees, currency, quoteResponse.getId());
                         } else {
                                 log.error("Failed to fetch Uber Direct quote: HTTP {}", response.getStatusCode());
                                 throw new RuntimeException("Failed to fetch Uber Direct quote");

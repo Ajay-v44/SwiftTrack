@@ -30,6 +30,10 @@ public class ProviderOrderServices {
     }
 
     public QuoteResponse getQuote(String token, String providerCode, QuoteInput quoteInput) {
+        return getQuoteInternal(providerCode, quoteInput);
+    }
+
+    public QuoteResponse getQuoteInternal(String providerCode, QuoteInput quoteInput) {
         System.out.println("Provider Code: " + providerCode);
         if (providerCode.toUpperCase().equals("PORTER")) {
             return porterAdapter.getQuote(quoteInput);
@@ -54,6 +58,16 @@ public class ProviderOrderServices {
             }
         }
         return null;
+    }
+
+    public CreateOrderResponse createOrderInternal(String providerCode, CreateOrderRequest createOrderRequest) {
+        if (providerCode.toUpperCase().equals("PORTER")) {
+            return porterAdapter.createOrder(createOrderRequest);
+        } else if (providerCode.toUpperCase().equals("UBER_DIRECT")) {
+            return uberDirectAdapter.createOrder(createOrderRequest);
+        } else {
+            throw new RuntimeException("Invalid provider code");
+        }
     }
 
     public Message cancelOrder(String token, String orderId, String providerCode) {

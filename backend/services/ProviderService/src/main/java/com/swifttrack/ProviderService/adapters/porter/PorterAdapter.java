@@ -54,9 +54,9 @@ public class PorterAdapter implements DeliveryProvider {
     public QuoteResponse getQuote(QuoteInput quoteInput) {
         try {
             System.out.println("env: " + env);
-            // if (env.equals("dev")) {
-            // return new QuoteResponse(120.0f, "INR");
-            // }
+            if (env.equals("dev")) {
+                return new QuoteResponse(120.0f, "INR");
+            }
             // Build request object
             PorterGetQuoteInp porterGetQuoteInp = new PorterGetQuoteInp();
             porterGetQuoteInp.setPickupDetails(
@@ -90,7 +90,7 @@ public class PorterAdapter implements DeliveryProvider {
                             float priceInRupees = vehicle.getFare().getMinorAmount() / 100.0f;
                             String currency = vehicle.getFare().getCurrency() != null ? vehicle.getFare().getCurrency()
                                     : "INR";
-                            return new QuoteResponse(priceInRupees, currency);
+                            return new QuoteResponse(priceInRupees, currency, null);
                         }
                     }
                 }
