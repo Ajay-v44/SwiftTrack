@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: 013-add-create-order-payload-to-orders
+      author: swifttrack
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: orders
+                columnName: create_order_payload
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: create_order_payload
+                  type: text

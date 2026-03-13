@@ -175,6 +175,10 @@ public class TenantDeliveryConfigurationService {
 
     public List<TenantDeliveryConf> getTenantDeliveryConfiguration(String token) {
         UUID tenantId = getAuthorizedTenantId(token);
+        return getTenantDeliveryConfigurationByTenantId(tenantId);
+    }
+
+    public List<TenantDeliveryConf> getTenantDeliveryConfigurationByTenantId(UUID tenantId) {
         List<TenantDeliveryConfiguration> configurations = tenantDeliveryConfigurationRepository
                 .findByTenantId(tenantId);
         return configurations.stream()

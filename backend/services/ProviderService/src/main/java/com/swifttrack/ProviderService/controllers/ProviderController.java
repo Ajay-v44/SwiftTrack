@@ -99,6 +99,11 @@ public class ProviderController {
         return ResponseEntity.ok(providerService.getTenantProviders(token));
     }
 
+    @GetMapping("/v1/internal/getTenantProviders")
+    public ResponseEntity<List<GetProviders>> getTenantProvidersInternal(@RequestParam UUID tenantId) {
+        return ResponseEntity.ok(providerService.getTenantProvidersByTenantId(tenantId));
+    }
+
     @PutMapping("/v1/tenantProviders/status")
     @Operation(summary = "Enable or disable tenant provider", description = "Enable or disable a provider configured for tenant")
     @ApiResponse(responseCode = "200", description = "Tenant provider status updated successfully")
