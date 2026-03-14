@@ -20,6 +20,9 @@ import com.swifttrack.dto.providerDto.QuoteResponse;
 @FeignClient(name = "providerservice", url = "http://localhost:8080/providerservice")
 public interface ProviderInterface {
 
+        @GetMapping("/api/providers/v1/list")
+        public List<GetProviders> getProviders();
+
         @GetMapping("/api/providers/v1/getTenantProviders")
         public List<GetProviders> getTenantProviders(@RequestHeader String token);
 
@@ -42,6 +45,6 @@ public interface ProviderInterface {
                         @RequestBody CreateOrderRequest createOrderRequest);
 
         @PostMapping("/api/provider/orders/v1/cancelOrder")
-        public Message cancelOrder(@RequestHeader String token, @RequestParam UUID orderId,
+        public Message cancelOrder(@RequestHeader String token, @RequestParam String orderId,
                         @RequestParam String providerCode);
 }

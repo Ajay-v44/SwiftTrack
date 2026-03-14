@@ -47,6 +47,7 @@ import com.swifttrack.enums.UserType;
 import com.swifttrack.enums.VerificationStatus;
 import com.swifttrack.enums.BillingAndSettlement.AccountType;
 import com.swifttrack.events.DriverLocationUpdates;
+import com.swifttrack.events.UserCanceledOrderEvent;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -194,6 +195,49 @@ public class DriverService {
         driverEventUtil.logEvent(driverId, userDetails.tenantId().orElse(null),
                 com.swifttrack.enums.DriverEventType.UPDATE_STATUS, "Driver status updated via UpdateStatus");
         return new Message("Driver status updated successfully");
+    }
+
+    @Transactional
+    public Message cancelAssignedOrderInternal(UUID orderId, String reason) {
+        DriverOrderAssignment assignment = driverAssignmentRepository.findByOrderId(orderId)
+                .orElse(null);
+        if (assignment == null) {
+            return new Message("No active driver assignment found");
+        }
+
+        DriverStatus driverStatus = driverStatusRepository.findById(assignment.getDriverId())
+                .orElse(null);
+        if (driverStatus != null && driverStatus.getStatus() == DriverOnlineStatus.ON_TRIP) {
+            driverStatus.setStatus(DriverOnlineStatus.ONLINE);
+            driverStatus.setLastSeenAt(LocalDateTime.now());
+            driverStatusRepository.save(driverStatus);
+        }
+
+        DriverOrderCancellation cancellation = new DriverOrderCancellation();
+        cancellation.setDriverId(assignment.getDriverId());
+        cancellation.setOrderId(assignment.getOrderId());
+        cancellation.setTenantId(assignment.getTenantId());
+        cancellation.setReason(reason != null && !reason.isBlank() ? reason : "Cancelled by user");
+        driverOrderCancellationRepository.save(cancellation);
+
+        driverEventUtil.logEvent(assignment.getDriverId(), assignment.getTenantId(),
+                com.swifttrack.enums.DriverEventType.ORDER_CANCELLED, "Order cancelled by user");
+        driverAssignmentRepository.delete(assignment);
+        return new Message("Assigned order cancelled for driver");
+    }
+
+    @org.springframework.kafka.annotation.KafkaListener(topics = "user-canceled-order", groupId = "driver-service-group", properties = {
+            "spring.json.value.default.type=com.swifttrack.events.UserCanceledOrderEvent" })
+    public void handleUserCanceledOrder(UserCanceledOrderEvent event) {
+        if (event == null || event.getOrderId() == null) {
+            return;
+        }
+        try {
+            cancelAssignedOrderInternal(event.getOrderId(), event.getReason());
+        } catch (Exception e) {
+            log.error("Failed to release driver assignment for cancelled order {}: {}", event.getOrderId(),
+                    e.getMessage(), e);
+        }
     }
 
     @Transactional

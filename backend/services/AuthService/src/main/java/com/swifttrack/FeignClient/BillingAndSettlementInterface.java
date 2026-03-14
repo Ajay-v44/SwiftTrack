@@ -18,4 +18,9 @@ public interface BillingAndSettlementInterface {
             @RequestParam("userId") UUID userId,
             @RequestParam("accountType") AccountType accountType);
 
+    @PostMapping("/v1/internal/createAccount")
+    public ResponseEntity<?> createAccountInternal(@RequestParam("userId") UUID userId,
+            @RequestParam("accountType") AccountType accountType,
+            @RequestParam("createdBy") UUID createdBy);
+
 }

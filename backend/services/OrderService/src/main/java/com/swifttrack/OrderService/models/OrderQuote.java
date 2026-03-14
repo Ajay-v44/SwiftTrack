@@ -35,6 +35,9 @@ public class OrderQuote {
     @Column(name = "provider_code", length = 50)
     private String providerCode;
 
+    @Column(name = "quote_id", length = 120)
+    private String quoteId;
+
     @Column(name = "selected_type", length = 50)
     private String selectedType;
 

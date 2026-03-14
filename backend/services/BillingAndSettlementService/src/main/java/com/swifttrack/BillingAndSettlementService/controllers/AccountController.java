@@ -37,6 +37,14 @@ public class AccountController {
         return ResponseEntity.ok(account);
     }
 
+    @PostMapping("/v1/internal/createAccount")
+    public ResponseEntity<Account> createAccountInternal(@RequestParam UUID userId,
+            @RequestParam AccountType accountType,
+            @RequestParam UUID createdBy) {
+        Account account = accountService.createAccountInternal(userId, accountType, createdBy);
+        return ResponseEntity.ok(account);
+    }
+
     @GetMapping("/v1/getMyAccount")
     public ResponseEntity<Account> getAccountsByUserId(@RequestHeader("token") String token,
             @RequestParam UUID userId) {

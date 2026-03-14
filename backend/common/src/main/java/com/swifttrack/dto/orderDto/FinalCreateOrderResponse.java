@@ -6,6 +6,7 @@ import java.util.UUID;
 public record FinalCreateOrderResponse(
         UUID orderId,
         String providerCode,
-        BigDecimal totalAmount) {
+        BigDecimal totalAmount,
+        String choiceCode) {
 
 }

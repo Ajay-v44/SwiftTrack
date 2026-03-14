@@ -7,6 +7,7 @@ public record OrderQuoteSessionResponse(
                 String selectedType,
                 BigDecimal price,
                 String currency,
-                BigDecimal aiScore) {
+                BigDecimal aiScore,
+                String quoteId) {
 
 }

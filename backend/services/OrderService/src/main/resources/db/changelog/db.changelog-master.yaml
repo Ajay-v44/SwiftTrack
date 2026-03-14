@@ -25,3 +25,5 @@ databaseChangeLog:
       file: db/changelog/changes/012-add-quote-and-driver-columns-to-orders.yaml
   - include:
       file: db/changelog/changes/013-add-create-order-payload-to-orders.yaml
+  - include:
+      file: db/changelog/changes/014-add-booking-channel-and-owner-fields.yaml

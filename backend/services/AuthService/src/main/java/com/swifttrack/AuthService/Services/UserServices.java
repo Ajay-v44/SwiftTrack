@@ -39,6 +39,8 @@ import com.swifttrack.exception.CustomException;
 
 @Service
 public class UserServices {
+    private static final UUID SYSTEM_USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
+
     @Autowired
     private UserRepo userRepo;
     @Autowired
@@ -61,10 +63,15 @@ public class UserServices {
         userModel.setEmail(registerUser.email());
         userModel.setMobile(registerUser.mobile());
         userModel.setPasswordHash(cryptography.encode(registerUser.password()));
-        userModel.setStatus(true);
         userModel.setType(registerUser.userType());
-        userModel.setVerificationStatus(VerificationStatus.PENDING);
+        boolean autoApproveConsumer = registerUser.userType() == UserType.CONSUMER;
+        userModel.setStatus(true);
+        userModel.setVerificationStatus(autoApproveConsumer ? VerificationStatus.APPROVED : VerificationStatus.PENDING);
         userRepo.save(userModel);
+
+        if (autoApproveConsumer) {
+            billingAndSettlementInterface.createAccountInternal(userModel.getId(), AccountType.CONSUMER, SYSTEM_USER_ID);
+        }
 
         return "User registered Successfully";
     }

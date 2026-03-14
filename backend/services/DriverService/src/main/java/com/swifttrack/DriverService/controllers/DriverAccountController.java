@@ -185,6 +185,13 @@ public class DriverAccountController {
         return ResponseEntity.ok(driverService.updateOrderStatus(token, request));
     }
 
+    @PostMapping("/v1/internal/cancelAssignedOrder")
+    public ResponseEntity<Message> cancelAssignedOrderInternal(
+            @org.springframework.web.bind.annotation.RequestParam java.util.UUID orderId,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String reason) {
+        return ResponseEntity.ok(driverService.cancelAssignedOrderInternal(orderId, reason));
+    }
+
     @PostMapping("/v1/register")
     public ResponseEntity<Message> registerDriver(@RequestBody RegisterDriver input) {
         return ResponseEntity.ok(driverService.registerDriver(input));

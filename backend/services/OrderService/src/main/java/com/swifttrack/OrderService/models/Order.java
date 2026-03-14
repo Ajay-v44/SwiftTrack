@@ -7,6 +7,7 @@ import java.util.UUID;
 
 import com.swifttrack.OrderService.models.enums.OrderStatus;
 import com.swifttrack.OrderService.models.enums.OrderType;
+import com.swifttrack.enums.BillingAndSettlement.BookingChannel;
 import com.swifttrack.enums.PaymentType;
 
 import jakarta.persistence.CascadeType;
@@ -37,8 +38,18 @@ public class Order {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 
-    @Column(name = "tenant_id", nullable = false)
+    @Column(name = "tenant_id")
     private UUID tenantId;
+
+    @Column(name = "owner_user_id")
+    private UUID ownerUserId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "booking_channel", length = 20)
+    private BookingChannel bookingChannel;
+
+    @Column(name = "guest_access_token", length = 120)
+    private String guestAccessToken;
 
     @Column(name = "customer_reference_id", length = 100)
     private String customerReferenceId;

@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.UUID;
 
 import com.swifttrack.OrderService.models.enums.QuoteSessionStatus;
+import com.swifttrack.enums.BillingAndSettlement.BookingChannel;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -32,8 +33,18 @@ public class OrderQuoteSession {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 
-    @Column(name = "tenant_id", nullable = false)
+    @Column(name = "tenant_id")
     private UUID tenantId;
+
+    @Column(name = "owner_user_id")
+    private UUID ownerUserId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "booking_channel", length = 20)
+    private BookingChannel bookingChannel;
+
+    @Column(name = "guest_access_token", length = 120)
+    private String guestAccessToken;
 
     @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;

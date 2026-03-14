@@ -33,6 +33,7 @@ import com.swifttrack.dto.map.ApiResponse;
 import com.swifttrack.dto.providerDto.QuoteInput;
 import com.swifttrack.dto.providerDto.QuoteResponse;
 import com.swifttrack.dto.tenantDto.TenantDeliveryConf;
+import com.swifttrack.enums.BillingAndSettlement.BookingChannel;
 import com.swifttrack.events.InternalDriverAssignmentEvent;
 import com.swifttrack.events.OrderCreatedEvent;
 
@@ -90,7 +91,7 @@ public class InternalDriverAssignmentConsumer {
             }
         }
 
-        if (event.getAttempt() < MAX_RETRY_ATTEMPTS) {
+        if (shouldKeepRetrying(order, options, event)) {
             InternalDriverAssignmentEvent retryEvent = InternalDriverAssignmentEvent.builder()
                     .orderId(event.getOrderId())
                     .tenantId(event.getTenantId())
@@ -149,7 +150,7 @@ public class InternalDriverAssignmentConsumer {
     }
 
     private boolean repriceInternalOrder(Order order, String option, BigDecimal distanceKm) {
-        if (distanceKm == null || order.getQuoteSessionId() == null || order.getCreatedBy() == null) {
+        if (distanceKm == null || order.getQuoteSessionId() == null) {
             return false;
         }
 
@@ -179,7 +180,9 @@ public class InternalDriverAssignmentConsumer {
     }
 
     private boolean switchToExternalProvider(Order order) {
-        List<GetProviders> providers = providerInterface.getTenantProvidersByTenantId(order.getTenantId());
+        List<GetProviders> providers = order.getTenantId() != null
+                ? providerInterface.getTenantProvidersByTenantId(order.getTenantId())
+                : providerInterface.getProviders();
         if (providers == null || providers.isEmpty()) {
             return false;
         }
@@ -191,7 +194,7 @@ public class InternalDriverAssignmentConsumer {
 
         if (chosenProvider == null || order.getPickupLatitude() == null || order.getPickupLongitude() == null
                 || order.getDropLatitude() == null || order.getDropLongitude() == null
-                || order.getQuoteSessionId() == null || order.getCreatedBy() == null) {
+                || order.getQuoteSessionId() == null) {
             return false;
         }
 
@@ -245,7 +248,7 @@ public class InternalDriverAssignmentConsumer {
                 .customerReferenceId(order.getCustomerReferenceId())
                 .providerCode(order.getSelectedProviderCode())
                 .amount(order.getPaymentAmount())
-                .tenantId(order.getTenantId().toString())
+                .tenantId(order.getTenantId() != null ? order.getTenantId().toString() : null)
                 .createdAt(order.getCreatedAt())
                 .orderStatus(order.getOrderStatus().name())
                 .pickupLat(order.getPickupLatitude().doubleValue())
@@ -275,7 +278,7 @@ public class InternalDriverAssignmentConsumer {
 
         return new com.swifttrack.dto.orderDto.CreateOrderRequest(
                 original.idempotencyKey() != null ? original.idempotencyKey() : order.getId().toString(),
-                order.getTenantId().toString(),
+                order.getTenantId() != null ? order.getTenantId().toString() : original.tenantId(),
                 effectiveQuoteId,
                 original.orderReference() != null ? original.orderReference() : order.getCustomerReferenceId(),
                 original.orderType() != null ? original.orderType()
@@ -364,6 +367,10 @@ public class InternalDriverAssignmentConsumer {
             return event.getDeliveryOptions().stream().map(String::toUpperCase).toList();
         }
 
+        if (order.getTenantId() == null) {
+            return List.of(Optional.ofNullable(order.getSelectedType()).orElse("LOCAL_DRIVERS").toUpperCase());
+        }
+
         List<TenantDeliveryConf> config = Optional
                 .ofNullable(tenantInterface.getTenantDeliveryConfigurationByTenantId(order.getTenantId()))
                 .map(org.springframework.http.ResponseEntity::getBody)
@@ -376,6 +383,20 @@ public class InternalDriverAssignmentConsumer {
             return List.of("EXTERNAL_PROVIDERS", "LOCAL_DRIVERS", "TENANT_DRIVERS");
         }
         return config.stream().map(conf -> conf.optionType().toUpperCase()).toList();
+    }
+
+    private boolean shouldKeepRetrying(Order order, List<String> options, InternalDriverAssignmentEvent event) {
+        if (isSwifttrackOnlyNonTenantOrder(order, options)) {
+            return true;
+        }
+        return event.getAttempt() < MAX_RETRY_ATTEMPTS;
+    }
+
+    private boolean isSwifttrackOnlyNonTenantOrder(Order order, List<String> options) {
+        return order.getBookingChannel() != BookingChannel.TENANT
+                && options != null
+                && options.size() == 1
+                && "LOCAL_DRIVERS".equalsIgnoreCase(options.get(0));
     }
 
     private int resolveStartIndex(InternalDriverAssignmentEvent event, List<String> options, Order order) {

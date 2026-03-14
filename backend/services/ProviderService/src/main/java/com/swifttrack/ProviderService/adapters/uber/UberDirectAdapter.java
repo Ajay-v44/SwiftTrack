@@ -121,6 +121,9 @@ public class UberDirectAdapter implements DeliveryProvider {
 
         @Override
         public QuoteResponse getQuote(QuoteInput quoteInput) {
+                if ("dev".equalsIgnoreCase(env)) {
+                        return new QuoteResponse(100.0f, "INR", "DEV-UBER-QUOTE");
+                }
                 getToken();
 
                 try {
