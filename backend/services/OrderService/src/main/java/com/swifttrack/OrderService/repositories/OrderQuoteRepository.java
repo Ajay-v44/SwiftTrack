@@ -20,6 +20,10 @@ public interface OrderQuoteRepository extends JpaRepository<OrderQuote, UUID> {
     // Find selected quote for a session
     Optional<OrderQuote> findByQuoteSessionIdAndIsSelectedTrue(UUID quoteSessionId);
 
+    @Query("SELECT q FROM OrderQuote q WHERE q.id = :quoteId AND q.quoteSession.id = :quoteSessionId")
+    Optional<OrderQuote> findByIdAndQuoteSessionId(@Param("quoteId") UUID quoteId,
+            @Param("quoteSessionId") UUID quoteSessionId);
+
     // Find cheapest quote in a session
     @Query("SELECT q FROM OrderQuote q WHERE q.quoteSession.id = :sessionId ORDER BY q.price ASC LIMIT 1")
     Optional<OrderQuote> findCheapestQuote(@Param("sessionId") UUID sessionId);

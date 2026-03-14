@@ -5,5 +5,6 @@ public enum AccountType {
     DRIVER,
     PROVIDER,
     PLATFORM,
-    TENANT_DRIVER
+    TENANT_DRIVER,
+    CONSUMER
 }

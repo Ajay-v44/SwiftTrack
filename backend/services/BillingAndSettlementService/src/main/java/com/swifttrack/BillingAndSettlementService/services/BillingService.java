@@ -154,14 +154,14 @@ public class BillingService {
         if (request == null) {
             throw new CustomException(HttpStatus.BAD_REQUEST, "Request body is required");
         }
-        if (request.getUserId() == null) {
-            throw new CustomException(HttpStatus.BAD_REQUEST, "userId is required");
-        }
         if (request.getQuoteSessionId() == null) {
             throw new CustomException(HttpStatus.BAD_REQUEST, "quoteSessionId is required");
         }
         if (request.getSelectedType() == null || request.getSelectedType().isBlank()) {
             throw new CustomException(HttpStatus.BAD_REQUEST, "selectedType is required");
+        }
+        if (SelectedType.TENANT_DRIVERS.name().equalsIgnoreCase(request.getSelectedType()) && request.getUserId() == null) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "userId is required for TENANT_DRIVERS");
         }
     }
 

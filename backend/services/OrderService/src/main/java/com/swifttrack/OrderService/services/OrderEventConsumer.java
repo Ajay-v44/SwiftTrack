@@ -29,6 +29,7 @@ import com.swifttrack.OrderService.repositories.OrderTrackingStateRepository;
 import com.swifttrack.OrderService.repositories.OrderTrackingEventRepository;
 import com.swifttrack.OrderService.models.enums.TrackingStatus;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -122,6 +123,11 @@ public class OrderEventConsumer {
             Order order = orderRepository.findById(orderId)
                     .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
             order.setOrderStatus(OrderStatus.CREATED);
+            order.setAssignedDriverId(null);
+            if ("LOCAL_DRIVERS".equalsIgnoreCase(order.getSelectedType())
+                    || "TENANT_DRIVERS".equalsIgnoreCase(order.getSelectedType())) {
+                order.setSelectedProviderCode(null);
+            }
             orderRepository.save(order);
 
             if (order.getSelectedType() != null
@@ -133,6 +139,7 @@ public class OrderEventConsumer {
                         .orderId(order.getId())
                         .tenantId(order.getTenantId())
                         .selectedType(order.getSelectedType())
+                        .deliveryOptions(resolveReassignmentOptions(order))
                         .pickupLat(order.getPickupLatitude().doubleValue())
                         .pickupLng(order.getPickupLongitude().doubleValue())
                         .excludedDriverId(event.getDriverId())
@@ -144,6 +151,13 @@ public class OrderEventConsumer {
             System.err.println("Error updating order status: " + e.getMessage());
             e.printStackTrace();
         }
+    }
+
+    private List<String> resolveReassignmentOptions(Order order) {
+        if (order.getTenantId() == null && "LOCAL_DRIVERS".equalsIgnoreCase(order.getSelectedType())) {
+            return List.of("LOCAL_DRIVERS");
+        }
+        return null;
     }
 
     @KafkaListener(topics = "driver-location-updates", groupId = "order-service-group")

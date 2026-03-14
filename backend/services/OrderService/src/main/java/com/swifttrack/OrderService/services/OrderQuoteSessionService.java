@@ -31,7 +31,8 @@ public class OrderQuoteSessionService {
                         orderQuote.getSelectedType(),
                         orderQuote.getPrice(),
                         orderQuote.getCurrency(),
-                        orderQuote.getAiScore()))
+                        orderQuote.getAiScore(),
+                        orderQuote.getQuoteId()))
                 .toList();
         return orderQuoteSessionResponses;
     }

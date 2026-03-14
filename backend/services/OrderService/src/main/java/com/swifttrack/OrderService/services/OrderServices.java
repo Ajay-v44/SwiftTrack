@@ -2,13 +2,13 @@ package com.swifttrack.OrderService.services;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.math.BigDecimal;
@@ -49,6 +49,8 @@ import com.swifttrack.dto.map.DistanceResult;
 import com.swifttrack.dto.map.NormalizedLocation;
 import com.swifttrack.dto.orderDto.CreateOrderRequest;
 import com.swifttrack.dto.orderDto.CreateOrderResponse;
+import com.swifttrack.dto.orderDto.DeliveryOptionQuote;
+import com.swifttrack.dto.orderDto.DeliveryOptionsQuoteResponse;
 import com.swifttrack.dto.orderDto.FinalCreateOrderResponse;
 import com.swifttrack.dto.orderDto.GetOrdersForDriver;
 import com.swifttrack.dto.orderDto.GetOrdersRequest;
@@ -61,14 +63,15 @@ import com.swifttrack.dto.providerDto.QuoteResponse;
 import com.swifttrack.dto.tenantDto.TenantDeliveryConf;
 import com.swifttrack.dto.billingDto.QuoteRequest;
 import com.swifttrack.dto.billingDto.BindQuoteOrderRequest;
+import com.swifttrack.enums.BillingAndSettlement.BookingChannel;
 import com.swifttrack.events.InternalDriverAssignmentEvent;
+import com.swifttrack.events.UserCanceledOrderEvent;
 
 import jakarta.transaction.Transactional;
 
 import com.swifttrack.FeignClient.AuthInterface;
 import com.swifttrack.dto.TokenResponse;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -126,13 +129,6 @@ public class OrderServices {
                                 throw new RuntimeException("Tenant details are required to fetch quote");
                         }
 
-                        OrderQuoteSession orderQuoteSession = new OrderQuoteSession();
-                        orderQuoteSession.setTenantId(tokenResponse.tenantId().get());
-                        orderQuoteSession.setExpiresAt(LocalDateTime.now().plusHours(1));
-                        orderQuoteSession.setStatus(QuoteSessionStatus.ACTIVE);
-                        orderQuoteSession.setCreatedAt(LocalDateTime.now());
-                        orderQuoteSession = orderQuoteSessionRepository.save(orderQuoteSession);
-
                         List<TenantDeliveryConf> deliveryConfig = Optional
                                         .ofNullable(tenantInterface.getTenantDeliveryConfiguration(token))
                                         .map(ResponseEntity::getBody)
@@ -147,6 +143,136 @@ public class OrderServices {
                                                 new TenantDeliveryConf("LOCAL_DRIVERS", 2),
                                                 new TenantDeliveryConf("TENANT_DRIVERS", 3));
                         }
+                        return buildQuote(token, quoteInput, BookingChannel.TENANT, tokenResponse.tenantId().get(),
+                                        tokenResponse.id(), null, deliveryConfig, providerInterface.getTenantProviders(token));
+
+                } catch (Exception e) {
+                        throw new RuntimeException("Error occurred while processing quote: " + e.getMessage(), e);
+                }
+        }
+
+        public DeliveryOptionsQuoteResponse getConsumerQuote(String token, QuoteInput quoteInput) {
+                TokenResponse tokenResponse = authInterface.getUserDetails(token).getBody();
+                if (tokenResponse == null || tokenResponse.id() == null) {
+                        throw new RuntimeException("Authenticated user is required to fetch consumer quote");
+                }
+                return buildSelectableQuotes(token, quoteInput, BookingChannel.CONSUMER, tokenResponse.id(), null);
+        }
+
+        public DeliveryOptionsQuoteResponse getGuestQuote(QuoteInput quoteInput) {
+                String guestAccessToken = UUID.randomUUID().toString();
+                return buildSelectableQuotes(null, quoteInput, BookingChannel.GUEST, null, guestAccessToken);
+        }
+
+        private DeliveryOptionsQuoteResponse buildSelectableQuotes(String token, QuoteInput quoteInput,
+                        BookingChannel bookingChannel, UUID ownerUserId, String guestAccessToken) {
+                try {
+                        OrderQuoteSession orderQuoteSession = new OrderQuoteSession();
+                        orderQuoteSession.setTenantId(null);
+                        orderQuoteSession.setOwnerUserId(ownerUserId);
+                        orderQuoteSession.setBookingChannel(bookingChannel);
+                        orderQuoteSession.setGuestAccessToken(guestAccessToken);
+                        orderQuoteSession.setExpiresAt(LocalDateTime.now().plusHours(1));
+                        orderQuoteSession.setStatus(QuoteSessionStatus.ACTIVE);
+                        orderQuoteSession.setCreatedAt(LocalDateTime.now());
+                        orderQuoteSession = orderQuoteSessionRepository.save(orderQuoteSession);
+
+                        ApiResponse<DistanceResult> distance = mapInterface.calculateDistance(
+                                        quoteInput.pickupLat(), quoteInput.pickupLng(),
+                                        quoteInput.dropoffLat(), quoteInput.dropoffLng());
+                        BigDecimal distanceKm = BigDecimal.valueOf(distance.getData().getDistanceMeters())
+                                        .divide(BigDecimal.valueOf(1000), 3, RoundingMode.HALF_UP);
+
+                        ApiResponse<NormalizedLocation> pickupLocation = mapInterface.reverseGeocode(
+                                        quoteInput.pickupLat(), quoteInput.pickupLng());
+                        ApiResponse<NormalizedLocation> dropoffLocation = mapInterface.reverseGeocode(
+                                        quoteInput.dropoffLat(), quoteInput.dropoffLng());
+
+                        List<DeliveryOptionQuote> options = new ArrayList<>();
+
+                        com.swifttrack.dto.billingDto.QuoteResponse driverBillingQuote = billingInterface
+                                        .getQuote(new QuoteRequest(
+                                                        orderQuoteSession.getId(),
+                                                        Optional.empty(),
+                                                        Optional.empty(),
+                                                        Optional.of(distanceKm),
+                                                        ownerUserId,
+                                                        "LOCAL_DRIVERS"))
+                                        .getBody();
+                        if (driverBillingQuote != null && driverBillingQuote.tenantCharge() != null) {
+                                OrderQuote driverQuote = saveOrderQuote(orderQuoteSession, "LOCAL_DRIVERS", null, "INR",
+                                                driverBillingQuote.tenantCharge(), null, null, false);
+                                options.add(new DeliveryOptionQuote(
+                                                driverQuote.getId(),
+                                                "SWIFTTRACK_DRIVER",
+                                                "LOCAL_DRIVERS",
+                                                null,
+                                                new QuoteResponse(driverBillingQuote.tenantCharge().floatValue(), "INR")));
+                        }
+
+                        List<ModelQuoteInput> providerCandidates = buildProviderCandidates(providerInterface.getProviders(),
+                                        distance, pickupLocation, dropoffLocation);
+                        for (ModelQuoteInput candidate : providerCandidates) {
+                                try {
+                                        QuoteResponse providerQuote = token != null && !token.isBlank()
+                                                        ? providerInterface.getQuote(token, candidate.provider(), quoteInput)
+                                                        : providerInterface.getQuoteInternal(candidate.provider(), quoteInput);
+                                        if (providerQuote == null) {
+                                                continue;
+                                        }
+                                        com.swifttrack.dto.billingDto.QuoteResponse billingQuote = billingInterface
+                                                        .getQuote(new QuoteRequest(
+                                                                        orderQuoteSession.getId(),
+                                                                        Optional.of(BigDecimal.valueOf(providerQuote.price())),
+                                                                        Optional.of(candidate.provider()),
+                                                                        Optional.empty(),
+                                                                        ownerUserId,
+                                                                        "EXTERNAL_PROVIDERS"))
+                                                        .getBody();
+                                        if (billingQuote == null || billingQuote.tenantCharge() == null) {
+                                                continue;
+                                        }
+                                        OrderQuote savedQuote = saveOrderQuote(orderQuoteSession, "EXTERNAL_PROVIDERS",
+                                                        candidate.provider(), providerQuote.currency(),
+                                                        billingQuote.tenantCharge(), null, providerQuote.quoteId(), false);
+                                        options.add(new DeliveryOptionQuote(
+                                                        savedQuote.getId(),
+                                                        candidate.provider(),
+                                                        "EXTERNAL_PROVIDERS",
+                                                        candidate.provider(),
+                                                        new QuoteResponse(
+                                                                        billingQuote.tenantCharge().floatValue(),
+                                                                        providerQuote.currency(),
+                                                                        providerQuote.quoteId())));
+                                } catch (Exception providerError) {
+                                        System.err.println("Quote option failed for provider " + candidate.provider() + ": "
+                                                        + providerError.getMessage());
+                                }
+                        }
+
+                        if (options.isEmpty()) {
+                                throw new RuntimeException("No delivery options available");
+                        }
+
+                        return new DeliveryOptionsQuoteResponse(orderQuoteSession.getId(), options, guestAccessToken);
+                } catch (Exception e) {
+                        throw new RuntimeException("Failed to build selectable quotes: " + e.getMessage(), e);
+                }
+        }
+
+        private OrderQuoteResponse buildQuote(String token, QuoteInput quoteInput, BookingChannel bookingChannel,
+                        UUID tenantId, UUID ownerUserId, String guestAccessToken,
+                        List<TenantDeliveryConf> deliveryConfig, List<GetProviders> providers) {
+                try {
+                        OrderQuoteSession orderQuoteSession = new OrderQuoteSession();
+                        orderQuoteSession.setTenantId(tenantId);
+                        orderQuoteSession.setOwnerUserId(ownerUserId);
+                        orderQuoteSession.setBookingChannel(bookingChannel);
+                        orderQuoteSession.setGuestAccessToken(guestAccessToken);
+                        orderQuoteSession.setExpiresAt(LocalDateTime.now().plusHours(1));
+                        orderQuoteSession.setStatus(QuoteSessionStatus.ACTIVE);
+                        orderQuoteSession.setCreatedAt(LocalDateTime.now());
+                        orderQuoteSession = orderQuoteSessionRepository.save(orderQuoteSession);
 
                         boolean hasExternalOption = deliveryConfig.stream()
                                         .anyMatch(config -> "EXTERNAL_PROVIDERS".equalsIgnoreCase(config.optionType()));
@@ -168,18 +294,11 @@ public class OrderServices {
                                                                         quoteInput.pickupLng()))
                                         : CompletableFuture.completedFuture(null);
 
-                        CompletableFuture<List<GetProviders>> providersFuture = hasExternalOption
-                                        ? CompletableFuture.supplyAsync(() -> providerInterface.getTenantProviders(token))
-                                        : CompletableFuture.completedFuture(Collections.emptyList());
-
-                        CompletableFuture.allOf(distanceFuture, dropoffFuture, pickupFuture, providersFuture)
-                                        .get(5, TimeUnit.SECONDS);
+                        CompletableFuture.allOf(distanceFuture, dropoffFuture, pickupFuture).get(5, TimeUnit.SECONDS);
 
                         ApiResponse<DistanceResult> distance = distanceFuture.get();
                         ApiResponse<NormalizedLocation> dropoffLocation = dropoffFuture.get();
                         ApiResponse<NormalizedLocation> pickupLocation = pickupFuture.get();
-                        List<GetProviders> providers = providersFuture.get();
-
                         BigDecimal distanceKm = BigDecimal.valueOf(distance.getData().getDistanceMeters())
                                         .divide(BigDecimal.valueOf(1000), 3, RoundingMode.HALF_UP);
 
@@ -202,7 +321,7 @@ public class OrderServices {
                                                                                                                 .price())),
                                                                                 Optional.of(selection.providerCode()),
                                                                                 Optional.empty(),
-                                                                                tokenResponse.id(),
+                                                                                ownerUserId,
                                                                                 selectedType))
                                                                 .getBody();
 
@@ -212,25 +331,29 @@ public class OrderServices {
 
                                                 QuoteResponse finalQuoteResponse = new QuoteResponse(
                                                                 billingQuote.tenantCharge().floatValue(),
-                                                                selection.quoteResponse().currency());
+                                                                selection.quoteResponse().currency(),
+                                                                selection.quoteResponse().quoteId());
                                                 saveOrderQuote(orderQuoteSession, selectedType,
                                                                 selection.providerCode(),
                                                                 finalQuoteResponse.currency(),
                                                                 billingQuote.tenantCharge(),
-                                                                selection.aiScore());
+                                                                selection.aiScore(),
+                                                                selection.quoteResponse().quoteId(),
+                                                                true);
                                                 return new OrderQuoteResponse(finalQuoteResponse, orderQuoteSession.getId(),
-                                                                selectedType, selection.providerCode());
+                                                                selectedType, selection.providerCode(),
+                                                                selection.quoteResponse().quoteId());
                                         }
 
-                                        if ("LOCAL_DRIVERS".equals(selectedType) || "TENANT_DRIVERS".equals(
-                                                        selectedType)) {
+                                        if ("LOCAL_DRIVERS".equals(selectedType)
+                                                        || "TENANT_DRIVERS".equals(selectedType)) {
                                                 com.swifttrack.dto.billingDto.QuoteResponse billingQuote = billingInterface
                                                                 .getQuote(new QuoteRequest(
                                                                                 orderQuoteSession.getId(),
                                                                                 Optional.empty(),
                                                                                 Optional.empty(),
                                                                                 Optional.of(distanceKm),
-                                                                                tokenResponse.id(),
+                                                                                ownerUserId,
                                                                                 selectedType))
                                                                 .getBody();
 
@@ -244,9 +367,11 @@ public class OrderServices {
                                                 saveOrderQuote(orderQuoteSession, selectedType, null,
                                                                 finalQuoteResponse.currency(),
                                                                 billingQuote.tenantCharge(),
-                                                                null);
+                                                                null,
+                                                                null,
+                                                                true);
                                                 return new OrderQuoteResponse(finalQuoteResponse, orderQuoteSession.getId(),
-                                                                selectedType, null);
+                                                                selectedType, null, null);
                                         }
                                 } catch (Exception optionError) {
                                         System.err.println("Quote option failed for " + selectedType + ": "
@@ -255,25 +380,23 @@ public class OrderServices {
                         }
 
                         throw new RuntimeException("No quote could be generated for configured options");
-
-                } catch (TimeoutException e) {
-                        throw new RuntimeException("Timeout while fetching data from external services", e);
                 } catch (Exception e) {
-                        throw new RuntimeException("Error occurred while processing quote: " + e.getMessage(), e);
+                        throw new RuntimeException("Failed to build quote: " + e.getMessage(), e);
                 }
         }
 
-        private void saveOrderQuote(OrderQuoteSession orderQuoteSession, String selectedType, String providerCode,
-                        String currency, BigDecimal tenantPrice, BigDecimal aiScore) {
+        private OrderQuote saveOrderQuote(OrderQuoteSession orderQuoteSession, String selectedType, String providerCode,
+                        String currency, BigDecimal tenantPrice, BigDecimal aiScore, String quoteId, boolean isSelected) {
                 OrderQuote orderQuote = new OrderQuote();
                 orderQuote.setProviderCode(providerCode);
+                orderQuote.setQuoteId(quoteId);
                 orderQuote.setSelectedType(selectedType);
                 orderQuote.setQuoteSession(orderQuoteSession);
                 orderQuote.setPrice(tenantPrice);
                 orderQuote.setCurrency(currency);
                 orderQuote.setAiScore(aiScore);
-                orderQuote.setIsSelected(true);
-                orderQuoteRepository.save(orderQuote);
+                orderQuote.setIsSelected(isSelected);
+                return orderQuoteRepository.save(orderQuote);
         }
 
         private ExternalProviderSelection selectExternalProvider(String token, QuoteInput quoteInput,
@@ -302,7 +425,9 @@ public class OrderServices {
                         providerCode = fallbackProvider.provider();
                 }
 
-                QuoteResponse quoteResponse = providerInterface.getQuote(token, providerCode, quoteInput);
+                QuoteResponse quoteResponse = token != null && !token.isBlank()
+                                ? providerInterface.getQuote(token, providerCode, quoteInput)
+                                : providerInterface.getQuoteInternal(providerCode, quoteInput);
                 return new ExternalProviderSelection(providerCode, quoteResponse, aiScore);
         }
 
@@ -320,9 +445,9 @@ public class OrderServices {
                 String pickupCountry = pickupLocation.getData().getCountry();
                 String dropoffCountry = dropoffLocation.getData().getCountry();
 
-                if (dropoffState.equals(pickupState)) {
+                if (Objects.equals(dropoffState, pickupState)) {
                         for (GetProviders provider : providers) {
-                                if (provider.supportsHyperlocal() && provider.supportsIntercity()) {
+                                if (provider.supportsHyperlocal()) {
                                         int count = orderRepository.countActiveOrdersByProvider(provider.providerCode());
                                         modelQuoteInputList.add(new ModelQuoteInput(
                                                         provider.providerCode(),
@@ -330,7 +455,7 @@ public class OrderServices {
                                                         count > 10, count));
                                 }
                         }
-                } else if (dropoffCountry.equals(pickupCountry)) {
+                } else if (Objects.equals(dropoffCountry, pickupCountry)) {
                         for (GetProviders provider : providers) {
                                 if (provider.supportsIntercity()) {
                                         int count = orderRepository.countActiveOrdersByProvider(provider.providerCode());
@@ -390,60 +515,88 @@ public class OrderServices {
                 if (userDetails == null || userDetails.tenantId().isEmpty()) {
                         throw new RuntimeException("Invalid user or tenant context");
                 }
+                return createOrderForContext(token, quoteSessionId, null, createOrderRequest, BookingChannel.TENANT,
+                                userDetails.tenantId().get(), userDetails.id(), null);
+        }
 
+        public FinalCreateOrderResponse createConsumerOrder(String token, UUID quoteSessionId, UUID selectedQuoteId,
+                        CreateOrderRequest createOrderRequest) {
+                TokenResponse userDetails = authInterface.getUserDetails(token).getBody();
+                if (userDetails == null || userDetails.id() == null) {
+                        throw new RuntimeException("Authenticated user is required");
+                }
+                return createOrderForContext(token, quoteSessionId, selectedQuoteId, createOrderRequest,
+                                BookingChannel.CONSUMER, null, userDetails.id(), null);
+        }
+
+        public FinalCreateOrderResponse createGuestOrder(UUID quoteSessionId, String guestAccessToken, UUID selectedQuoteId,
+                        CreateOrderRequest createOrderRequest) {
+                if (guestAccessToken == null || guestAccessToken.isBlank()) {
+                        throw new RuntimeException("guestAccessToken is required");
+                }
+                return createOrderForContext(null, quoteSessionId, selectedQuoteId, createOrderRequest,
+                                BookingChannel.GUEST, null, null, guestAccessToken);
+        }
+
+        private FinalCreateOrderResponse createOrderForContext(String token, UUID quoteSessionId, UUID selectedQuoteId,
+                        CreateOrderRequest createOrderRequest, BookingChannel bookingChannel,
+                        UUID tenantId, UUID ownerUserId, String guestAccessToken) {
                 OrderQuoteSession quoteSession = orderQuoteSessionRepository
                                 .findActiveSessionById(quoteSessionId, LocalDateTime.now())
                                 .orElseThrow(() -> new RuntimeException("Quote session not found or expired"));
-                if (!quoteSession.getTenantId().equals(userDetails.tenantId().get())) {
-                        throw new RuntimeException("Quote session does not belong to tenant");
-                }
-                OrderQuote selectedQuote = orderQuoteRepository.findByQuoteSessionIdAndIsSelectedTrue(quoteSessionId)
-                                .orElseThrow(() -> new RuntimeException("No selected quote found for quote session"));
+                validateQuoteSessionOwnership(quoteSession, bookingChannel, tenantId, ownerUserId, guestAccessToken);
+                OrderQuote selectedQuote = resolveSelectedQuote(quoteSessionId, selectedQuoteId, bookingChannel);
 
                 String selectedType = Optional.ofNullable(selectedQuote.getSelectedType())
                                 .orElse("EXTERNAL_PROVIDERS")
                                 .toUpperCase();
 
+                CreateOrderRequest normalizedRequest = enrichCreateOrderRequest(createOrderRequest, selectedQuote,
+                                quoteSession, bookingChannel);
+
                 Order order = new Order();
-                order.setTenantId(userDetails.tenantId().get());
-                order.setCustomerReferenceId(createOrderRequest.orderReference());
+                order.setTenantId(tenantId);
+                order.setOwnerUserId(ownerUserId);
+                order.setBookingChannel(bookingChannel);
+                order.setGuestAccessToken(quoteSession.getGuestAccessToken());
+                order.setCustomerReferenceId(normalizedRequest.orderReference());
                 order.setOrderStatus(OrderStatus.CREATED);
-                order.setPaymentType(createOrderRequest.paymentType());
+                order.setPaymentType(normalizedRequest.paymentType());
                 order.setPaymentAmount(selectedQuote.getPrice());
                 order.setSelectedProviderCode(selectedQuote.getProviderCode());
                 order.setQuoteSessionId(quoteSession.getId());
                 order.setSelectedType(selectedType);
-                order.setCreatedBy(userDetails.id());
+                order.setCreatedBy(ownerUserId);
                 order.setCreatedAt(LocalDateTime.now());
                 order.setUpdatedAt(LocalDateTime.now());
                 order.setOrderType(OrderType.HYPERLOCAL);
                 try {
-                        order.setCreateOrderPayload(objectMapper.writeValueAsString(createOrderRequest));
+                        order.setCreateOrderPayload(objectMapper.writeValueAsString(normalizedRequest));
                 } catch (Exception e) {
                         throw new RuntimeException("Failed to serialize create order payload", e);
                 }
 
-                if (createOrderRequest.pickup() != null && createOrderRequest.pickup().address() != null) {
-                        order.setPickupLatitude(BigDecimal.valueOf(createOrderRequest.pickup().address().latitude()));
-                        order.setPickupLongitude(BigDecimal.valueOf(createOrderRequest.pickup().address().longitude()));
+                if (normalizedRequest.pickup() != null && normalizedRequest.pickup().address() != null) {
+                        order.setPickupLatitude(BigDecimal.valueOf(normalizedRequest.pickup().address().latitude()));
+                        order.setPickupLongitude(BigDecimal.valueOf(normalizedRequest.pickup().address().longitude()));
                 }
-                if (createOrderRequest.dropoff() != null && createOrderRequest.dropoff().address() != null) {
-                        order.setDropLatitude(BigDecimal.valueOf(createOrderRequest.dropoff().address().latitude()));
-                        order.setDropLongitude(BigDecimal.valueOf(createOrderRequest.dropoff().address().longitude()));
+                if (normalizedRequest.dropoff() != null && normalizedRequest.dropoff().address() != null) {
+                        order.setDropLatitude(BigDecimal.valueOf(normalizedRequest.dropoff().address().latitude()));
+                        order.setDropLongitude(BigDecimal.valueOf(normalizedRequest.dropoff().address().longitude()));
                 }
 
                 orderRepository.save(order);
 
                 if ("EXTERNAL_PROVIDERS".equals(selectedType)) {
-                        CreateOrderResponse providerResponse = providerInterface.createOrder(token, quoteSessionId,
-                                        createOrderRequest);
+                        CreateOrderResponse providerResponse = createExternalProviderOrder(token, quoteSessionId,
+                                        selectedQuote, normalizedRequest, bookingChannel);
                         order.setPaymentAmount(providerResponse.totalAmount());
                         order.setSelectedProviderCode(providerResponse.providerCode());
                         order.setProviderOrderId(providerResponse.orderId());
                         orderRepository.save(order);
                 } else {
-                        saveOrderLocations(order, createOrderRequest);
-                        List<String> deliveryOptions = getTenantDeliveryOptions(token, order.getTenantId());
+                        saveOrderLocations(order, normalizedRequest);
+                        List<String> deliveryOptions = getDeliveryOptionsForOrder(token, order, bookingChannel);
                         int optionIndex = Math.max(deliveryOptions.indexOf(selectedType), 0);
                         publishInternalAssignmentAfterCommit(order, selectedType, null, deliveryOptions, optionIndex,
                                         null);
@@ -457,7 +610,7 @@ public class OrderServices {
                                         .customerReferenceId(order.getCustomerReferenceId())
                                         .providerCode(order.getSelectedProviderCode())
                                         .amount(order.getPaymentAmount())
-                                        .tenantId(order.getTenantId().toString())
+                                        .tenantId(order.getTenantId() != null ? order.getTenantId().toString() : null)
                                         .createdAt(order.getCreatedAt())
                                         .orderStatus(order.getOrderStatus().name())
                                         .pickupLat(order.getPickupLatitude().doubleValue())
@@ -465,8 +618,8 @@ public class OrderServices {
                                         .dropoffLat(order.getDropLatitude().doubleValue())
                                         .dropoffLng(order.getDropLongitude().doubleValue());
 
-                        if (createOrderRequest.pickup() != null && createOrderRequest.pickup().address() != null) {
-                                var pAddr = createOrderRequest.pickup().address();
+                        if (normalizedRequest.pickup() != null && normalizedRequest.pickup().address() != null) {
+                                var pAddr = normalizedRequest.pickup().address();
                                 eventBuilder.pickupCity(pAddr.city())
                                                 .pickupState(pAddr.state())
                                                 .pickupCountry(pAddr.country())
@@ -474,8 +627,8 @@ public class OrderServices {
                                                 .pickupLocality(pAddr.locality());
                         }
 
-                        if (createOrderRequest.dropoff() != null && createOrderRequest.dropoff().address() != null) {
-                                var dAddr = createOrderRequest.dropoff().address();
+                        if (normalizedRequest.dropoff() != null && normalizedRequest.dropoff().address() != null) {
+                                var dAddr = normalizedRequest.dropoff().address();
                                 eventBuilder.dropCity(dAddr.city())
                                                 .dropState(dAddr.state())
                                                 .dropCountry(dAddr.country())
@@ -487,7 +640,74 @@ public class OrderServices {
                 }
 
                 return new FinalCreateOrderResponse(order.getId(), order.getSelectedProviderCode(),
-                                order.getPaymentAmount());
+                                order.getPaymentAmount(), resolveChoiceCode(selectedQuote));
+        }
+
+        private OrderQuote resolveSelectedQuote(UUID quoteSessionId, UUID selectedQuoteId, BookingChannel bookingChannel) {
+                if (bookingChannel == BookingChannel.CONSUMER || bookingChannel == BookingChannel.GUEST) {
+                        if (selectedQuoteId == null) {
+                                throw new RuntimeException("selectedQuoteId is required");
+                        }
+                        OrderQuote selectedQuote = orderQuoteRepository.findByIdAndQuoteSessionId(selectedQuoteId, quoteSessionId)
+                                        .orElseThrow(() -> new RuntimeException("Selected quote not found for quote session"));
+                        selectedQuote.setIsSelected(true);
+                        return orderQuoteRepository.save(selectedQuote);
+                }
+                return orderQuoteRepository.findByQuoteSessionIdAndIsSelectedTrue(quoteSessionId)
+                                .orElseThrow(() -> new RuntimeException("No selected quote found for quote session"));
+        }
+
+        private void validateQuoteSessionOwnership(OrderQuoteSession quoteSession, BookingChannel bookingChannel,
+                        UUID tenantId, UUID ownerUserId, String guestAccessToken) {
+                if (quoteSession.getBookingChannel() != bookingChannel) {
+                        throw new RuntimeException("Quote session does not belong to the requested booking channel");
+                }
+                if (bookingChannel == BookingChannel.TENANT
+                                && !Optional.ofNullable(quoteSession.getTenantId()).equals(Optional.ofNullable(tenantId))) {
+                        throw new RuntimeException("Quote session does not belong to tenant");
+                }
+                if (bookingChannel == BookingChannel.CONSUMER
+                                && !Optional.ofNullable(quoteSession.getOwnerUserId())
+                                                .equals(Optional.ofNullable(ownerUserId))) {
+                        throw new RuntimeException("Quote session does not belong to user");
+                }
+                if (bookingChannel == BookingChannel.GUEST
+                                && (quoteSession.getGuestAccessToken() == null
+                                                || !quoteSession.getGuestAccessToken().equals(guestAccessToken))) {
+                        throw new RuntimeException("Invalid guest access token");
+                }
+        }
+
+        private CreateOrderResponse createExternalProviderOrder(String token, UUID quoteSessionId, OrderQuote selectedQuote,
+                        CreateOrderRequest createOrderRequest, BookingChannel bookingChannel) {
+                if (bookingChannel == BookingChannel.TENANT) {
+                        return providerInterface.createOrder(token, quoteSessionId, createOrderRequest);
+                }
+                if (selectedQuote.getProviderCode() == null || selectedQuote.getProviderCode().isBlank()) {
+                        throw new RuntimeException("Provider code is required for external provider booking");
+                }
+                return providerInterface.createOrderInternal(selectedQuote.getProviderCode(), createOrderRequest);
+        }
+
+        private CreateOrderRequest enrichCreateOrderRequest(CreateOrderRequest request, OrderQuote selectedQuote,
+                        OrderQuoteSession quoteSession, BookingChannel bookingChannel) {
+                return new CreateOrderRequest(
+                                request.idempotencyKey(),
+                                bookingChannel == BookingChannel.TENANT && quoteSession.getTenantId() != null
+                                                ? quoteSession.getTenantId().toString()
+                                                : request.tenantId(),
+                                selectedQuote.getQuoteId() != null ? selectedQuote.getQuoteId() : request.quoteId(),
+                                request.orderReference(),
+                                request.orderType(),
+                                request.paymentType(),
+                                request.pickup(),
+                                request.dropoff(),
+                                request.items(),
+                                request.packageInfo(),
+                                request.timeWindows(),
+                                request.deliveryPreferences(),
+                                request.externalMetadata(),
+                                request.deliveryInstructions());
         }
 
         private void publishInternalAssignmentAfterCommit(Order order, String selectedType, UUID excludedDriverId,
@@ -546,6 +766,16 @@ public class OrderServices {
                 return deliveryConfig.stream().map(conf -> conf.optionType().toUpperCase()).toList();
         }
 
+        private List<String> getDeliveryOptionsForOrder(String token, Order order, BookingChannel bookingChannel) {
+                if (bookingChannel == BookingChannel.TENANT && order.getTenantId() != null) {
+                        return getTenantDeliveryOptions(token, order.getTenantId());
+                }
+                if ("LOCAL_DRIVERS".equalsIgnoreCase(order.getSelectedType())) {
+                        return List.of("LOCAL_DRIVERS");
+                }
+                return List.of("EXTERNAL_PROVIDERS");
+        }
+
         private void saveOrderLocations(Order order, CreateOrderRequest createOrderRequest) {
                 if (createOrderRequest.pickup() != null && createOrderRequest.pickup().address() != null) {
                         var pAddr = createOrderRequest.pickup().address();
@@ -578,14 +808,22 @@ public class OrderServices {
         }
 
         @CacheEvict(value = { "orderStatus", "orders" }, key = "#orderId")
-        public Message cancelOrder(String token, UUID orderId, String providerCode) {
-                TokenResponse userDetails = authInterface.getUserDetails(token).getBody();
-                if (orderRepository.findById(orderId, userDetails.id()).isPresent()) {
-                        providerInterface.cancelOrder(token, orderId, providerCode);
-                        orderRepository.updateOrderStatus(orderId, OrderStatus.CANCELLED);
-                        return new Message("Order cancelled successfully");
+        public Message cancelOrder(String token, UUID orderId) {
+                Order order = orderRepository.findById(orderId)
+                                .orElseThrow(() -> new RuntimeException("Order not found"));
+                validateCancelAccess(order, token);
+                validateCancellableStatus(order);
+
+                if (isExternalProviderOrder(order)) {
+                        cancelExternalProviderOrder(token, order);
+                } else if (isInternalDriverOrder(order) && order.getAssignedDriverId() != null) {
+                        releaseAssignedDriver(order);
                 }
-                throw new RuntimeException("Order not found");
+
+                order.setOrderStatus(OrderStatus.CANCELLED);
+                order.setUpdatedAt(LocalDateTime.now());
+                orderRepository.save(order);
+                return new Message("Order cancelled successfully");
         }
 
         @Cacheable(value = "driverOrders", key = "#request.orderIds().toString()")
@@ -647,6 +885,17 @@ public class OrderServices {
                                 .orElse(null);
         }
 
+        public String getGuestOrderStatus(UUID orderId, String guestAccessToken) {
+                Order order = orderRepository.findById(orderId)
+                                .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
+                validateGuestOrderAccess(order, guestAccessToken);
+                OrderTrackingState orderTrackingState = orderTrackingStateRepository.findById(orderId).orElse(null);
+                if (orderTrackingState != null) {
+                        return orderTrackingState.getCurrentStatus().name();
+                }
+                return order.getOrderStatus().name();
+        }
+
         @Cacheable(value = "orders", key = "#orderId")
         public com.swifttrack.dto.orderDto.OrderDetailsResponse getOrderById(String token, UUID orderId) {
                 TokenResponse userDetails = authInterface.getUserDetails(token).getBody();
@@ -687,5 +936,126 @@ public class OrderServices {
                                 pickupLng,
                                 dropoffLat,
                                 dropoffLng);
+        }
+
+        public com.swifttrack.dto.orderDto.OrderDetailsResponse getGuestOrderById(UUID orderId, String guestAccessToken) {
+                Order order = orderRepository.findById(orderId)
+                                .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
+                validateGuestOrderAccess(order, guestAccessToken);
+                return getOrderDetails(order);
+        }
+
+        private com.swifttrack.dto.orderDto.OrderDetailsResponse getOrderDetails(Order order) {
+                OrderLocation pickup = order.getLocations().stream()
+                                .filter(loc -> loc.getLocationType() == LocationType.PICKUP)
+                                .findFirst().orElse(null);
+
+                OrderLocation dropoff = order.getLocations().stream()
+                                .filter(loc -> loc.getLocationType() == LocationType.DROP)
+                                .findFirst().orElse(null);
+
+                String city = (pickup != null) ? pickup.getCity() : null;
+                String state = (pickup != null) ? pickup.getState() : null;
+                Double pickupLat = (pickup != null && pickup.getLatitude() != null) ? pickup.getLatitude().doubleValue()
+                                : null;
+                Double pickupLng = (pickup != null && pickup.getLongitude() != null)
+                                ? pickup.getLongitude().doubleValue()
+                                : null;
+                Double dropoffLat = (dropoff != null && dropoff.getLatitude() != null)
+                                ? dropoff.getLatitude().doubleValue()
+                                : null;
+                Double dropoffLng = (dropoff != null && dropoff.getLongitude() != null)
+                                ? dropoff.getLongitude().doubleValue()
+                                : null;
+
+                return new com.swifttrack.dto.orderDto.OrderDetailsResponse(
+                                order.getId(),
+                                order.getCustomerReferenceId(),
+                                order.getOrderStatus().name(),
+                                city,
+                                state,
+                                pickupLat,
+                                pickupLng,
+                                dropoffLat,
+                                dropoffLng);
+        }
+
+        private void validateGuestOrderAccess(Order order, String guestAccessToken) {
+                if (order.getBookingChannel() != BookingChannel.GUEST
+                                || order.getGuestAccessToken() == null
+                                || !order.getGuestAccessToken().equals(guestAccessToken)) {
+                        throw new RuntimeException("Unauthorized guest order access");
+                }
+        }
+
+        private void validateCancelAccess(Order order, String token) {
+                if (order.getBookingChannel() == BookingChannel.GUEST) {
+                        validateGuestOrderAccess(order, token);
+                        return;
+                }
+
+                TokenResponse userDetails = authInterface.getUserDetails(token).getBody();
+                if (userDetails == null || userDetails.id() == null) {
+                        throw new RuntimeException("Invalid token or user not found");
+                }
+
+                if (order.getBookingChannel() == BookingChannel.TENANT) {
+                        if (userDetails.tenantId().isEmpty() || order.getTenantId() == null
+                                        || !order.getTenantId().equals(userDetails.tenantId().get())) {
+                                throw new RuntimeException("Order does not belong to tenant");
+                        }
+                        return;
+                }
+
+                if (order.getOwnerUserId() == null || !order.getOwnerUserId().equals(userDetails.id())) {
+                        throw new RuntimeException("Order does not belong to user");
+                }
+        }
+
+        private void validateCancellableStatus(Order order) {
+                if (order.getOrderStatus() != OrderStatus.CREATED && order.getOrderStatus() != OrderStatus.ASSIGNED) {
+                        throw new RuntimeException("Order can only be cancelled in CREATED or ASSIGNED status");
+                }
+        }
+
+        private boolean isExternalProviderOrder(Order order) {
+                return "EXTERNAL_PROVIDERS".equalsIgnoreCase(order.getSelectedType());
+        }
+
+        private boolean isInternalDriverOrder(Order order) {
+                return "LOCAL_DRIVERS".equalsIgnoreCase(order.getSelectedType())
+                                || "TENANT_DRIVERS".equalsIgnoreCase(order.getSelectedType());
+        }
+
+        private void cancelExternalProviderOrder(String token, Order order) {
+                if (order.getProviderOrderId() == null || order.getProviderOrderId().isBlank()
+                                || order.getSelectedProviderCode() == null || order.getSelectedProviderCode().isBlank()) {
+                        throw new RuntimeException("Provider order details are missing");
+                }
+                providerInterface.cancelOrder(token, order.getProviderOrderId(), order.getSelectedProviderCode());
+        }
+
+        private void releaseAssignedDriver(Order order) {
+                UserCanceledOrderEvent cancelEvent = UserCanceledOrderEvent.builder()
+                                .orderId(order.getId())
+                                .driverId(order.getAssignedDriverId())
+                                .reason("Cancelled by user")
+                                .build();
+                kafkaTemplate.send("user-canceled-order", cancelEvent);
+                order.setAssignedDriverId(null);
+                if ("LOCAL_DRIVERS".equalsIgnoreCase(order.getSelectedType())
+                                || "TENANT_DRIVERS".equalsIgnoreCase(order.getSelectedType())) {
+                        order.setSelectedProviderCode(null);
+                }
+        }
+
+        private String resolveChoiceCode(OrderQuote selectedQuote) {
+                if (selectedQuote == null) {
+                        return null;
+                }
+                if ("LOCAL_DRIVERS".equalsIgnoreCase(selectedQuote.getSelectedType())) {
+                        return "SWIFTTRACK_DRIVER";
+                }
+                return selectedQuote.getProviderCode();
         }
 }
