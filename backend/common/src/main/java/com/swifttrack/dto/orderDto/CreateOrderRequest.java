@@ -3,6 +3,7 @@ package com.swifttrack.dto.orderDto;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import com.swifttrack.enums.PaymentType;
 
@@ -42,6 +43,7 @@ public record CreateOrderRequest(
          */
 
         public record LocationPoint(
+                        UUID addressId,
                         Address address,
                         Contact contact,
                         String businessName,

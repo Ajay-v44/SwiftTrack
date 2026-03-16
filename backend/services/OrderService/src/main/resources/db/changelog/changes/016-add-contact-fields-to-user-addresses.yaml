@@ -1,0 +1,38 @@
+databaseChangeLog:
+  - changeSet:
+      id: 016-add-contact-fields-to-user-addresses
+      author: codex
+      changes:
+        - addColumn:
+            tableName: user_addresses
+            columns:
+              - column:
+                  name: contact_name
+                  type: varchar(120)
+              - column:
+                  name: contact_phone
+                  type: varchar(40)
+              - column:
+                  name: business_name
+                  type: varchar(120)
+              - column:
+                  name: notes
+                  type: varchar(255)
+        - update:
+            tableName: user_addresses
+            columns:
+              - column:
+                  name: contact_name
+                  value: "Pickup Contact"
+              - column:
+                  name: contact_phone
+                  value: "0000000000"
+            where: "contact_name IS NULL OR contact_phone IS NULL"
+        - addNotNullConstraint:
+            tableName: user_addresses
+            columnName: contact_name
+            columnDataType: varchar(120)
+        - addNotNullConstraint:
+            tableName: user_addresses
+            columnName: contact_phone
+            columnDataType: varchar(40)
