@@ -2,7 +2,6 @@ package com.swifttrack.AuthService.Services;
 
 import java.util.Map;
 import java.util.Objects;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -329,27 +328,39 @@ public class UserServices {
 
             if (userModel.getStatus() == false)
                 throw new CustomException(HttpStatus.FORBIDDEN, "User account is not verified");
-            if (userModel.getTenantId() == null && userModel.getType() != UserType.SUPER_ADMIN
-                    && userModel.getType() != UserType.SYSTEM_ADMIN)
+            boolean isPlatformAdmin = isPlatformAdmin(userModel.getType());
+            if (userModel.getTenantId() == null && !isPlatformAdmin)
                 throw new CustomException(HttpStatus.FORBIDDEN, "You are not part of any organization");
 
-            // if (userModel.getType() != com.swifttrack.enums.UserType.TENANT_ADMIN)
-            // throw new CustomException(HttpStatus.FORBIDDEN, "User is not a tenant
-            // admin");
-            if (userModel.getType() == UserType.SUPER_ADMIN || userModel.getType() == UserType.SYSTEM_ADMIN) {
-                List<UserType> userTypes = Arrays.asList(UserType.TENANT_ADMIN, UserType.TENANT_USER,
-                        UserType.TENANT_DRIVER);
-                List<UserModel> userModel1 = userRepo.findByType(userTypes);
-                return userModel1.stream().map(userMapper::toTenantUser).collect(Collectors.toList());
+            if (isPlatformAdmin) {
+                List<UserModel> users = userRepo.findAllByType(userType);
+                return users.stream().map(userMapper::toTenantUser).collect(Collectors.toList());
             }
-            UUID tenantId = userModel.getTenantId();
-            // if (userModel.getType() == UserType.TENANT_ADMIN)
-            // tenantId = userModel.getId();
 
-            List<UserModel> userModel1 = userRepo.findByTenantId(tenantId, userType);
-            return userModel1.stream().map(userMapper::toTenantUser).collect(Collectors.toList());
+            if (!isTenantScopedUser(userType)) {
+                throw new CustomException(HttpStatus.FORBIDDEN,
+                        "Tenant admins can only view tenant-scoped users");
+            }
+
+            UUID tenantId = userModel.getTenantId();
+            List<UserModel> users = userRepo.findByTenantId(tenantId, userType);
+            return users.stream().map(userMapper::toTenantUser).collect(Collectors.toList());
         }
         throw new CustomException(HttpStatus.UNAUTHORIZED, "Invalid Token");
+    }
+
+    private boolean isPlatformAdmin(UserType userType) {
+        return userType == UserType.SUPER_ADMIN
+                || userType == UserType.SYSTEM_ADMIN
+                || userType == UserType.ADMIN_USER;
+    }
+
+    private boolean isTenantScopedUser(UserType userType) {
+        return userType == UserType.TENANT_ADMIN
+                || userType == UserType.TENANT_USER
+                || userType == UserType.TENANT_DRIVER
+                || userType == UserType.TENANT_MANAGER
+                || userType == UserType.TENANT_STAFF;
     }
 
     public RegisterDriverResponse registerDriver(RegisterUser registerUser) {
