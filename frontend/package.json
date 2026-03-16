@@ -6,7 +6,12 @@
     "apps/*",
     "libs/*"
   ],
-  "scripts": {},
+  "scripts": {
+    "build": "nx build web",
+    "dev": "nx dev web",
+    "start": "nx start web",
+    "lint": "nx lint web"
+  },
   "private": true,
   "devDependencies": {
     "@nx/js": "22.5.0",
@@ -16,6 +21,10 @@
     "@swc/core": "~1.15.5",
     "@swc/helpers": "~0.5.18",
     "@types/node": "20.19.9",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.6",
     "nx": "22.5.0",
     "prettier": "~3.6.2",
     "tslib": "^2.3.0",
@@ -26,11 +35,12 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.34.0",
-    "lucide-react": "^0.468.0",
+    "lucide-react": "^0.563.0",
+    "next": "16.1.6",
     "next-themes": "^0.4.6",
     "radix-ui": "^1.4.3",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0"
   }
