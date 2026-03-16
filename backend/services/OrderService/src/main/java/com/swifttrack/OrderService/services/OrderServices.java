@@ -15,6 +15,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -30,11 +31,14 @@ import com.swifttrack.OrderService.dto.MLPredictionRequest;
 import com.swifttrack.OrderService.dto.MLPredictionResponse;
 import com.swifttrack.OrderService.dto.MLPredictionResponse.Prediction;
 import com.swifttrack.OrderService.dto.ModelQuoteInput;
+import com.swifttrack.OrderService.dto.AddressCreateOrderRequest;
+import com.swifttrack.OrderService.dto.AddressQuoteRequest;
 import com.swifttrack.OrderService.models.Order;
 import com.swifttrack.OrderService.models.OrderLocation;
 import com.swifttrack.OrderService.models.OrderQuote;
 import com.swifttrack.OrderService.models.OrderQuoteSession;
 import com.swifttrack.OrderService.models.OrderTrackingState;
+import com.swifttrack.OrderService.models.UserAddress;
 import com.swifttrack.OrderService.models.enums.LocationType;
 import com.swifttrack.OrderService.models.enums.OrderStatus;
 import com.swifttrack.OrderService.models.enums.OrderType;
@@ -66,6 +70,7 @@ import com.swifttrack.dto.billingDto.BindQuoteOrderRequest;
 import com.swifttrack.enums.BillingAndSettlement.BookingChannel;
 import com.swifttrack.events.InternalDriverAssignmentEvent;
 import com.swifttrack.events.UserCanceledOrderEvent;
+import com.swifttrack.exception.CustomException;
 
 import jakarta.transaction.Transactional;
 
@@ -91,6 +96,7 @@ public class OrderServices {
         OrderQuoteSessionRepository orderQuoteSessionRepository;
         OrderQuoteRepository orderQuoteRepository;
         AuthInterface authInterface;
+        AddressService addressService;
         OrderTrackingStateRepository orderTrackingStateRepository;
         private final org.springframework.kafka.core.KafkaTemplate<String, Object> kafkaTemplate;
 
@@ -105,6 +111,7 @@ public class OrderServices {
                         RestTemplate restTemplate,
                         OrderQuoteSessionRepository orderQuoteSessionRepository,
                         OrderQuoteRepository orderQuoteRepository, AuthInterface authInterface,
+                        AddressService addressService,
                         OrderTrackingStateRepository orderTrackingStateRepository,
                         org.springframework.kafka.core.KafkaTemplate<String, Object> kafkaTemplate) {
                 this.providerInterface = providerInterface;
@@ -118,16 +125,19 @@ public class OrderServices {
                 this.orderQuoteSessionRepository = orderQuoteSessionRepository;
                 this.orderQuoteRepository = orderQuoteRepository;
                 this.authInterface = authInterface;
+                this.addressService = addressService;
                 this.orderTrackingStateRepository = orderTrackingStateRepository;
                 this.kafkaTemplate = kafkaTemplate;
         }
 
-        public OrderQuoteResponse getQuote(String token, QuoteInput quoteInput) {
+        public OrderQuoteResponse getQuote(String token, AddressQuoteRequest quoteInput) {
                 try {
                         TokenResponse tokenResponse = authInterface.getUserDetails(token).getBody();
                         if (tokenResponse == null || tokenResponse.tenantId().isEmpty()) {
                                 throw new RuntimeException("Tenant details are required to fetch quote");
                         }
+                        QuoteInput normalizedQuoteInput = enrichQuoteInput(toSavedAddressQuoteInput(quoteInput), tokenResponse,
+                                        BookingChannel.TENANT);
 
                         List<TenantDeliveryConf> deliveryConfig = Optional
                                         .ofNullable(tenantInterface.getTenantDeliveryConfiguration(token))
@@ -143,25 +153,30 @@ public class OrderServices {
                                                 new TenantDeliveryConf("LOCAL_DRIVERS", 2),
                                                 new TenantDeliveryConf("TENANT_DRIVERS", 3));
                         }
-                        return buildQuote(token, quoteInput, BookingChannel.TENANT, tokenResponse.tenantId().get(),
+                        return buildQuote(token, normalizedQuoteInput, BookingChannel.TENANT, tokenResponse.tenantId().get(),
                                         tokenResponse.id(), null, deliveryConfig, providerInterface.getTenantProviders(token));
 
+                } catch (CustomException e) {
+                        throw e;
                 } catch (Exception e) {
                         throw new RuntimeException("Error occurred while processing quote: " + e.getMessage(), e);
                 }
         }
 
-        public DeliveryOptionsQuoteResponse getConsumerQuote(String token, QuoteInput quoteInput) {
+        public DeliveryOptionsQuoteResponse getConsumerQuote(String token, AddressQuoteRequest quoteInput) {
                 TokenResponse tokenResponse = authInterface.getUserDetails(token).getBody();
                 if (tokenResponse == null || tokenResponse.id() == null) {
                         throw new RuntimeException("Authenticated user is required to fetch consumer quote");
                 }
-                return buildSelectableQuotes(token, quoteInput, BookingChannel.CONSUMER, tokenResponse.id(), null);
+                QuoteInput normalizedQuoteInput = enrichQuoteInput(toSavedAddressQuoteInput(quoteInput), tokenResponse,
+                                BookingChannel.CONSUMER);
+                return buildSelectableQuotes(token, normalizedQuoteInput, BookingChannel.CONSUMER, tokenResponse.id(), null);
         }
 
         public DeliveryOptionsQuoteResponse getGuestQuote(QuoteInput quoteInput) {
                 String guestAccessToken = UUID.randomUUID().toString();
-                return buildSelectableQuotes(null, quoteInput, BookingChannel.GUEST, null, guestAccessToken);
+                return buildSelectableQuotes(null, validateQuoteCoordinates(quoteInput), BookingChannel.GUEST, null,
+                                guestAccessToken);
         }
 
         private DeliveryOptionsQuoteResponse buildSelectableQuotes(String token, QuoteInput quoteInput,
@@ -510,22 +525,24 @@ public class OrderServices {
         }
 
         public FinalCreateOrderResponse createOrder(String token, UUID quoteSessionId,
-                        CreateOrderRequest createOrderRequest) {
+                        AddressCreateOrderRequest createOrderRequest) {
                 TokenResponse userDetails = authInterface.getUserDetails(token).getBody();
                 if (userDetails == null || userDetails.tenantId().isEmpty()) {
                         throw new RuntimeException("Invalid user or tenant context");
                 }
-                return createOrderForContext(token, quoteSessionId, null, createOrderRequest, BookingChannel.TENANT,
-                                userDetails.tenantId().get(), userDetails.id(), null);
+                return createOrderForContext(token, userDetails, quoteSessionId, null,
+                                toSavedAddressCreateOrderRequest(createOrderRequest),
+                                BookingChannel.TENANT, userDetails.tenantId().get(), userDetails.id(), null);
         }
 
         public FinalCreateOrderResponse createConsumerOrder(String token, UUID quoteSessionId, UUID selectedQuoteId,
-                        CreateOrderRequest createOrderRequest) {
+                        AddressCreateOrderRequest createOrderRequest) {
                 TokenResponse userDetails = authInterface.getUserDetails(token).getBody();
                 if (userDetails == null || userDetails.id() == null) {
                         throw new RuntimeException("Authenticated user is required");
                 }
-                return createOrderForContext(token, quoteSessionId, selectedQuoteId, createOrderRequest,
+                return createOrderForContext(token, userDetails, quoteSessionId, selectedQuoteId,
+                                toSavedAddressCreateOrderRequest(createOrderRequest),
                                 BookingChannel.CONSUMER, null, userDetails.id(), null);
         }
 
@@ -534,11 +551,11 @@ public class OrderServices {
                 if (guestAccessToken == null || guestAccessToken.isBlank()) {
                         throw new RuntimeException("guestAccessToken is required");
                 }
-                return createOrderForContext(null, quoteSessionId, selectedQuoteId, createOrderRequest,
+                return createOrderForContext(null, null, quoteSessionId, selectedQuoteId, createOrderRequest,
                                 BookingChannel.GUEST, null, null, guestAccessToken);
         }
 
-        private FinalCreateOrderResponse createOrderForContext(String token, UUID quoteSessionId, UUID selectedQuoteId,
+        private FinalCreateOrderResponse createOrderForContext(String token, TokenResponse tokenResponse, UUID quoteSessionId, UUID selectedQuoteId,
                         CreateOrderRequest createOrderRequest, BookingChannel bookingChannel,
                         UUID tenantId, UUID ownerUserId, String guestAccessToken) {
                 OrderQuoteSession quoteSession = orderQuoteSessionRepository
@@ -552,7 +569,7 @@ public class OrderServices {
                                 .toUpperCase();
 
                 CreateOrderRequest normalizedRequest = enrichCreateOrderRequest(createOrderRequest, selectedQuote,
-                                quoteSession, bookingChannel);
+                                quoteSession, bookingChannel, tokenResponse);
 
                 Order order = new Order();
                 order.setTenantId(tenantId);
@@ -690,7 +707,7 @@ public class OrderServices {
         }
 
         private CreateOrderRequest enrichCreateOrderRequest(CreateOrderRequest request, OrderQuote selectedQuote,
-                        OrderQuoteSession quoteSession, BookingChannel bookingChannel) {
+                        OrderQuoteSession quoteSession, BookingChannel bookingChannel, TokenResponse tokenResponse) {
                 return new CreateOrderRequest(
                                 request.idempotencyKey(),
                                 bookingChannel == BookingChannel.TENANT && quoteSession.getTenantId() != null
@@ -700,7 +717,62 @@ public class OrderServices {
                                 request.orderReference(),
                                 request.orderType(),
                                 request.paymentType(),
-                                request.pickup(),
+                                enrichPickupLocation(request.pickup(), tokenResponse, bookingChannel),
+                                enrichDropoffLocation(request.dropoff(), tokenResponse, bookingChannel),
+                                request.items(),
+                                request.packageInfo(),
+                                request.timeWindows(),
+                                request.deliveryPreferences(),
+                                request.externalMetadata(),
+                                request.deliveryInstructions());
+        }
+
+        private QuoteInput enrichQuoteInput(QuoteInput quoteInput, TokenResponse tokenResponse, BookingChannel bookingChannel) {
+                if (bookingChannel == BookingChannel.GUEST) {
+                        return validateQuoteCoordinates(quoteInput);
+                }
+
+                UserAddress pickupAddress = addressService.resolveAddress(tokenResponse, bookingChannel,
+                                quoteInput != null ? quoteInput.pickupAddressId() : null);
+                QuoteInput normalizedQuoteInput = new QuoteInput(
+                                pickupAddress.getLatitude().doubleValue(),
+                                pickupAddress.getLongitude().doubleValue(),
+                                quoteInput != null ? quoteInput.dropoffLat() : null,
+                                quoteInput != null ? quoteInput.dropoffLng() : null,
+                                pickupAddress.getId());
+                return validateQuoteCoordinates(normalizedQuoteInput);
+        }
+
+        private QuoteInput toSavedAddressQuoteInput(AddressQuoteRequest quoteInput) {
+                if (quoteInput == null) {
+                        throw new CustomException(HttpStatus.BAD_REQUEST, "Quote input is required");
+                }
+                return new QuoteInput(
+                                null,
+                                null,
+                                quoteInput.dropoffLat(),
+                                quoteInput.dropoffLng(),
+                                quoteInput.pickupAddressId());
+        }
+
+        private CreateOrderRequest toSavedAddressCreateOrderRequest(AddressCreateOrderRequest request) {
+                if (request == null) {
+                        throw new CustomException(HttpStatus.BAD_REQUEST, "Create order request is required");
+                }
+                return new CreateOrderRequest(
+                                request.idempotencyKey(),
+                                request.tenantId(),
+                                request.quoteId(),
+                                request.orderReference(),
+                                request.orderType(),
+                                request.paymentType(),
+                                new CreateOrderRequest.LocationPoint(
+                                                request.pickupAddressId(),
+                                                null,
+                                                null,
+                                                null,
+                                                null,
+                                                null),
                                 request.dropoff(),
                                 request.items(),
                                 request.packageInfo(),
@@ -708,6 +780,96 @@ public class OrderServices {
                                 request.deliveryPreferences(),
                                 request.externalMetadata(),
                                 request.deliveryInstructions());
+        }
+
+        private QuoteInput validateQuoteCoordinates(QuoteInput quoteInput) {
+                if (quoteInput == null) {
+                        throw new CustomException(HttpStatus.BAD_REQUEST, "Quote input is required");
+                }
+                if (quoteInput.pickupLat() == null || quoteInput.pickupLng() == null || quoteInput.dropoffLat() == null
+                                || quoteInput.dropoffLng() == null) {
+                        throw new CustomException(HttpStatus.BAD_REQUEST,
+                                        "pickupLat, pickupLng, dropoffLat and dropoffLng are required");
+                }
+                return quoteInput;
+        }
+
+        private CreateOrderRequest.LocationPoint enrichPickupLocation(CreateOrderRequest.LocationPoint pickup,
+                        TokenResponse tokenResponse, BookingChannel bookingChannel) {
+                if (pickup == null) {
+                        throw new CustomException(HttpStatus.BAD_REQUEST, "pickup is required");
+                }
+
+                if (bookingChannel == BookingChannel.GUEST) {
+                        if (pickup.address() == null) {
+                                throw new CustomException(HttpStatus.BAD_REQUEST, "pickup.address is required");
+                        }
+                        return pickup;
+                }
+
+                UserAddress savedAddress = addressService.resolveAddress(tokenResponse, bookingChannel, pickup.addressId());
+                CreateOrderRequest.Address resolvedAddress = new CreateOrderRequest.Address(
+                                savedAddress.getLine1(),
+                                savedAddress.getLine2(),
+                                savedAddress.getCity(),
+                                savedAddress.getState(),
+                                savedAddress.getCountry(),
+                                savedAddress.getPincode(),
+                                savedAddress.getLocality(),
+                                savedAddress.getLatitude().doubleValue(),
+                                savedAddress.getLongitude().doubleValue());
+
+                return new CreateOrderRequest.LocationPoint(
+                                savedAddress.getId(),
+                                resolvedAddress,
+                                new CreateOrderRequest.Contact(savedAddress.getContactName(), savedAddress.getContactPhone()),
+                                savedAddress.getBusinessName(),
+                                savedAddress.getNotes(),
+                                pickup.verification());
+        }
+
+        private CreateOrderRequest.LocationPoint enrichDropoffLocation(CreateOrderRequest.LocationPoint dropoff,
+                        TokenResponse tokenResponse, BookingChannel bookingChannel) {
+                if (dropoff == null) {
+                        throw new CustomException(HttpStatus.BAD_REQUEST, "dropoff is required");
+                }
+
+                if (bookingChannel == BookingChannel.GUEST) {
+                        if (dropoff.address() == null) {
+                                throw new CustomException(HttpStatus.BAD_REQUEST, "dropoff.address is required");
+                        }
+                        return dropoff;
+                }
+
+                if (dropoff.addressId() != null) {
+                        UserAddress savedAddress = addressService.resolveAddress(tokenResponse, bookingChannel, dropoff.addressId());
+                        CreateOrderRequest.Address resolvedAddress = new CreateOrderRequest.Address(
+                                        savedAddress.getLine1(),
+                                        savedAddress.getLine2(),
+                                        savedAddress.getCity(),
+                                        savedAddress.getState(),
+                                        savedAddress.getCountry(),
+                                        savedAddress.getPincode(),
+                                        savedAddress.getLocality(),
+                                        savedAddress.getLatitude().doubleValue(),
+                                        savedAddress.getLongitude().doubleValue());
+
+                        return new CreateOrderRequest.LocationPoint(
+                                        savedAddress.getId(),
+                                        resolvedAddress,
+                                        new CreateOrderRequest.Contact(savedAddress.getContactName(),
+                                                        savedAddress.getContactPhone()),
+                                        savedAddress.getBusinessName(),
+                                        savedAddress.getNotes(),
+                                        dropoff.verification());
+                }
+
+                if (dropoff.address() == null) {
+                        throw new CustomException(HttpStatus.BAD_REQUEST,
+                                        "Either dropoff.addressId or dropoff.address is required");
+                }
+
+                return dropoff;
         }
 
         private void publishInternalAssignmentAfterCommit(Order order, String selectedType, UUID excludedDriverId,

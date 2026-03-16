@@ -1,0 +1,88 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-create-admin-audit-log
+      author: swifttrack
+      validCheckSum: ANY
+      preConditions:
+        - not:
+            tableExists:
+                schemaName: admin
+                tableName: admin_audit_log
+        - onFail: MARK_RAN
+        - onError: MARK_RAN
+      changes:
+        - createTable:
+            schemaName: admin
+            tableName: admin_audit_log
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: admin_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: admin_name
+                  type: VARCHAR(255)
+              - column:
+                  name: admin_type
+                  type: VARCHAR(50)
+              - column:
+                  name: action_type
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: service_domain
+                  type: VARCHAR(50)
+              - column:
+                  name: target_id
+                  type: UUID
+              - column:
+                  name: target_type
+                  type: VARCHAR(100)
+              - column:
+                  name: details
+                  type: TEXT
+              - column:
+                  name: ip_address
+                  type: VARCHAR(50)
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - createIndex:
+            schemaName: admin
+            tableName: admin_audit_log
+            indexName: idx_audit_admin_id
+            columns:
+              - column:
+                  name: admin_id
+        - createIndex:
+            schemaName: admin
+            tableName: admin_audit_log
+            indexName: idx_audit_created_at
+            columns:
+              - column:
+                  name: created_at
+        - createIndex:
+            schemaName: admin
+            tableName: admin_audit_log
+            indexName: idx_audit_action_type
+            columns:
+              - column:
+                  name: action_type
+        - createIndex:
+            schemaName: admin
+            tableName: admin_audit_log
+            indexName: idx_audit_target_id
+            columns:
+              - column:
+                  name: target_id

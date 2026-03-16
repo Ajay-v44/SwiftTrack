@@ -1,0 +1,63 @@
+spring:
+  application:
+    name: AdminService
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}?currentSchema=admin,public
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 5
+      connection-init-sql: SET search_path TO admin, public
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+    enabled: true
+    drop-first: false
+
+  cache:
+    type: simple
+
+server:
+  port: ${SERVER_PORT:8009}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://127.0.0.1:8761/eureka/}
+  instance:
+    hostname: 127.0.0.1
+    prefer-ip-address: true
+    ip-address: 127.0.0.1
+    instance-id: ${spring.application.name}:${server.port}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    operations-sorter: method
+    tags-sorter: alpha
+    use-root-path: true
+    show-extensions: true
+  show-actuator: false
+  cache:
+    disabled: true
+
+# Admin service security config
+admin:
+  jwt:
+    secret: ${JWT_SECRET:swifttrack-admin-secret-key}
+  allowed-user-types:
+    - SUPER_ADMIN
+    - SYSTEM_ADMIN
+    - ADMIN_USER

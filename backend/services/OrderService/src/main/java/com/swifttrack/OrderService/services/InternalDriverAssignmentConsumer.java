@@ -202,7 +202,8 @@ public class InternalDriverAssignmentConsumer {
                 order.getPickupLatitude().doubleValue(),
                 order.getPickupLongitude().doubleValue(),
                 order.getDropLatitude().doubleValue(),
-                order.getDropLongitude().doubleValue());
+                order.getDropLongitude().doubleValue(),
+                null);
 
         QuoteResponse providerQuote = providerInterface.getQuoteInternal(chosenProvider.providerCode(), quoteInput);
         if (providerQuote == null) {
@@ -324,6 +325,7 @@ public class InternalDriverAssignmentConsumer {
                 latitude,
                 longitude);
         return new com.swifttrack.dto.orderDto.CreateOrderRequest.LocationPoint(
+                locationPoint.addressId(),
                 normalizedAddress,
                 locationPoint.contact(),
                 locationPoint.businessName(),

@@ -1,10 +1,13 @@
 package com.swifttrack.dto.providerDto;
 
+import java.util.UUID;
+
 public record QuoteInput(
-        double pickupLat,
-        double pickupLng,
-        double dropoffLat,
-        double dropoffLng
+        Double pickupLat,
+        Double pickupLng,
+        Double dropoffLat,
+        Double dropoffLng,
+        UUID pickupAddressId
 ) {
 
 }

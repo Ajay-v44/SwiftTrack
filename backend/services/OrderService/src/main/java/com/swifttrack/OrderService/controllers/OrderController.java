@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import com.swifttrack.OrderService.dto.AddressCreateOrderRequest;
+import com.swifttrack.OrderService.dto.AddressQuoteRequest;
 import com.swifttrack.OrderService.services.OrderServices;
 import com.swifttrack.dto.Message;
 import com.swifttrack.dto.orderDto.CreateOrderRequest;
@@ -38,19 +40,20 @@ public class OrderController {
 
     @PostMapping("/v1/getQuote")
     public ResponseEntity<OrderQuoteResponse> getQuote(@RequestHeader("token") String token,
-            @RequestBody QuoteInput quoteInput) {
+            @RequestBody AddressQuoteRequest quoteInput) {
         return ResponseEntity.ok(orderServices.getQuote(token, quoteInput));
     }
 
     @PostMapping("/v1/createOrder")
     public ResponseEntity<FinalCreateOrderResponse> createOrder(@RequestHeader("token") String token,
-            @RequestParam("quoteSessionId") UUID quoteSessionId, @RequestBody CreateOrderRequest createOrderRequest) {
+            @RequestParam("quoteSessionId") UUID quoteSessionId,
+            @RequestBody AddressCreateOrderRequest createOrderRequest) {
         return ResponseEntity.ok(orderServices.createOrder(token, quoteSessionId, createOrderRequest));
     }
 
     @PostMapping("/v1/consumer/getQuote")
     public ResponseEntity<DeliveryOptionsQuoteResponse> getConsumerQuote(@RequestHeader("token") String token,
-            @RequestBody QuoteInput quoteInput) {
+            @RequestBody AddressQuoteRequest quoteInput) {
         return ResponseEntity.ok(orderServices.getConsumerQuote(token, quoteInput));
     }
 
@@ -58,7 +61,7 @@ public class OrderController {
     public ResponseEntity<FinalCreateOrderResponse> createConsumerOrder(@RequestHeader("token") String token,
             @RequestParam("quoteSessionId") UUID quoteSessionId,
             @RequestParam("selectedQuoteId") UUID selectedQuoteId,
-            @RequestBody CreateOrderRequest createOrderRequest) {
+            @RequestBody AddressCreateOrderRequest createOrderRequest) {
         return ResponseEntity.ok(orderServices.createConsumerOrder(token, quoteSessionId, selectedQuoteId, createOrderRequest));
     }
 
