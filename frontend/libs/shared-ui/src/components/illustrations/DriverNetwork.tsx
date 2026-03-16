@@ -1,6 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
+import Image from "next/image"
 import { SwiftTrackDriverFleet } from "@swifttrack/shared-assets"
 
 export function DriverNetwork() {
@@ -12,10 +13,12 @@ export function DriverNetwork() {
 
             {/* Image */}
             <div className="absolute inset-0 z-10">
-                <img
+                <Image
                     src={SwiftTrackDriverFleet}
                     alt="Driver Fleet"
-                    className="w-full h-full object-cover opacity-80"
+                    className="object-cover opacity-80"
+                    fill
+                    sizes="(max-width: 768px) 100vw, 400px"
                 />
             </div>
 

@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { motion } from "framer-motion"
+import Image from "next/image"
 import { SwiftTrackLogo } from "@swifttrack/shared-assets"
 
 export function Logo({ className = "" }: { className?: string }) {
@@ -8,10 +8,12 @@ export function Logo({ className = "" }: { className?: string }) {
             <div className="relative w-8 h-8 md:w-10 md:h-10">
                 <div className="absolute inset-0 bg-primary/20 rounded-xl blur-lg group-hover:bg-primary/40 transition-colors" />
                 <div className="relative w-full h-full bg-gradient-to-br from-primary to-purple-600 rounded-xl flex items-center justify-center text-white shadow-lg overflow-hidden border border-white/20">
-                    <img
+                    <Image
                         src={SwiftTrackLogo}
                         alt="SwiftTrack Logo"
-                        className="w-full h-full object-cover"
+                        className="object-contain"
+                        fill
+                        sizes="(max-width: 768px) 32px, 40px"
                     />
                 </div>
             </div>
