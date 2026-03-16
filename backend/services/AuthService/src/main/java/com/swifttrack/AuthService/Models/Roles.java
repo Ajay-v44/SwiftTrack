@@ -29,9 +29,8 @@ public class Roles {
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
     
-    @Enumerated(EnumType.STRING)
     @Column(name = "name", nullable = false)
-    private Name name;
+    private String name;
 
     @Column(name="description",nullable = true)
     private String description;
@@ -54,9 +53,5 @@ public class Roles {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
-    }
-    
-    public enum Name{
-        TENANT_ADMIN, DRIVER, PROVIDER_OWNER, SYSTEM_ADMIN, SYSTEM_USER
     }
 }

@@ -16,6 +16,7 @@ import com.swifttrack.AuthService.Repository.UserRepo;
 import com.swifttrack.AuthService.Repository.UserRolesRepo;
 import com.swifttrack.AuthService.util.JwtUtil;
 import com.swifttrack.dto.Message;
+import com.swifttrack.dto.adminDto.AssignRolesRequest;
 import com.swifttrack.enums.UserType;
 import com.swifttrack.exception.CustomException;
 import com.swifttrack.exception.ResourceNotFoundException;
@@ -39,6 +40,19 @@ public class UserRoleServices {
 
     @SuppressWarnings("null")
     public Message addUserRoles(String token, UserRoleInput userRoleInput) {
+        return addUserRolesInternal(token, userRoleInput.userId(), userRoleInput.roleList());
+    }
+
+    public Message addManagedUserRoles(String token, AssignRolesRequest request) {
+        if (request == null || request.userId() == null) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "userId is required");
+        }
+        return addUserRolesInternal(token, request.userId().toString(),
+                request.roleIds() == null ? java.util.List.of()
+                        : request.roleIds().stream().map(java.util.UUID::toString).toList());
+    }
+
+    private Message addUserRolesInternal(String token, String userId, java.util.List<String> roleIds) {
         System.out.println("Adding user roles...");
         // Get the user
         Map<String, Object> map = jwtUtil.decodeToken(token);
@@ -52,16 +66,24 @@ public class UserRoleServices {
         }
         System.out.println(user.getType() + "user type");
         if (!(user.getType() == UserType.SYSTEM_ADMIN || user.getType() == UserType.SYSTEM_USER
-                || user.getType() == UserType.TENANT_ADMIN)) {
+                || user.getType() == UserType.SUPER_ADMIN || user.getType() == UserType.TENANT_ADMIN
+                || user.getType() == UserType.ADMIN_USER)) {
             throw new CustomException(HttpStatus.FORBIDDEN,
-                    "Forbidden - Only system admin, system user, and tenant admin can assign roles");
+                    "Forbidden - Only admins can assign roles");
         }
-        UserModel userToAssignRole = userRepo.findById(UUID.fromString(userRoleInput.userId().toString())).orElse(null);
+        UserModel userToAssignRole = userRepo.findById(UUID.fromString(userId)).orElse(null);
         if (userToAssignRole == null) {
             throw new ResourceNotFoundException("User to assign role not found");
         }
+        if (user.getType() == UserType.TENANT_ADMIN
+                && (user.getTenantId() == null || !user.getTenantId().equals(userToAssignRole.getTenantId()))) {
+            throw new CustomException(HttpStatus.FORBIDDEN, "Tenant admin can assign roles only within own tenant");
+        }
+        if (roleIds == null || roleIds.isEmpty()) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "At least one roleId is required");
+        }
         // Process each role in the input
-        for (String roleId : userRoleInput.roleList()) {
+        for (String roleId : roleIds) {
             // Get the role
             Roles role = roleRepository.findById(UUID.fromString(roleId.toString())).orElse(null);
             if (role == null) {

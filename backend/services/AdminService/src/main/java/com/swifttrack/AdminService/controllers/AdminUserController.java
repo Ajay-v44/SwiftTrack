@@ -6,6 +6,11 @@ import com.swifttrack.AdminService.security.AdminGuard;
 import com.swifttrack.AdminService.services.AuditService;
 import com.swifttrack.dto.Message;
 import com.swifttrack.dto.TokenResponse;
+import com.swifttrack.dto.adminDto.AssignRolesRequest;
+import com.swifttrack.dto.adminDto.CreateManagedUserRequest;
+import com.swifttrack.dto.adminDto.CreatePermissionRoleRequest;
+import com.swifttrack.dto.adminDto.ManagedUserResponse;
+import com.swifttrack.dto.adminDto.RoleViewResponse;
 import com.swifttrack.dto.authDto.UpdateUserStatusVerificationRequest;
 import com.swifttrack.enums.UserType;
 import com.swifttrack.enums.VerificationStatus;
@@ -17,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -42,8 +48,33 @@ public class AdminUserController {
     public ResponseEntity<?> listUsersByType(
             @RequestHeader String token,
             @RequestParam UserType userType) {
-        adminGuard.requireAdmin(token);
+        adminGuard.requireUserManagementAdmin(token);
         return authClient.getTenantUsers(token, userType);
+    }
+
+    @PostMapping("/v1/create")
+    @Operation(summary = "Create a managed user",
+            description = "Create an enabled org user by tenant admin or platform admin. Supports tenant staff, support agents, tenant drivers, and other user types.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "User created successfully"),
+            @ApiResponse(responseCode = "403", description = "Access denied")
+    })
+    public ResponseEntity<ManagedUserResponse> createManagedUser(
+            @RequestHeader String token,
+            @RequestBody CreateManagedUserRequest request) {
+        TokenResponse admin = adminGuard.requireUserManagementAdmin(token);
+        ResponseEntity<ManagedUserResponse> response = authClient.createManagedUser(token, request);
+
+        ManagedUserResponse created = response.getBody();
+        auditService.log(admin,
+                "USER_CREATE",
+                "USER",
+                created != null ? created.id() : null,
+                "USER",
+                String.format("email=%s, mobile=%s, userType=%s, tenantId=%s, enabled=%s",
+                        request.email(), request.mobile(), request.userType(), request.tenantId(), request.enabled()));
+
+        return response;
     }
 
     @GetMapping("/v1/drivers")
@@ -71,7 +102,7 @@ public class AdminUserController {
     public ResponseEntity<Message> updateUserStatus(
             @RequestHeader String token,
             @RequestBody AdminUpdateUserRequest request) {
-        TokenResponse admin = adminGuard.requireAdmin(token);
+        TokenResponse admin = adminGuard.requireUserManagementAdmin(token);
 
         UpdateUserStatusVerificationRequest authRequest = new UpdateUserStatusVerificationRequest(
                 request.userId(),
@@ -87,6 +118,58 @@ public class AdminUserController {
                 "USER",
                 String.format("status=%s, verification=%s, reason=%s",
                         request.status(), request.verificationStatus(), request.reason()));
+
+        return response;
+    }
+
+    @PostMapping("/v1/assignRoles")
+    @Operation(summary = "Assign multiple roles to user",
+            description = "Assign multiple roles or permission-style roles such as view_order_history to a user.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Roles assigned"),
+            @ApiResponse(responseCode = "403", description = "Access denied")
+    })
+    public ResponseEntity<Message> assignRoles(
+            @RequestHeader String token,
+            @RequestBody AssignRolesRequest request) {
+        TokenResponse admin = adminGuard.requireUserManagementAdmin(token);
+        ResponseEntity<Message> response = authClient.assignRoles(token, request);
+
+        auditService.log(admin,
+                "USER_ROLE_ASSIGN",
+                "USER",
+                request.userId(),
+                "USER",
+                "Assigned roles: " + request.roleIds());
+
+        return response;
+    }
+
+    @GetMapping("/v1/roles")
+    @Operation(summary = "List available roles",
+            description = "List all active or inactive roles/permissions that can be assigned to users.")
+    public ResponseEntity<List<RoleViewResponse>> listRoles(
+            @RequestHeader String token,
+            @RequestParam(defaultValue = "true") Boolean status) {
+        adminGuard.requireUserManagementAdmin(token);
+        return authClient.getRoles(status);
+    }
+
+    @PostMapping("/v1/roles")
+    @Operation(summary = "Create a role or permission",
+            description = "Create a flexible role name such as view_order_history, manage_users, or support_ticket_update.")
+    public ResponseEntity<String> createRole(
+            @RequestHeader String token,
+            @RequestBody CreatePermissionRoleRequest request) {
+        TokenResponse admin = adminGuard.requireUserManagementAdmin(token);
+        ResponseEntity<String> response = authClient.createRole(request);
+
+        auditService.log(admin,
+                "ROLE_CREATE",
+                "ROLE",
+                null,
+                "ROLE",
+                String.format("role=%s, description=%s", request.name(), request.description()));
 
         return response;
     }

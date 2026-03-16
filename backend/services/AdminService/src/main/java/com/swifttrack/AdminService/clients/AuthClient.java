@@ -2,6 +2,11 @@ package com.swifttrack.AdminService.clients;
 
 import com.swifttrack.dto.Message;
 import com.swifttrack.dto.TokenResponse;
+import com.swifttrack.dto.adminDto.AssignRolesRequest;
+import com.swifttrack.dto.adminDto.CreateManagedUserRequest;
+import com.swifttrack.dto.adminDto.CreatePermissionRoleRequest;
+import com.swifttrack.dto.adminDto.ManagedUserResponse;
+import com.swifttrack.dto.adminDto.RoleViewResponse;
 import com.swifttrack.dto.authDto.GetDriverUsers;
 import com.swifttrack.dto.authDto.UpdateUserStatusVerificationRequest;
 import com.swifttrack.enums.UserType;
@@ -33,6 +38,22 @@ public interface AuthClient {
     ResponseEntity<Message> updateUserStatusAndVerification(
             @RequestParam String token,
             @RequestBody UpdateUserStatusVerificationRequest request);
+
+    @PostMapping("/api/users/v1/admin/createManagedUser")
+    ResponseEntity<ManagedUserResponse> createManagedUser(
+            @RequestParam String token,
+            @RequestBody CreateManagedUserRequest request);
+
+    @PostMapping("/api/assignRole/v1/add")
+    ResponseEntity<Message> assignRoles(
+            @RequestParam String token,
+            @RequestBody AssignRolesRequest request);
+
+    @GetMapping("/user-role/v1")
+    ResponseEntity<List<RoleViewResponse>> getRoles(@RequestParam Boolean status);
+
+    @PostMapping("/user-role/v1")
+    ResponseEntity<String> createRole(@RequestBody CreatePermissionRoleRequest request);
 
     @PostMapping("/api/users/v1/assignAdmin")
     ResponseEntity<Message> assignAdmin(

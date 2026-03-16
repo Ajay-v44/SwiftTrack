@@ -12,8 +12,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.swifttrack.AuthService.Dto.CreateRole;
-import com.swifttrack.AuthService.Dto.RoleResponse;
 import com.swifttrack.AuthService.Services.RoleServices;
+import com.swifttrack.dto.adminDto.RoleViewResponse;
 
 @RestController
 @RequestMapping("/user-role")
@@ -23,7 +23,7 @@ public class RoleController {
     RoleServices userRoleServices;
     
     @GetMapping("/v1")
-    public ResponseEntity<List<RoleResponse>> getUserRoles(@RequestParam Boolean status){
+    public ResponseEntity<List<RoleViewResponse>> getUserRoles(@RequestParam Boolean status){
         try{
             return ResponseEntity.ok(userRoleServices.getRoles(status));
         }catch(Exception e){

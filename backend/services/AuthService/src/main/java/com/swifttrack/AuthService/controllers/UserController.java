@@ -28,6 +28,8 @@ import com.swifttrack.dto.AddTenantUsers;
 import com.swifttrack.dto.ListOfTenantUsers;
 import com.swifttrack.dto.Message;
 import com.swifttrack.dto.RegisterDriverResponse;
+import com.swifttrack.dto.adminDto.CreateManagedUserRequest;
+import com.swifttrack.dto.adminDto.ManagedUserResponse;
 import com.swifttrack.dto.authDto.GetDriverUsers;
 import com.swifttrack.dto.authDto.UpdateUserStatusVerificationRequest;
 import com.swifttrack.dto.driverDto.AddTenantDriver;
@@ -105,6 +107,13 @@ public class UserController {
         public ResponseEntity<Message> addTenantUsers(@RequestParam String token,
                         @RequestBody List<AddTenantUsers> entity) {
                 return ResponseEntity.ok(userService.addTenantUsers(token, entity));
+        }
+
+        @PostMapping("v1/admin/createManagedUser")
+        @Operation(summary = "Create a managed user", description = "Create a tenant-scoped or managed user by tenant admin or platform admin")
+        public ResponseEntity<ManagedUserResponse> createManagedUser(@RequestParam String token,
+                        @RequestBody CreateManagedUserRequest request) {
+                return ResponseEntity.ok(userService.createManagedUser(token, request));
         }
 
         @PostMapping("v1/getTenantUsers")

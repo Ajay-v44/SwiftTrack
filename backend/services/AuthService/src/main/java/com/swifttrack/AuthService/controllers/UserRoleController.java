@@ -8,9 +8,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.swifttrack.AuthService.Dto.UserRoleInput;
 import com.swifttrack.AuthService.Services.UserRoleServices;
 import com.swifttrack.dto.Message;
+import com.swifttrack.dto.adminDto.AssignRolesRequest;
 
 @RestController
 @RequestMapping("/api/assignRole")
@@ -20,7 +20,7 @@ public class UserRoleController {
     UserRoleServices userRoleServices;
     
     @PostMapping("/v1/add")
-    public ResponseEntity<Message> addUserRole(@RequestParam String token, @RequestBody UserRoleInput input) {
-        return ResponseEntity.ok(userRoleServices.addUserRoles(token, input));
+    public ResponseEntity<Message> addUserRole(@RequestParam String token, @RequestBody AssignRolesRequest input) {
+        return ResponseEntity.ok(userRoleServices.addManagedUserRoles(token, input));
     }
 }
