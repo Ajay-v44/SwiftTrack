@@ -26,6 +26,13 @@ public class AdminGuard {
             UserType.ADMIN_USER
     );
 
+    private static final Set<UserType> USER_MANAGEMENT_TYPES = EnumSet.of(
+            UserType.SUPER_ADMIN,
+            UserType.SYSTEM_ADMIN,
+            UserType.ADMIN_USER,
+            UserType.TENANT_ADMIN
+    );
+
     private final AuthClient authClient;
 
     /**
@@ -66,6 +73,16 @@ public class AdminGuard {
         if (userType != UserType.SUPER_ADMIN) {
             throw new AdminAccessDeniedException(
                     "This action requires SUPER_ADMIN privileges. Found: " + userType);
+        }
+        return user;
+    }
+
+    public TokenResponse requireUserManagementAdmin(String token) {
+        TokenResponse user = resolveToken(token);
+        UserType userType = user.userType().orElse(null);
+        if (!USER_MANAGEMENT_TYPES.contains(userType)) {
+            throw new AdminAccessDeniedException(
+                    "This action requires tenant admin or platform admin privileges. Found: " + userType);
         }
         return user;
     }

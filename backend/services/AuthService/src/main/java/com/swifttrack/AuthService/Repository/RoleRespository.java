@@ -9,4 +9,5 @@ import com.swifttrack.AuthService.Models.Roles;
 
 public interface RoleRespository  extends JpaRepository<Roles,UUID>{
    List<Roles> findByStatus(Boolean status);
+   Roles findByNameIgnoreCase(String name);
 }
