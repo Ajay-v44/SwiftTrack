@@ -1,8 +1,58 @@
 "use client"
 
 import { motion } from "framer-motion"
+import { useEffect, useState } from "react"
+
+interface OrbProps {
+    x: number[];
+    y: number[];
+    scale: number[];
+    opacity: number[];
+    duration: number;
+    left: string;
+    top: string;
+    width: string;
+    height: string;
+    background: string;
+}
 
 export function HeroBackground() {
+    const [mounted, setMounted] = useState(false)
+    const [orbs, setOrbs] = useState<OrbProps[]>([])
+
+    useEffect(() => {
+        const newOrbs = [...Array(5)].map((_, i) => ({
+            x: [Math.random() * 100, Math.random() * -100, Math.random() * 100],
+            y: [Math.random() * 100, Math.random() * -100, Math.random() * 100],
+            scale: [1, 1.2, 1],
+            opacity: [0.3, 0.6, 0.3],
+            duration: 10 + Math.random() * 10,
+            left: `${20 + Math.random() * 60}%`,
+            top: `${20 + Math.random() * 60}%`,
+            width: `${300 + Math.random() * 200}px`,
+            height: `${300 + Math.random() * 200}px`,
+            background: i % 2 === 0 ? 'rgba(56, 189, 248, 0.3)' : 'rgba(168, 85, 247, 0.3)',
+        }))
+        setOrbs(newOrbs)
+        setMounted(true)
+    }, [])
+
+    if (!mounted) {
+        return (
+            <div className="absolute inset-0 z-0 overflow-hidden bg-neutral-950">
+                <div
+                    className="absolute inset-0 opacity-[0.15]"
+                    style={{
+                        backgroundImage: `linear-gradient(to right, #4f4f4f 1px, transparent 1px),
+                        linear-gradient(to bottom, #4f4f4f 1px, transparent 1px)`,
+                        backgroundSize: '40px 40px'
+                    }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-neutral-950/80 to-neutral-950" />
+            </div>
+        )
+    }
+
     return (
         <div className="absolute inset-0 z-0 overflow-hidden bg-neutral-950">
             {/* Grid Pattern */}
@@ -20,27 +70,27 @@ export function HeroBackground() {
 
             {/* Glowing Orbs/Nodes */}
             <div className="absolute inset-0">
-                {[...Array(5)].map((_, i) => (
+                {orbs.map((orb, i) => (
                     <motion.div
                         key={i}
                         className="absolute rounded-full mix-blend-screen filter blur-[80px]"
                         animate={{
-                            x: [Math.random() * 100, Math.random() * -100, Math.random() * 100],
-                            y: [Math.random() * 100, Math.random() * -100, Math.random() * 100],
-                            scale: [1, 1.2, 1],
-                            opacity: [0.3, 0.6, 0.3],
+                            x: orb.x,
+                            y: orb.y,
+                            scale: orb.scale,
+                            opacity: orb.opacity,
                         }}
                         transition={{
-                            duration: 10 + Math.random() * 10,
+                            duration: orb.duration,
                             repeat: Infinity,
                             ease: "linear",
                         }}
                         style={{
-                            left: `${20 + Math.random() * 60}%`,
-                            top: `${20 + Math.random() * 60}%`,
-                            width: `${300 + Math.random() * 200}px`,
-                            height: `${300 + Math.random() * 200}px`,
-                            background: i % 2 === 0 ? 'rgba(56, 189, 248, 0.3)' : 'rgba(168, 85, 247, 0.3)', // Blue and Purple
+                            left: orb.left,
+                            top: orb.top,
+                            width: orb.width,
+                            height: orb.height,
+                            background: orb.background,
                         }}
                     />
                 ))}
