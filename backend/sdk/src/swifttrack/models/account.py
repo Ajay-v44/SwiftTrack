@@ -7,6 +7,8 @@ from decimal import Decimal
 from enum import Enum
 from uuid import UUID
 
+from typing import Optional
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -64,20 +66,20 @@ class LedgerTransaction(BaseModel):
     amount: Decimal = Field(..., gt=0, description="Transaction amount")
     currency: str = Field(default="INR", description="Currency code")
     status: TransactionStatus = Field(..., description="Transaction status")
-    description: str | None = Field(None, description="Transaction description")
-    reference_id: str | None = Field(None, alias="referenceId", description="External reference")
-    order_id: UUID | None = Field(None, alias="orderId", description="Related order ID")
+    description: Optional[str] = Field(None, description="Transaction description")
+    reference_id: Optional[str] = Field(None, alias="referenceId", description="External reference")
+    order_id: Optional[UUID] = Field(None, alias="orderId", description="Related order ID")
     metadata: dict[str, str] = Field(default_factory=dict, description="Additional metadata")
     created_at: datetime = Field(..., alias="createdAt", description="Transaction time")
-    settled_at: datetime | None = Field(None, alias="settledAt", description="Settlement time")
+    settled_at: Optional[datetime] = Field(None, alias="settledAt", description="Settlement time")
 
 
 class GetTransactionsRequest(BaseModel):
     """Request model for getting transactions."""
 
     account_id: UUID = Field(..., alias="accountId", description="Account ID")
-    start_date: datetime | None = Field(None, alias="startDate", description="Filter start date")
-    end_date: datetime | None = Field(None, alias="endDate", description="Filter end date")
+    start_date: Optional[datetime] = Field(None, alias="startDate", description="Filter start date")
+    end_date: Optional[datetime] = Field(None, alias="endDate", description="Filter end date")
     limit: int = Field(default=50, ge=1, le=100, description="Number of results")
     offset: int = Field(default=0, ge=0, description="Pagination offset")
 
@@ -88,7 +90,7 @@ class TopUpRequest(BaseModel):
     user_id: UUID = Field(..., alias="userId", description="User ID")
     amount: Decimal = Field(..., gt=0, description="Top-up amount")
     currency: str = Field(default="INR", description="Currency")
-    reference: str | None = Field(None, description="Reference/payment ID")
+    reference: Optional[str] = Field(None, description="Reference/payment ID")
 
 
 class CreateAccountRequest(BaseModel):
