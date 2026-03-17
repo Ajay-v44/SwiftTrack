@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
+from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -44,7 +45,7 @@ class LocationPoint(BaseModel):
 
     latitude: float = Field(..., ge=-90, le=90, description="Latitude")
     longitude: float = Field(..., ge=-180, le=180, description="Longitude")
-    address: str | None = Field(None, description="Address string")
+    address: Optional[str] = Field(None, description="Address string")
 
 
 class Item(BaseModel):
@@ -52,19 +53,19 @@ class Item(BaseModel):
 
     name: str = Field(..., description="Item name")
     quantity: int = Field(default=1, ge=1, description="Item quantity")
-    weight_kg: float | None = Field(None, alias="weightKg", ge=0, description="Item weight in kg")
-    dimensions: dict[str, float] | None = Field(
+    weight_kg: Optional[float] = Field(None, alias="weightKg", ge=0, description="Item weight in kg")
+    dimensions: Optional[dict[str, float]] = Field(
         None, description="Dimensions {length, width, height} in cm"
     )
-    value: float | None = Field(None, ge=0, description="Item value")
-    description: str | None = Field(None, description="Item description")
+    value: Optional[float] = Field(None, ge=0, description="Item value")
+    description: Optional[str] = Field(None, description="Item description")
 
 
 class PackageInfo(BaseModel):
     """Package information."""
 
     weight_kg: float = Field(..., alias="weightKg", ge=0, description="Total weight in kg")
-    dimensions: dict[str, float] | None = Field(
+    dimensions: Optional[dict[str, float]] = Field(
         None, description="Package dimensions {length, width, height} in cm"
     )
     fragile: bool = Field(default=False, description="Is fragile")
@@ -76,8 +77,8 @@ class PackageInfo(BaseModel):
 class TimeWindows(BaseModel):
     """Delivery time windows."""
 
-    pickup_time: datetime | None = Field(None, alias="pickupTime", description="Pickup time")
-    delivery_time: datetime | None = Field(
+    pickup_time: Optional[datetime] = Field(None, alias="pickupTime", description="Pickup time")
+    delivery_time: Optional[datetime] = Field(
         None, alias="deliveryTime", description="Preferred delivery time"
     )
     flexible_pickup: bool = Field(
@@ -98,7 +99,7 @@ class DeliveryPreferences(BaseModel):
     signature_required: bool = Field(
         default=True, alias="signatureRequired", description="Signature required"
     )
-    handling_instructions: str | None = Field(
+    handling_instructions: Optional[str] = Field(
         None, alias="handlingInstructions", description="Special handling instructions"
     )
 
@@ -106,8 +107,8 @@ class DeliveryPreferences(BaseModel):
 class ExternalMetadata(BaseModel):
     """External system metadata."""
 
-    source: str | None = Field(None, description="Source system")
-    reference_id: str | None = Field(None, alias="referenceId", description="External reference")
+    source: Optional[str] = Field(None, description="Source system")
+    reference_id: Optional[str] = Field(None, alias="referenceId", description="External reference")
     tags: list[str] = Field(default_factory=list, description="Tags")
 
 
@@ -139,7 +140,7 @@ class QuoteOption(BaseModel):
     )
     price: float = Field(..., ge=0, description="Price amount")
     currency: str = Field(default="INR", description="Currency code")
-    distance_km: float | None = Field(None, alias="distanceKm", description="Distance in km")
+    distance_km: Optional[float] = Field(None, alias="distanceKm", description="Distance in km")
 
 
 class OrderQuoteResponse(BaseModel):
@@ -164,16 +165,16 @@ class AddressResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     id: UUID = Field(..., description="Address ID")
-    label: str | None = Field(None, description="Address label")
+    label: Optional[str] = Field(None, description="Address label")
     line1: str = Field(..., description="Address line 1")
-    line2: str | None = Field(None, description="Address line 2")
+    line2: Optional[str] = Field(None, description="Address line 2")
     city: str = Field(..., description="City")
     state: str = Field(..., description="State")
     pincode: str = Field(..., description="Pincode")
-    latitude: float | None = Field(None, description="Latitude")
-    longitude: float | None = Field(None, description="Longitude")
-    contact_name: str | None = Field(None, alias="contactName", description="Contact name")
-    contact_phone: str | None = Field(None, alias="contactPhone", description="Contact phone")
+    latitude: Optional[float] = Field(None, description="Latitude")
+    longitude: Optional[float] = Field(None, description="Longitude")
+    contact_name: Optional[str] = Field(None, alias="contactName", description="Contact name")
+    contact_phone: Optional[str] = Field(None, alias="contactPhone", description="Contact phone")
 
 
 class CreateOrderRequest(BaseModel):
@@ -184,23 +185,23 @@ class CreateOrderRequest(BaseModel):
     idempotency_key: str = Field(
         ..., alias="idempotencyKey", description="Unique key for idempotency"
     )
-    tenant_id: str | None = Field(None, alias="tenantId", description="Tenant ID")
-    quote_id: str | None = Field(None, alias="quoteId", description="Selected quote ID")
-    order_reference: str | None = Field(None, alias="orderReference", description="Your order ref")
+    tenant_id: Optional[str] = Field(None, alias="tenantId", description="Tenant ID")
+    quote_id: Optional[str] = Field(None, alias="quoteId", description="Selected quote ID")
+    order_reference: Optional[str] = Field(None, alias="orderReference", description="Your order ref")
     order_type: OrderType = Field(default=OrderType.IMMEDIATE, alias="orderType")
     payment_type: PaymentType = Field(default=PaymentType.PREPAID, alias="paymentType")
     pickup_address_id: UUID = Field(..., alias="pickupAddressId", description="Pickup address ID")
     dropoff: LocationPoint = Field(..., description="Dropoff location")
     items: list[Item] = Field(default_factory=list, description="Items to deliver")
-    package_info: PackageInfo | None = Field(None, alias="packageInfo", description="Package info")
-    time_windows: TimeWindows | None = Field(None, alias="timeWindows", description="Time windows")
-    delivery_preferences: DeliveryPreferences | None = Field(
+    package_info: Optional[PackageInfo] = Field(None, alias="packageInfo", description="Package info")
+    time_windows: Optional[TimeWindows] = Field(None, alias="timeWindows", description="Time windows")
+    delivery_preferences: Optional[DeliveryPreferences] = Field(
         None, alias="deliveryPreferences", description="Preferences"
     )
-    external_metadata: ExternalMetadata | None = Field(
+    external_metadata: Optional[ExternalMetadata] = Field(
         None, alias="externalMetadata", description="External metadata"
     )
-    delivery_instructions: str | None = Field(
+    delivery_instructions: Optional[str] = Field(
         None, alias="deliveryInstructions", description="Instructions"
     )
 
@@ -215,30 +216,30 @@ class Order(BaseModel):
     status: OrderStatus = Field(..., description="Order status")
     pickup_address_id: UUID = Field(..., alias="pickupAddressId", description="Pickup address ID")
     dropoff: LocationPoint = Field(..., description="Dropoff location")
-    provider_id: UUID | None = Field(None, alias="providerId", description="Assigned provider")
-    driver_id: UUID | None = Field(None, alias="driverId", description="Assigned driver")
+    provider_id: Optional[UUID] = Field(None, alias="providerId", description="Assigned provider")
+    driver_id: Optional[UUID] = Field(None, alias="driverId", description="Assigned driver")
     items: list[Item] = Field(default_factory=list, description="Items")
-    package_info: PackageInfo | None = Field(None, alias="packageInfo", description="Package info")
-    price: float | None = Field(None, ge=0, description="Final price")
+    package_info: Optional[PackageInfo] = Field(None, alias="packageInfo", description="Package info")
+    price: Optional[float] = Field(None, ge=0, description="Final price")
     currency: str = Field(default="INR", description="Currency")
     payment_type: PaymentType = Field(..., alias="paymentType", description="Payment type")
-    estimated_delivery: datetime | None = Field(
+    estimated_delivery: Optional[datetime] = Field(
         None, alias="estimatedDelivery", description="Estimated delivery time"
     )
-    actual_pickup: datetime | None = Field(None, alias="actualPickup", description="Actual pickup")
-    actual_delivery: datetime | None = Field(
+    actual_pickup: Optional[datetime] = Field(None, alias="actualPickup", description="Actual pickup")
+    actual_delivery: Optional[datetime] = Field(
         None, alias="actualDelivery", description="Actual delivery"
     )
     created_at: datetime = Field(..., alias="createdAt", description="Creation time")
     updated_at: datetime = Field(..., alias="updatedAt", description="Last update time")
-    tracking_url: str | None = Field(None, alias="trackingUrl", description="Tracking URL")
+    tracking_url: Optional[str] = Field(None, alias="trackingUrl", description="Tracking URL")
 
 
 class CancelOrderRequest(BaseModel):
     """Request model for cancelling an order."""
 
     order_id: UUID = Field(..., alias="orderId", description="Order ID to cancel")
-    reason: str | None = Field(None, description="Cancellation reason")
+    reason: Optional[str] = Field(None, description="Cancellation reason")
 
 
 class GuestQuoteRequest(BaseModel):
@@ -261,4 +262,4 @@ class DeliveryOptionsQuoteResponse(BaseModel):
     quote_session_id: UUID = Field(..., alias="quoteSessionId")
     options: list[QuoteOption] = Field(..., description="Delivery options")
     expires_at: datetime = Field(..., alias="expiresAt")
-    guest_access_token: str | None = Field(None, alias="guestAccessToken")
+    guest_access_token: Optional[str] = Field(None, alias="guestAccessToken")

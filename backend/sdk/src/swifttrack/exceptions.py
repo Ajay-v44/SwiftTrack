@@ -1,6 +1,6 @@
 """SwiftTrack SDK exceptions."""
 
-from typing import Any
+from typing import Any, Optional
 
 
 class SwiftTrackError(Exception):
@@ -9,8 +9,8 @@ class SwiftTrackError(Exception):
     def __init__(
         self,
         message: str,
-        status_code: int | None = None,
-        response_data: dict[str, Any] | None = None,
+        status_code: Optional[int] = None,
+        response_data: Optional[dict[str, Any]] = None,
     ) -> None:
         super().__init__(message)
         self.message = message
@@ -29,7 +29,7 @@ class AuthenticationError(SwiftTrackError):
     def __init__(
         self,
         message: str = "Authentication failed",
-        response_data: dict[str, Any] | None = None,
+        response_data: Optional[dict[str, Any]] = None,
     ) -> None:
         super().__init__(message, status_code=401, response_data=response_data)
 
@@ -40,8 +40,8 @@ class RateLimitError(SwiftTrackError):
     def __init__(
         self,
         message: str = "Rate limit exceeded",
-        retry_after: int | None = None,
-        response_data: dict[str, Any] | None = None,
+        retry_after: Optional[int] = None,
+        response_data: Optional[dict[str, Any]] = None,
     ) -> None:
         super().__init__(message, status_code=429, response_data=response_data)
         self.retry_after = retry_after
@@ -53,8 +53,8 @@ class ValidationError(SwiftTrackError):
     def __init__(
         self,
         message: str = "Validation error",
-        errors: dict[str, list[str]] | None = None,
-        response_data: dict[str, Any] | None = None,
+        errors: Optional[dict[str, list[str]]] = None,
+        response_data: Optional[dict[str, Any]] = None,
     ) -> None:
         super().__init__(message, status_code=400, response_data=response_data)
         self.errors = errors or {}
@@ -66,9 +66,9 @@ class NotFoundError(SwiftTrackError):
     def __init__(
         self,
         message: str = "Resource not found",
-        resource_type: str | None = None,
-        resource_id: str | None = None,
-        response_data: dict[str, Any] | None = None,
+        resource_type: Optional[str] = None,
+        resource_id: Optional[str] = None,
+        response_data: Optional[dict[str, Any]] = None,
     ) -> None:
         super().__init__(message, status_code=404, response_data=response_data)
         self.resource_type = resource_type
@@ -88,7 +88,7 @@ class ServerError(SwiftTrackError):
         self,
         message: str = "Server error",
         status_code: int = 500,
-        response_data: dict[str, Any] | None = None,
+        response_data: Optional[dict[str, Any]] = None,
     ) -> None:
         super().__init__(message, status_code=status_code, response_data=response_data)
 
@@ -99,7 +99,7 @@ class TimeoutError(SwiftTrackError):
     def __init__(
         self,
         message: str = "Request timed out",
-        timeout_seconds: float | None = None,
+        timeout_seconds: Optional[float] = None,
     ) -> None:
         super().__init__(message, status_code=None)
         self.timeout_seconds = timeout_seconds
@@ -111,7 +111,7 @@ class ConflictError(SwiftTrackError):
     def __init__(
         self,
         message: str = "Conflict error",
-        response_data: dict[str, Any] | None = None,
+        response_data: Optional[dict[str, Any]] = None,
     ) -> None:
         super().__init__(message, status_code=409, response_data=response_data)
 
@@ -122,6 +122,6 @@ class PermissionError(SwiftTrackError):
     def __init__(
         self,
         message: str = "Permission denied",
-        response_data: dict[str, Any] | None = None,
+        response_data: Optional[dict[str, Any]] = None,
     ) -> None:
         super().__init__(message, status_code=403, response_data=response_data)
