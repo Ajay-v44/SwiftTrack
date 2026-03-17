@@ -51,22 +51,27 @@ class RetryHandler:
         for attempt in range(self.config.max_retries + 1):
             try:
                 result = operation()
-                # If it's a response, check if we should retry
+                # If it's a response with retryable status and we have retries left
+                if (
+                    isinstance(result, httpx.Response)
+                    and self._should_retry(result)
+                    and attempt < self.config.max_retries
+                ):
+                    logger.warning(
+                        f"Retryable status {result.status_code}, "
+                        f"attempt {attempt + 1}/{self.config.max_retries + 1}, "
+                        f"retrying in {delay:.2f}s"
+                    )
+                    time.sleep(delay)
+                    delay = min(
+                        delay * self.config.retry_backoff,
+                        self.config.retry_max_delay,
+                    )
+                    delay = self._add_jitter(delay)
+                    continue
+
+                # For responses, raise if status is an error
                 if isinstance(result, httpx.Response):
-                    if self._should_retry(result):
-                        if attempt < self.config.max_retries:
-                            logger.warning(
-                                f"Retryable status {result.status_code}, "
-                                f"attempt {attempt + 1}/{self.config.max_retries + 1}, "
-                                f"retrying in {delay:.2f}s"
-                            )
-                            time.sleep(delay)
-                            delay = min(
-                                delay * self.config.retry_backoff,
-                                self.config.retry_max_delay,
-                            )
-                            delay = self._add_jitter(delay)
-                            continue
                     result.raise_for_status()
                 return result
 
