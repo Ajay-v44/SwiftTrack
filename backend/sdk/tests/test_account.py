@@ -120,9 +120,7 @@ class TestAccountService:
         # Arrange
         account_id = uuid.uuid4()
 
-        respx.get(
-            "https://backend-swifttrack.ajayv.online/api/accounts/v1/getTransactions"
-        ).mock(
+        respx.get("https://backend-swifttrack.ajayv.online/api/accounts/v1/getTransactions").mock(
             return_value=Response(
                 403,
                 json={"message": "Access denied to this account"},
@@ -198,9 +196,7 @@ class TestAccountService:
         # Arrange
         account_id = uuid.uuid4()
 
-        respx.post(
-            "https://backend-swifttrack.ajayv.online/api/accounts/v1/reconcile"
-        ).mock(
+        respx.post("https://backend-swifttrack.ajayv.online/api/accounts/v1/reconcile").mock(
             return_value=Response(
                 200,
                 json={"message": "Balance was corrected from ledger transactions"},
@@ -273,9 +269,7 @@ class TestAccountService:
         # Arrange
         user_id = uuid.uuid4()
 
-        respx.get(
-            "https://backend-swifttrack.ajayv.online/api/accounts/v1/getMyAccount"
-        ).mock(
+        respx.get("https://backend-swifttrack.ajayv.online/api/accounts/v1/getMyAccount").mock(
             return_value=Response(
                 404,
                 json={"message": "Account not found"},

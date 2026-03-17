@@ -46,9 +46,7 @@ class Account(BaseModel):
     account_type: AccountType = Field(..., alias="accountType", description="Account type")
     balance: Decimal = Field(..., description="Current balance")
     currency: str = Field(default="INR", description="Currency code")
-    is_active: bool = Field(
-        default=True, alias="isActive", description="Whether account is active"
-    )
+    is_active: bool = Field(default=True, alias="isActive", description="Whether account is active")
     created_at: datetime = Field(..., alias="createdAt", description="Creation time")
     updated_at: datetime = Field(..., alias="updatedAt", description="Last update time")
 
@@ -67,9 +65,7 @@ class LedgerTransaction(BaseModel):
     currency: str = Field(default="INR", description="Currency code")
     status: TransactionStatus = Field(..., description="Transaction status")
     description: str | None = Field(None, description="Transaction description")
-    reference_id: str | None = Field(
-        None, alias="referenceId", description="External reference"
-    )
+    reference_id: str | None = Field(None, alias="referenceId", description="External reference")
     order_id: UUID | None = Field(None, alias="orderId", description="Related order ID")
     metadata: dict[str, str] = Field(default_factory=dict, description="Additional metadata")
     created_at: datetime = Field(..., alias="createdAt", description="Transaction time")
