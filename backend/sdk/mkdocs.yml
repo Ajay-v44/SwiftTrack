@@ -1,0 +1,82 @@
+site_name: SwiftTrack Python SDK
+site_description: A production-grade Python SDK for the SwiftTrack logistics platform
+site_author: SwiftTrack Team
+site_url: https://swifttrack.readthedocs.io
+
+docs_dir: docs
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: installation.md
+      - Quick Start: quickstart.md
+      - Authentication: authentication.md
+  - User Guide:
+      - Addresses: addresses.md
+      - Orders: orders.md
+      - Accounts: accounts.md
+  - API Reference:
+      - Client: api/client.md
+      - Models: api/models.md
+      - Exceptions: api/exceptions.md
+  - Development:
+      - Contributing: contributing.md
+      - Changelog: changelog.md
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.tabs.link
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+            show_category_heading: true
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/swifttrack/swifttrack-python
+
+copyright: Copyright &copy; 2024 SwiftTrack
