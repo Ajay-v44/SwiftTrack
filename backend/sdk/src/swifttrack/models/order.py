@@ -52,9 +52,7 @@ class Item(BaseModel):
 
     name: str = Field(..., description="Item name")
     quantity: int = Field(default=1, ge=1, description="Item quantity")
-    weight_kg: float | None = Field(
-        None, alias="weightKg", ge=0, description="Item weight in kg"
-    )
+    weight_kg: float | None = Field(None, alias="weightKg", ge=0, description="Item weight in kg")
     dimensions: dict[str, float] | None = Field(
         None, description="Dimensions {length, width, height} in cm"
     )
@@ -96,9 +94,7 @@ class DeliveryPreferences(BaseModel):
     contact_before_delivery: bool = Field(
         default=True, alias="contactBeforeDelivery", description="Call before delivery"
     )
-    leave_at_door: bool = Field(
-        default=False, alias="leaveAtDoor", description="Can leave at door"
-    )
+    leave_at_door: bool = Field(default=False, alias="leaveAtDoor", description="Can leave at door")
     signature_required: bool = Field(
         default=True, alias="signatureRequired", description="Signature required"
     )
@@ -120,9 +116,7 @@ class OrderQuoteRequest(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    pickup_address_id: UUID = Field(
-        ..., alias="pickupAddressId", description="Pickup address ID"
-    )
+    pickup_address_id: UUID = Field(..., alias="pickupAddressId", description="Pickup address ID")
     dropoff_lat: float = Field(
         ..., alias="dropoffLat", ge=-90, le=90, description="Dropoff latitude"
     )
@@ -154,7 +148,9 @@ class OrderQuoteResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     quote_session_id: UUID = Field(..., alias="quoteSessionId", description="Quote session ID")
-    pickup_address: AddressResponse = Field(..., alias="pickupAddress", description="Pickup address")
+    pickup_address: AddressResponse = Field(
+        ..., alias="pickupAddress", description="Pickup address"
+    )
     dropoff_location: LocationPoint = Field(
         ..., alias="dropoffLocation", description="Dropoff location"
     )

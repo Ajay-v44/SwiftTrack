@@ -34,9 +34,7 @@ class TestOrderService:
         quote_session_id = uuid.uuid4()
         quote_id = uuid.uuid4()
 
-        route = respx.post(
-            "https://backend-swifttrack.ajayv.online/api/order/v1/getQuote"
-        ).mock(
+        route = respx.post("https://backend-swifttrack.ajayv.online/api/order/v1/getQuote").mock(
             return_value=Response(
                 200,
                 json={
@@ -135,9 +133,7 @@ class TestOrderService:
         order_id = uuid.uuid4()
         pickup_id = uuid.uuid4()
 
-        route = respx.post(
-            "https://backend-swifttrack.ajayv.online/api/order/v1/createOrder"
-        ).mock(
+        route = respx.post("https://backend-swifttrack.ajayv.online/api/order/v1/createOrder").mock(
             return_value=Response(
                 200,
                 json={
@@ -183,9 +179,7 @@ class TestOrderService:
         # Arrange
         order_id = uuid.uuid4()
 
-        route = respx.post(
-            "https://backend-swifttrack.ajayv.online/api/order/v1/cancelOrder"
-        ).mock(
+        route = respx.post("https://backend-swifttrack.ajayv.online/api/order/v1/cancelOrder").mock(
             return_value=Response(
                 200,
                 json={"message": "Order cancelled successfully"},
@@ -293,9 +287,7 @@ class TestOrderService:
         # Arrange
         pickup_id = uuid.uuid4()
 
-        respx.post(
-            "https://backend-swifttrack.ajayv.online/api/order/v1/getQuote"
-        ).mock(
+        respx.post("https://backend-swifttrack.ajayv.online/api/order/v1/getQuote").mock(
             return_value=Response(
                 400,
                 json={

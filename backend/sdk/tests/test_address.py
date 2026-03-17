@@ -25,9 +25,7 @@ class TestAddressService:
         """Test listing all addresses."""
         # Arrange
         address_id = uuid.uuid4()
-        route = respx.get(
-            "https://backend-swifttrack.ajayv.online/api/order/addresses/v1"
-        ).mock(
+        route = respx.get("https://backend-swifttrack.ajayv.online/api/order/addresses/v1").mock(
             return_value=Response(
                 200,
                 json=[
@@ -148,9 +146,7 @@ class TestAddressService:
         """Test creating a new address."""
         # Arrange
         address_id = uuid.uuid4()
-        route = respx.post(
-            "https://backend-swifttrack.ajayv.online/api/order/addresses/v1"
-        ).mock(
+        route = respx.post("https://backend-swifttrack.ajayv.online/api/order/addresses/v1").mock(
             return_value=Response(
                 200,
                 json={

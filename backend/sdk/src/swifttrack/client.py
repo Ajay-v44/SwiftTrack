@@ -5,7 +5,8 @@ from __future__ import annotations
 import logging
 from contextlib import contextmanager
 from types import TracebackType
-from typing import Self
+
+from typing_extensions import Self
 
 from swifttrack.account import AccountService
 from swifttrack.address import AddressService

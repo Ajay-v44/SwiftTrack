@@ -111,9 +111,7 @@ class HTTPClient:
         self._raise_for_status(response, data)
         return {}
 
-    def _raise_for_status(
-        self, response: httpx.Response, data: dict[str, Any]
-    ) -> None:
+    def _raise_for_status(self, response: httpx.Response, data: dict[str, Any]) -> None:
         """Raise appropriate exception based on status code."""
         status_code = response.status_code
         message = data.get("message", f"HTTP {status_code}")

@@ -55,9 +55,7 @@ class AddressRequest(BaseModel):
     contact_phone: str | None = Field(None, alias="contactPhone", description="Contact phone")
     business_name: str | None = Field(None, alias="businessName", description="Business name")
     notes: str | None = Field(None, description="Additional notes")
-    is_default: bool = Field(
-        default=False, alias="isDefault", description="Set as default address"
-    )
+    is_default: bool = Field(default=False, alias="isDefault", description="Set as default address")
 
 
 class Coordinates(BaseModel):
