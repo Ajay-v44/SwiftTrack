@@ -55,7 +55,7 @@ class RetryHandler:
                 if isinstance(result, httpx.Response):
                     try:
                         result.raise_for_status()
-                    except httpx.HTTPStatusError as e:
+                    except httpx.HTTPStatusError:
                         if self._should_retry(result) and attempt < self.config.max_retries:
                             logger.warning(
                                 f"Retryable status {result.status_code}, "
