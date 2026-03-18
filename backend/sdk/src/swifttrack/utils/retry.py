@@ -51,27 +51,25 @@ class RetryHandler:
         for attempt in range(self.config.max_retries + 1):
             try:
                 result = operation()
-                # If it's a response with retryable status and we have retries left
-                if (
-                    isinstance(result, httpx.Response)
-                    and self._should_retry(result)
-                    and attempt < self.config.max_retries
-                ):
-                    logger.warning(
-                        f"Retryable status {result.status_code}, "
-                        f"attempt {attempt + 1}/{self.config.max_retries + 1}, "
-                        f"retrying in {delay:.2f}s"
-                    )
-                    time.sleep(delay)
-                    delay = min(
-                        delay * self.config.retry_backoff,
-                        self.config.retry_max_delay,
-                    )
-                    delay = self._add_jitter(delay)
-                    continue
+                # For responses
+                if isinstance(result, httpx.Response):
+                    # If it's a response with retryable status and we have retries left
+                    if self._should_retry(result) and attempt < self.config.max_retries:
+                        logger.warning(
+                            f"Retryable status {result.status_code}, "
+                            f"attempt {attempt + 1}/{self.config.max_retries + 1}, "
+                            f"retrying in {delay:.2f}s"
+                        )
+                        time.sleep(delay)
+                        delay = min(
+                            delay * self.config.retry_backoff,
+                            self.config.retry_max_delay,
+                        )
+                        delay = self._add_jitter(delay)
+                        continue
 
-                # For responses, return result without raising HTTPStatusError so the caller can process it
-                return result
+                    # Return result for non-retryable errors or exhausted retries so custom error handling works
+                    return result
 
             except self.RETRYABLE_EXCEPTIONS as e:
                 last_exception = e
