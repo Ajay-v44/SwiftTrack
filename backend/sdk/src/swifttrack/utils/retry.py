@@ -51,25 +51,27 @@ class RetryHandler:
         for attempt in range(self.config.max_retries + 1):
             try:
                 result = operation()
-                # For responses
+                # For responses, check if it's an error and properly raise to trigger retry logic
                 if isinstance(result, httpx.Response):
-                    # If it's a response with retryable status and we have retries left
-                    if self._should_retry(result) and attempt < self.config.max_retries:
-                        logger.warning(
-                            f"Retryable status {result.status_code}, "
-                            f"attempt {attempt + 1}/{self.config.max_retries + 1}, "
-                            f"retrying in {delay:.2f}s"
-                        )
-                        time.sleep(delay)
-                        delay = min(
-                            delay * self.config.retry_backoff,
-                            self.config.retry_max_delay,
-                        )
-                        delay = self._add_jitter(delay)
-                        continue
-
-                    # Return result for non-retryable errors or exhausted retries so custom error handling works
-                    return result
+                    try:
+                        result.raise_for_status()
+                    except httpx.HTTPStatusError as e:
+                        if self._should_retry(result) and attempt < self.config.max_retries:
+                            logger.warning(
+                                f"Retryable status {result.status_code}, "
+                                f"attempt {attempt + 1}/{self.config.max_retries + 1}, "
+                                f"retrying in {delay:.2f}s"
+                            )
+                            time.sleep(delay)
+                            delay = min(
+                                delay * self.config.retry_backoff,
+                                self.config.retry_max_delay,
+                            )
+                            delay = self._add_jitter(delay)
+                            continue
+                        # Return non-retryable errors or exhausted retries directly to caller
+                        return result
+                return result
 
             except self.RETRYABLE_EXCEPTIONS as e:
                 last_exception = e
