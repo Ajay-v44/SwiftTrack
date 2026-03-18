@@ -111,8 +111,7 @@ class AccountService:
 
         response = self._client.post(
             f"{self.BASE_PATH}/createAccount",
-            params={"userId": str(user_uuid), "accountType": account_type.value},
-            json_data=request.model_dump(by_alias=True),
+            json_data=request.model_dump(by_alias=True, exclude_none=True),
         )
         account = Account.model_validate(response)
 

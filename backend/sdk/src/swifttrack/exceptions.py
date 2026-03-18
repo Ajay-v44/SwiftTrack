@@ -66,11 +66,12 @@ class NotFoundError(SwiftTrackError):
     def __init__(
         self,
         message: str = "Resource not found",
+        status_code: Optional[int] = None,
         resource_type: Optional[str] = None,
         resource_id: Optional[str] = None,
         response_data: Optional[dict[str, Any]] = None,
     ) -> None:
-        super().__init__(message, status_code=404, response_data=response_data)
+        super().__init__(message, status_code=status_code or 404, response_data=response_data)
         self.resource_type = resource_type
         self.resource_id = resource_id
 

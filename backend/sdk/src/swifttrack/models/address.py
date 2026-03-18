@@ -24,7 +24,9 @@ class Address(BaseModel):
     locality: Optional[str] = Field(None, description="Locality/Area")
     latitude: Optional[float] = Field(None, description="Latitude coordinate")
     longitude: Optional[float] = Field(None, description="Longitude coordinate")
-    contact_name: Optional[str] = Field(None, alias="contactName", description="Contact person name")
+    contact_name: Optional[str] = Field(
+        None, alias="contactName", description="Contact person name"
+    )
     contact_phone: Optional[str] = Field(
         None, alias="contactPhone", description="Contact phone number"
     )

@@ -53,7 +53,9 @@ class Item(BaseModel):
 
     name: str = Field(..., description="Item name")
     quantity: int = Field(default=1, ge=1, description="Item quantity")
-    weight_kg: Optional[float] = Field(None, alias="weightKg", ge=0, description="Item weight in kg")
+    weight_kg: Optional[float] = Field(
+        None, alias="weightKg", ge=0, description="Item weight in kg"
+    )
     dimensions: Optional[dict[str, float]] = Field(
         None, description="Dimensions {length, width, height} in cm"
     )
@@ -187,14 +189,20 @@ class CreateOrderRequest(BaseModel):
     )
     tenant_id: Optional[str] = Field(None, alias="tenantId", description="Tenant ID")
     quote_id: Optional[str] = Field(None, alias="quoteId", description="Selected quote ID")
-    order_reference: Optional[str] = Field(None, alias="orderReference", description="Your order ref")
+    order_reference: Optional[str] = Field(
+        None, alias="orderReference", description="Your order ref"
+    )
     order_type: OrderType = Field(default=OrderType.IMMEDIATE, alias="orderType")
     payment_type: PaymentType = Field(default=PaymentType.PREPAID, alias="paymentType")
     pickup_address_id: UUID = Field(..., alias="pickupAddressId", description="Pickup address ID")
     dropoff: LocationPoint = Field(..., description="Dropoff location")
     items: list[Item] = Field(default_factory=list, description="Items to deliver")
-    package_info: Optional[PackageInfo] = Field(None, alias="packageInfo", description="Package info")
-    time_windows: Optional[TimeWindows] = Field(None, alias="timeWindows", description="Time windows")
+    package_info: Optional[PackageInfo] = Field(
+        None, alias="packageInfo", description="Package info"
+    )
+    time_windows: Optional[TimeWindows] = Field(
+        None, alias="timeWindows", description="Time windows"
+    )
     delivery_preferences: Optional[DeliveryPreferences] = Field(
         None, alias="deliveryPreferences", description="Preferences"
     )
@@ -219,14 +227,18 @@ class Order(BaseModel):
     provider_id: Optional[UUID] = Field(None, alias="providerId", description="Assigned provider")
     driver_id: Optional[UUID] = Field(None, alias="driverId", description="Assigned driver")
     items: list[Item] = Field(default_factory=list, description="Items")
-    package_info: Optional[PackageInfo] = Field(None, alias="packageInfo", description="Package info")
+    package_info: Optional[PackageInfo] = Field(
+        None, alias="packageInfo", description="Package info"
+    )
     price: Optional[float] = Field(None, ge=0, description="Final price")
     currency: str = Field(default="INR", description="Currency")
     payment_type: PaymentType = Field(..., alias="paymentType", description="Payment type")
     estimated_delivery: Optional[datetime] = Field(
         None, alias="estimatedDelivery", description="Estimated delivery time"
     )
-    actual_pickup: Optional[datetime] = Field(None, alias="actualPickup", description="Actual pickup")
+    actual_pickup: Optional[datetime] = Field(
+        None, alias="actualPickup", description="Actual pickup"
+    )
     actual_delivery: Optional[datetime] = Field(
         None, alias="actualDelivery", description="Actual delivery"
     )

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any
+from uuid import UUID
 
 import httpx
 
@@ -23,6 +25,20 @@ from swifttrack.exceptions import (
 from swifttrack.utils.retry import RetryHandler
 
 logger = logging.getLogger(__name__)
+
+
+class UUIDEncoder(json.JSONEncoder):
+    """JSON Encoder that handles UUID objects."""
+
+    def default(self, obj: Any) -> Any:
+        if isinstance(obj, UUID):
+            return str(obj)
+        return super().default(obj)
+
+
+def serialize_json(data: Any) -> str:
+    """Serialize data to JSON, handling UUIDs."""
+    return json.dumps(data, cls=UUIDEncoder)
 
 
 class HTTPClient:
@@ -76,10 +92,14 @@ class HTTPClient:
 
         def _make_request() -> httpx.Response:
             logger.debug(f"{method} {url}")
+            # Serialize JSON data with UUID support
+            content = None
+            if json_data is not None:
+                content = serialize_json(json_data).encode("utf-8")
             response = self.client.request(
                 method=method,
                 url=url,
-                json=json_data,
+                content=content,
                 params=params,
                 headers=request_headers,
             )
