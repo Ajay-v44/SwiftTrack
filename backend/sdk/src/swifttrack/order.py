@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from swifttrack.models.order import (
@@ -52,10 +52,12 @@ class OrderService:
         pickup_uuid = (
             UUID(pickup_address_id) if isinstance(pickup_address_id, str) else pickup_address_id
         )
-        request = OrderQuoteRequest(
-            pickup_address_id=pickup_uuid,
-            dropoff_lat=dropoff_lat,
-            dropoff_lng=dropoff_lng,
+        request = OrderQuoteRequest.model_validate(
+            {
+                "pickupAddressId": pickup_uuid,
+                "dropoffLat": dropoff_lat,
+                "dropoffLng": dropoff_lng,
+            }
         )
         logger.debug(f"Getting quote for pickup: {pickup_uuid}")
 
@@ -92,14 +94,16 @@ class OrderService:
         Returns:
             DeliveryOptionsQuoteResponse containing available quotes.
         """
-        request = GuestQuoteRequest(
-            pickup_lat=pickup_lat,
-            pickup_lng=pickup_lng,
-            pickup_address=pickup_address,
-            dropoff_lat=dropoff_lat,
-            dropoff_lng=dropoff_lng,
-            dropoff_address=dropoff_address,
-            package_weight_kg=package_weight_kg,
+        request = GuestQuoteRequest.model_validate(
+            {
+                "pickupLat": pickup_lat,
+                "pickupLng": pickup_lng,
+                "pickupAddress": pickup_address,
+                "dropoffLat": dropoff_lat,
+                "dropoffLng": dropoff_lng,
+                "dropoffAddress": dropoff_address,
+                "packageWeightKg": package_weight_kg,
+            }
         )
         logger.debug("Getting guest quote")
 
@@ -145,7 +149,7 @@ class OrderService:
         logger.info(f"Created order: {order.id}")
         return order
 
-    def cancel_order(self, order_id: UUID | str, reason: str | None = None) -> dict:
+    def cancel_order(self, order_id: UUID | str, reason: str | None = None) -> dict[str, Any]:
         """Cancel an order.
 
         Args:
@@ -163,14 +167,14 @@ class OrderService:
         order_uuid = UUID(order_id) if isinstance(order_id, str) else order_id
         logger.debug(f"Cancelling order: {order_uuid}")
 
-        params: dict = {"orderId": str(order_uuid)}
+        params: dict[str, Any] = {"orderId": str(order_uuid)}
         if reason:
             params["reason"] = reason
 
         response = self._client.post(f"{self.BASE_PATH}/cancelOrder", params=params)
 
         logger.info(f"Cancelled order: {order_uuid}")
-        return response
+        return response if isinstance(response, dict) else {"message": str(response)}
 
     def get_order_status(self, order_id: UUID | str) -> str:
         """Get the status of an order.
@@ -188,9 +192,13 @@ class OrderService:
         order_uuid = UUID(order_id) if isinstance(order_id, str) else order_id
         logger.debug(f"Getting order status: {order_uuid}")
 
-        response = self._client.get(f"{self.BASE_PATH}/getOrderStatus/{order_uuid}")
+        response: Any = self._client.get(f"{self.BASE_PATH}/getOrderStatus/{order_uuid}")
 
-        return response if isinstance(response, str) else response.get("status", "")
+        if isinstance(response, str):
+            return response
+        elif isinstance(response, dict):
+            return str(response.get("status", ""))
+        return str(response)
 
     def get_order(self, order_id: UUID | str) -> Order:
         """Get order details by ID.

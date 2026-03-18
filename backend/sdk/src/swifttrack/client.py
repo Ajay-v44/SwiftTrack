@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from contextlib import contextmanager
 from types import TracebackType
+from typing import Iterator
 
 from typing_extensions import Self
 
@@ -83,7 +84,7 @@ class SwiftTrackClient:
         self._orders = OrderService(self._http_client)
         self._accounts = AccountService(self._http_client)
 
-        self._is_authenticated = token is not None
+        self._is_authenticated = self._config.token is not None
 
         logger.debug(f"SwiftTrackClient initialized with base_url: {self._config.base_url}")
 
@@ -165,6 +166,7 @@ class SwiftTrackClient:
     def _set_token(self, token: str) -> None:
         """Internal method to set the token."""
         self._http_client.update_token(token)
+        self._config = self._http_client.config
         self._is_authenticated = True
         logger.debug("Authentication token set")
 
@@ -201,7 +203,7 @@ class SwiftTrackClient:
         self.close()
 
     @contextmanager
-    def temp_token(self, token: str):
+    def temp_token(self, token: str) -> Iterator[Self]:
         """Context manager to temporarily use a different token.
 
         This is useful for operations that need a different user's token

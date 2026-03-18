@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from swifttrack.models.address import Address, AddressRequest
@@ -152,7 +152,7 @@ class AddressService:
         logger.info(f"Set default address: {address_uuid}")
         return updated_address
 
-    def delete_address(self, address_id: UUID | str) -> dict:
+    def delete_address(self, address_id: UUID | str) -> dict[str, Any]:
         """Delete an address.
 
         Args:
@@ -171,4 +171,4 @@ class AddressService:
         response = self._client.delete(f"{self.BASE_PATH}/{address_uuid}")
 
         logger.info(f"Deleted address: {address_uuid}")
-        return response
+        return response if isinstance(response, dict) else {"message": str(response)}
