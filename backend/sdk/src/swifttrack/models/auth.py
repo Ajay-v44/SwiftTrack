@@ -4,21 +4,25 @@ from __future__ import annotations
 
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class LoginRequest(BaseModel):
     """Request model for email/password login."""
 
-    email: EmailStr = Field(..., description="User email address")
+    model_config = ConfigDict(populate_by_name=True)
+
+    email: str = Field(..., description="User email address")
     password: str = Field(..., description="User password", min_length=1)
 
 
 class LoginResponse(BaseModel):
     """Response model for successful login."""
 
-    token_type: str = Field(..., description="Type of token (e.g., Bearer)")
-    access_token: str = Field(..., description="JWT access token")
+    model_config = ConfigDict(populate_by_name=True)
+
+    token_type: str = Field(..., alias="tokenType", description="Type of token (e.g., Bearer)")
+    access_token: str = Field(..., alias="accessToken", description="JWT access token")
 
     @property
     def token(self) -> str:
@@ -53,7 +57,7 @@ class UserDetails(BaseModel):
 class RegisterUserRequest(BaseModel):
     """Request model for user registration."""
 
-    email: EmailStr = Field(..., description="User email address")
+    email: str = Field(..., description="User email address")
     password: str = Field(..., description="User password", min_length=8)
     mobile: Optional[str] = Field(None, description="Mobile phone number")
     name: Optional[str] = Field(None, description="User full name")

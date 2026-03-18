@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from swifttrack.models.account import (
@@ -106,7 +106,9 @@ class AccountService:
             PermissionError: If user doesn't have permission.
         """
         user_uuid = UUID(user_id) if isinstance(user_id, str) else user_id
-        request = CreateAccountRequest(user_id=user_uuid, account_type=account_type)
+        request = CreateAccountRequest.model_validate(
+            {"userId": user_uuid, "accountType": account_type}
+        )
         logger.debug(f"Creating {account_type} account for user: {user_uuid}")
 
         response = self._client.post(
@@ -135,12 +137,18 @@ class AccountService:
         account_uuid = UUID(account_id) if isinstance(account_id, str) else account_id
         logger.debug(f"Reconciling balance for account: {account_uuid}")
 
-        response = self._client.post(
+        response: Any = self._client.post(
             f"{self.BASE_PATH}/reconcile",
             params={"accountId": str(account_uuid)},
         )
 
-        message = response if isinstance(response, str) else response.get("message", "")
+        if isinstance(response, str):
+            message = response
+        elif isinstance(response, dict):
+            message = str(response.get("message", ""))
+        else:
+            message = str(response)
+
         logger.info(f"Reconciled account: {account_uuid}")
         return message
 
@@ -167,7 +175,7 @@ class AccountService:
         user_uuid = UUID(user_id) if isinstance(user_id, str) else user_id
         logger.debug(f"Topping up wallet for user: {user_uuid}, amount: {amount}")
 
-        params: dict = {"userId": str(user_uuid), "amount": str(amount)}
+        params: dict[str, Any] = {"userId": str(user_uuid), "amount": str(amount)}
         if reference:
             params["reference"] = reference
 

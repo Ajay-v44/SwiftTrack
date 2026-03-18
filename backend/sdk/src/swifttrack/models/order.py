@@ -250,12 +250,16 @@ class Order(BaseModel):
 class CancelOrderRequest(BaseModel):
     """Request model for cancelling an order."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     order_id: UUID = Field(..., alias="orderId", description="Order ID to cancel")
     reason: Optional[str] = Field(None, description="Cancellation reason")
 
 
 class GuestQuoteRequest(BaseModel):
     """Request model for guest quote (no auth required)."""
+
+    model_config = ConfigDict(populate_by_name=True)
 
     pickup_lat: float = Field(..., alias="pickupLat", ge=-90, le=90)
     pickup_lng: float = Field(..., alias="pickupLng", ge=-180, le=180)
