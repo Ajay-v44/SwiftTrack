@@ -299,5 +299,6 @@ class TestOrderService:
 
         # Act & Assert
         import pydantic
+
         with pytest.raises(pydantic.ValidationError):
             client.orders.get_quote(pickup_id, 200.0, 72.8777)  # Invalid lat
