@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterator
 from contextlib import contextmanager
 from types import TracebackType
-from typing import Iterator
 
 from typing_extensions import Self
 
