@@ -33,21 +33,6 @@ import swifttrack
 print(swifttrack.__version__)
 ```
 
-## Environment Setup
-
-Create a `.env` file with your configuration:
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env` with your credentials:
-
-```env
-SWIFTTRACK_BASE_URL=https://backend-swifttrack.ajayv.online
-SWIFTTRACK_TOKEN=your_jwt_token_here
-```
-
 ## From Source
 
 To install from source for development:
