@@ -67,22 +67,6 @@ client = SwiftTrackClient()
 client.set_token("your-jwt-token")
 ```
 
-### Environment Variables
-
-You can also configure the client via environment variables:
-
-```bash
-export SWIFTTRACK_BASE_URL="https://backend-swifttrack.ajayv.online"
-export SWIFTTRACK_TOKEN="your-token"
-```
-
-```python
-from swifttrack import SwiftTrackClient
-
-# Uses environment variables automatically
-client = SwiftTrackClient()
-```
-
 ## Address Management
 
 ```python
@@ -307,16 +291,6 @@ config = SwiftTrackConfig(
 
 client = SwiftTrackClient(config=config)
 ```
-
-### Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `SWIFTTRACK_BASE_URL` | API base URL | `https://backend-swifttrack.ajayv.online` |
-| `SWIFTTRACK_TOKEN` | Authentication token | `None` |
-| `SWIFTTRACK_TIMEOUT` | Request timeout (seconds) | `30.0` |
-| `SWIFTTRACK_MAX_RETRIES` | Max retry attempts | `3` |
-| `SWIFTTRACK_VERIFY_SSL` | Verify SSL certificates | `true` |
 
 ## Context Manager
 
