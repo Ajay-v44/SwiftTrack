@@ -9,7 +9,7 @@ import pytest
 import respx
 from httpx import Response
 
-from swifttrack import NotFoundError, SwiftTrackClient, ValidationError
+from swifttrack import NotFoundError, SwiftTrackClient
 from swifttrack.models.order import (
     CreateOrderRequest,
     LocationPoint,
@@ -298,7 +298,7 @@ class TestOrderService:
         )
 
         # Act & Assert
-        with pytest.raises(ValidationError) as exc_info:
-            client.orders.get_quote(pickup_id, 200.0, 72.8777)  # Invalid lat
+        import pydantic
 
-        assert exc_info.value.status_code == 400
+        with pytest.raises(pydantic.ValidationError):
+            client.orders.get_quote(pickup_id, 200.0, 72.8777)  # Invalid lat

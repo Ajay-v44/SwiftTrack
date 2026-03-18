@@ -95,5 +95,7 @@ class TopUpRequest(BaseModel):
 class CreateAccountRequest(BaseModel):
     """Request model for creating an account."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     user_id: UUID = Field(..., alias="userId", description="User ID")
     account_type: AccountType = Field(..., alias="accountType", description="Account type")

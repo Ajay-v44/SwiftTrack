@@ -70,9 +70,7 @@ class RetryHandler:
                     delay = self._add_jitter(delay)
                     continue
 
-                # For responses, raise if status is an error
-                if isinstance(result, httpx.Response):
-                    result.raise_for_status()
+                # For responses, return result without raising HTTPStatusError so the caller can process it
                 return result
 
             except self.RETRYABLE_EXCEPTIONS as e:

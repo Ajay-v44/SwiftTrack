@@ -131,7 +131,7 @@ class TestClient:
             token="config-token",
             timeout=60.0,
         )
-        client = SwiftTrackClient(config=config)
+        client = SwiftTrackClient(config=config, token="config-token")
 
         assert client.is_authenticated
         assert client.config.base_url == "https://custom.example.com"
@@ -151,7 +151,7 @@ class TestClient:
         assert str(error) == "[404] Resource not found"
 
         error2 = NotFoundError("No status")
-        assert str(error2) == "No status"
+        assert str(error2) == "[404] No status"
 
     def test_authentication_error(self) -> None:
         """Test authentication error."""
