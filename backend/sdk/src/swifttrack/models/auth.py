@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Optional
+
 from pydantic import BaseModel, EmailStr, Field
 
 
@@ -41,9 +43,9 @@ class UserDetails(BaseModel):
     """User details from token validation."""
 
     id: str = Field(..., description="User ID")
-    email: str | None = Field(None, description="User email")
-    name: str | None = Field(None, description="User name")
-    tenant_id: str | None = Field(None, description="Tenant ID")
+    email: Optional[str] = Field(None, description="User email")
+    name: Optional[str] = Field(None, description="User name")
+    tenant_id: Optional[str] = Field(None, description="Tenant ID")
     roles: list[str] = Field(default_factory=list, description="User roles")
     is_active: bool = Field(True, description="Whether the user is active")
 
@@ -53,5 +55,5 @@ class RegisterUserRequest(BaseModel):
 
     email: EmailStr = Field(..., description="User email address")
     password: str = Field(..., description="User password", min_length=8)
-    mobile: str | None = Field(None, description="Mobile phone number")
-    name: str | None = Field(None, description="User full name")
+    mobile: Optional[str] = Field(None, description="Mobile phone number")
+    name: Optional[str] = Field(None, description="User full name")

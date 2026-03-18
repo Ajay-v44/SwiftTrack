@@ -89,6 +89,7 @@ select = [
 ]
 ignore = [
     "E501",  # line too long, handled by black
+    "UP045", # Keep Optional[X] for Python 3.9 compatibility (X | None requires 3.10+)
 ]
 
 [tool.ruff.lint.per-file-ignores]
