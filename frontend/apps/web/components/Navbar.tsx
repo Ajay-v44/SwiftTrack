@@ -3,10 +3,12 @@
 import Link from "next/link"
 import { useState } from "react"
 import { Button, Sheet, SheetContent, SheetTrigger, Logo } from "@swifttrack/shared-ui"
-import { Menu, ChevronRight, Package } from "lucide-react"
+import { Menu, ChevronRight, Package, User, LogOut, LayoutDashboard } from "lucide-react"
+import { useAuthStore } from "@/store/useAuthStore"
 
 export function Navbar() {
     const [isOpen, setIsOpen] = useState(false)
+    const { user, logout } = useAuthStore()
 
     const navLinks = [
         { name: "Solutions", href: "/solutions" },
@@ -42,16 +44,37 @@ export function Navbar() {
                             <Link href="/track" className="text-sm font-medium text-foreground/80 hover:text-primary">
                                 Track Order
                             </Link>
-                            <Link href="/login">
-                                <Button variant="ghost" className="text-foreground/80 hover:text-primary">
-                                    Sign In
-                                </Button>
-                            </Link>
-                            <Link href="/register">
-                                <Button className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20">
-                                    Get Started <ChevronRight className="ml-2 h-4 w-4" />
-                                </Button>
-                            </Link>
+                            
+                            {user ? (
+                                <div className="flex items-center gap-4">
+                                    <Link href="/dashboard">
+                                        <Button variant="ghost" className="text-foreground/80 hover:text-primary gap-2">
+                                            <LayoutDashboard className="h-4 w-4" />
+                                            Dashboard
+                                        </Button>
+                                    </Link>
+                                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
+                                        <User className="h-4 w-4 text-primary" />
+                                        <span className="text-sm font-medium text-primary">{user.name}</span>
+                                    </div>
+                                    <Button variant="ghost" size="icon" onClick={logout} className="text-muted-foreground hover:text-destructive">
+                                        <LogOut className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            ) : (
+                                <>
+                                    <Link href="/login">
+                                        <Button variant="ghost" className="text-foreground/80 hover:text-primary">
+                                            Sign In
+                                        </Button>
+                                    </Link>
+                                    <Link href="/register">
+                                        <Button className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20">
+                                            Get Started <ChevronRight className="ml-2 h-4 w-4" />
+                                        </Button>
+                                    </Link>
+                                </>
+                            )}
                         </div>
                     </div>
                     <div className="-mr-2 flex md:hidden">
@@ -83,16 +106,31 @@ export function Navbar() {
                                                 <Package className="mr-2 h-5 w-5" /> Track Order
                                             </Button>
                                         </Link>
-                                        <Link href="/login" onClick={() => setIsOpen(false)}>
-                                            <Button variant="ghost" className="w-full justify-start h-12 text-base">
-                                                Sign In
-                                            </Button>
-                                        </Link>
-                                        <Link href="/register" onClick={() => setIsOpen(false)}>
-                                            <Button className="w-full h-12 text-base shadow-lg shadow-primary/20">
-                                                Get Started
-                                            </Button>
-                                        </Link>
+                                        {user ? (
+                                            <>
+                                                <Link href="/dashboard" onClick={() => setIsOpen(false)}>
+                                                    <Button variant="outline" className="w-full justify-start h-12 text-base">
+                                                        <LayoutDashboard className="mr-2 h-5 w-5" /> Dashboard
+                                                    </Button>
+                                                </Link>
+                                                <Button variant="ghost" className="w-full justify-start h-12 text-base text-destructive" onClick={() => { logout(); setIsOpen(false); }}>
+                                                    <LogOut className="mr-2 h-5 w-5" /> Sign Out
+                                                </Button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Link href="/login" onClick={() => setIsOpen(false)}>
+                                                    <Button variant="ghost" className="w-full justify-start h-12 text-base">
+                                                        Sign In
+                                                    </Button>
+                                                </Link>
+                                                <Link href="/register" onClick={() => setIsOpen(false)}>
+                                                    <Button className="w-full h-12 text-base shadow-lg shadow-primary/20">
+                                                        Get Started
+                                                    </Button>
+                                                </Link>
+                                            </>
+                                        )}
                                     </div>
                                 </nav>
                             </SheetContent>

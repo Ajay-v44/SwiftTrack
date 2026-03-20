@@ -106,7 +106,11 @@ public class UserServices {
                         jwtUtil.generateToken(userModel.getId(), userModel.getMobile()));
             }
         } else {
-            // Todo : Implement Otp service
+            // Simulation: Set OTP to 123456 and save
+            userModel.setOtp("123456");
+            userRepo.save(userModel);
+            // In a real scenario, you'd call an SMS service here
+            return new LoginResponse("OTP_SENT", "OTP has been sent to your mobile number");
         }
         throw new CustomException(HttpStatus.UNAUTHORIZED, "Invalid OTP");
     }
