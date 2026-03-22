@@ -53,10 +53,12 @@ export function Navbar() {
                                             Dashboard
                                         </Button>
                                     </Link>
-                                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
-                                        <User className="h-4 w-4 text-primary" />
-                                        <span className="text-sm font-medium text-primary">{user.name}</span>
-                                    </div>
+                                    <Link href="/profile">
+                                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 hover:bg-primary/20 transition-colors cursor-pointer">
+                                            <User className="h-4 w-4 text-primary" />
+                                            <span className="text-sm font-medium text-primary">{user.name}</span>
+                                        </div>
+                                    </Link>
                                     <Button variant="ghost" size="icon" onClick={logout} className="text-muted-foreground hover:text-destructive">
                                         <LogOut className="h-4 w-4" />
                                     </Button>
@@ -111,6 +113,11 @@ export function Navbar() {
                                                 <Link href="/dashboard" onClick={() => setIsOpen(false)}>
                                                     <Button variant="outline" className="w-full justify-start h-12 text-base">
                                                         <LayoutDashboard className="mr-2 h-5 w-5" /> Dashboard
+                                                    </Button>
+                                                </Link>
+                                                <Link href="/profile" onClick={() => setIsOpen(false)}>
+                                                    <Button variant="outline" className="w-full justify-start h-12 text-base">
+                                                        <User className="mr-2 h-5 w-5" /> Profile
                                                     </Button>
                                                 </Link>
                                                 <Button variant="ghost" className="w-full justify-start h-12 text-base text-destructive" onClick={() => { logout(); setIsOpen(false); }}>
