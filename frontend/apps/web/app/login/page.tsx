@@ -50,8 +50,12 @@ export default function LoginPage() {
       // Decision based on userType
       if (userDetails.type === 'SUPER_ADMIN' || userDetails.type === 'SYSTEM_ADMIN') {
         router.push('/admin/dashboard');
-      } else if (userDetails.type === 'TENANT_ADMIN' || userDetails.type === 'TENANT_MANAGER') {
-        router.push('/dashboard');
+      } else if (userDetails.type === 'TENANT_ADMIN' || userDetails.type === 'TENANT_MANAGER' || userDetails.type === 'TENANT_USER') {
+        if (!userDetails.tenantId) {
+          router.push('/tenant/setup');
+        } else {
+          router.push('/tenant/dashboard');
+        }
       } else if (userDetails.type === 'CONSUMER') {
         router.push('/track');
       } else {
