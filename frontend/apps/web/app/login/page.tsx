@@ -56,6 +56,10 @@ export default function LoginPage() {
         } else {
           router.push('/tenant/dashboard');
         }
+      } else if (userDetails.type === 'PROVIDER_ADMIN' || userDetails.type === 'PROVIDER_USER') {
+        router.push('/provider/dashboard');
+      } else if (userDetails.type === 'TENANT_DRIVER' || userDetails.type === 'DRIVER_USER') {
+        router.push('/driver/dashboard');
       } else if (userDetails.type === 'CONSUMER') {
         router.push('/track');
       } else {
