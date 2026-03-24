@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { 
-  Users, Search, UserPlus, MoreVertical, Building2, Sync, Bell, CheckCircle2 
+  Users, Search, UserPlus, MoreVertical, Building2, RefreshCw, Bell, CheckCircle2 
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 
@@ -106,7 +106,7 @@ export default function TenantTeamPage() {
         <div className="flex items-center justify-between">
           <h2 className="font-['Manrope'] text-2xl font-bold text-white">Courier Integrations</h2>
           <p className="text-xs text-[#c5c5d8] flex items-center gap-2">
-            <Sync className="w-3 h-3" /> Last updated 2 mins ago
+            <RefreshCw className="w-3 h-3" /> Last updated 2 mins ago
           </p>
         </div>
 
