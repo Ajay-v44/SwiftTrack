@@ -3,12 +3,37 @@
 import Link from "next/link"
 import { useState } from "react"
 import { Button, Sheet, SheetContent, SheetTrigger, Logo } from "@swifttrack/shared-ui"
-import { Menu, ChevronRight, Package, User, LogOut, LayoutDashboard } from "lucide-react"
+import { Menu, ChevronRight, Package, User, LogOut, LayoutDashboard, ShieldCheck, Truck, Building2 } from "lucide-react"
 import { useAuthStore } from "@/store/useAuthStore"
 
 export function Navbar() {
     const [isOpen, setIsOpen] = useState(false)
     const { user, logout } = useAuthStore()
+    const userTypeLabel = user?.type ? user.type.replaceAll("_", " ") : "ACCOUNT"
+
+    const dashboardHref = user
+        ? user.type === "SUPER_ADMIN" || user.type === "SYSTEM_ADMIN" || user.type === "ADMIN_USER"
+            ? "/admin/dashboard"
+            : user.type === "PROVIDER_ADMIN" || user.type === "PROVIDER_USER"
+                ? "/provider/dashboard"
+                : user.type === "TENANT_DRIVER" || user.type === "DRIVER_USER"
+                    ? "/driver/dashboard"
+                    : "/tenant/dashboard"
+        : "/login"
+
+    const accountAccent = user?.type?.startsWith("TENANT")
+        ? "from-blue-600 to-cyan-500"
+        : user?.type?.startsWith("PROVIDER")
+            ? "from-rose-600 to-orange-500"
+            : user?.type?.includes("DRIVER")
+                ? "from-emerald-600 to-teal-500"
+                : "from-slate-800 to-slate-600"
+
+    const AccountIcon = user?.type?.startsWith("TENANT")
+        ? Building2
+        : user?.type?.startsWith("PROVIDER")
+            ? ShieldCheck
+            : Truck
 
     const navLinks = [
         { name: "Solutions", href: "/solutions" },
@@ -18,7 +43,7 @@ export function Navbar() {
     ]
 
     return (
-        <nav className="fixed w-full z-50 glass border-b border-white/10">
+        <nav className="fixed w-full z-50 border-b border-slate-200/80 bg-white/85 backdrop-blur-xl shadow-[0_10px_40px_-30px_rgba(15,23,42,0.45)]">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-16">
                     <div className="flex items-center">
@@ -47,19 +72,26 @@ export function Navbar() {
                             
                             {user ? (
                                 <div className="flex items-center gap-4">
-                                    <Link href="/dashboard">
-                                        <Button variant="ghost" className="text-foreground/80 hover:text-primary gap-2">
+                                    <Link href={dashboardHref}>
+                                        <Button variant="ghost" className="text-slate-700 hover:text-primary hover:bg-slate-100 gap-2 rounded-full">
                                             <LayoutDashboard className="h-4 w-4" />
                                             Dashboard
                                         </Button>
                                     </Link>
                                     <Link href="/profile">
-                                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 hover:bg-primary/20 transition-colors cursor-pointer">
-                                            <User className="h-4 w-4 text-primary" />
-                                            <span className="text-sm font-medium text-primary">{user.name}</span>
+                                        <div className={`flex items-center gap-3 px-3 py-1.5 rounded-full border border-slate-200 bg-gradient-to-r ${accountAccent} text-white shadow-lg transition-transform hover:scale-[1.02] cursor-pointer`}>
+                                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
+                                                <AccountIcon className="h-4 w-4" />
+                                            </div>
+                                            <div className="leading-tight">
+                                                <div className="text-sm font-semibold">{user.name}</div>
+                                                <div className="text-[10px] uppercase tracking-[0.18em] text-white/75">
+                                                    {userTypeLabel}
+                                                </div>
+                                            </div>
                                         </div>
                                     </Link>
-                                    <Button variant="ghost" size="icon" onClick={logout} className="text-muted-foreground hover:text-destructive">
+                                    <Button variant="ghost" size="icon" onClick={logout} className="text-slate-500 hover:text-destructive hover:bg-rose-50 rounded-full">
                                         <LogOut className="h-4 w-4" />
                                     </Button>
                                 </div>
@@ -110,7 +142,7 @@ export function Navbar() {
                                         </Link>
                                         {user ? (
                                             <>
-                                                <Link href="/dashboard" onClick={() => setIsOpen(false)}>
+                                                <Link href={dashboardHref} onClick={() => setIsOpen(false)}>
                                                     <Button variant="outline" className="w-full justify-start h-12 text-base">
                                                         <LayoutDashboard className="mr-2 h-5 w-5" /> Dashboard
                                                     </Button>

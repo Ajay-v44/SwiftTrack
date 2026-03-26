@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Package, Wallet, Truck, Users, Puzzle, Settings } from 'lucide-react';
+import { LayoutDashboard, Package, Wallet, Users } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 
 export default function TenantSidebar() {
@@ -14,9 +14,7 @@ export default function TenantSidebar() {
     { name: 'Dashboard', href: '/tenant/dashboard', icon: LayoutDashboard },
     { name: 'Orders', href: '/tenant/orders', icon: Package },
     { name: 'Finance', href: '/tenant/finance', icon: Wallet },
-    { name: 'Delivery Settings', href: '/tenant/settings/delivery', icon: Truck },
     { name: 'Team Management', href: '/tenant/team', icon: Users },
-    { name: 'Integration', href: '/tenant/integrations', icon: Puzzle },
   ];
 
   const getInitials = (name?: string) => {
@@ -53,20 +51,6 @@ export default function TenantSidebar() {
             </Link>
           );
         })}
-
-        <div className="mt-auto pt-4">
-          <Link
-            href="/tenant/settings"
-            className={`px-10 py-3 flex items-center gap-4 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] active:scale-[0.97] font-['Manrope'] font-medium text-sm ${
-              pathname === '/tenant/settings'
-                ? 'text-[#bac3ff] font-bold bg-[#2d3449] rounded-full mx-4 px-6'
-                : 'text-[#c5c5d8] hover:bg-[#2d3449] hover:text-[#3e5bf2]'
-            }`}
-          >
-            <Settings className="w-5 h-5" />
-            <span>Settings &amp; Support</span>
-          </Link>
-        </div>
       </nav>
 
       {/* User Profile Mini Banner */}

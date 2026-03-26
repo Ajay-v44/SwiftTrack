@@ -39,13 +39,13 @@ const features = [
 
 export function Features() {
     return (
-        <section id="features" className="py-24 relative dark bg-background">
+        <section id="features" className="py-24 relative bg-transparent">
             <div className="container mx-auto px-4">
                 <div className="text-center max-w-3xl mx-auto mb-16">
-                    <h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-4 bg-clip-text text-transparent bg-gradient-to-r from-white to-purple-300">
+                    <h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-4 bg-clip-text text-transparent bg-gradient-to-r from-slate-950 via-slate-800 to-primary">
                         Powerful features for modern logistics
                     </h2>
-                    <p className="text-lg text-muted-foreground">
+                    <p className="text-lg text-slate-600">
                         Everything you need to orchestrate your deliveries, from order creation to final proof of delivery.
                     </p>
                 </div>
@@ -58,7 +58,7 @@ export function Features() {
                             whileInView={{ opacity: 1, y: 0 }}
                             transition={{ delay: i * 0.1, duration: 0.5 }}
                             viewport={{ once: true }}
-                            className="group relative p-8 rounded-3xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] transition-colors overflow-hidden"
+                            className="group relative p-8 rounded-3xl border border-slate-200 bg-white/90 hover:bg-white transition-colors overflow-hidden shadow-[0_30px_80px_-60px_rgba(15,23,42,0.45)]"
                         >
                             <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-3xl" />
 
@@ -73,21 +73,21 @@ export function Features() {
 
                             {/* Specific Illustrations for key features */}
                             {i === 0 && (
-                                <div className="absolute top-0 right-0 w-48 h-48 opacity-20 group-hover:opacity-100 transition-all duration-500 -mr-12 -mt-12 rounded-full overflow-hidden border border-white/10 bg-neutral-900/50">
+                                <div className="absolute top-0 right-0 w-48 h-48 opacity-25 group-hover:opacity-100 transition-all duration-500 -mr-12 -mt-12 rounded-full overflow-hidden border border-slate-200 bg-slate-950/90">
                                     <div className="scale-75 origin-top-right">
                                         <DriverNetwork />
                                     </div>
                                 </div>
                             )}
                             {i === 1 && (
-                                <div className="absolute top-0 right-0 w-48 h-48 opacity-20 group-hover:opacity-100 transition-all duration-500 -mr-12 -mt-12 rounded-full overflow-hidden border border-white/10 bg-neutral-900/50">
+                                <div className="absolute top-0 right-0 w-48 h-48 opacity-25 group-hover:opacity-100 transition-all duration-500 -mr-12 -mt-12 rounded-full overflow-hidden border border-slate-200 bg-slate-950/90">
                                     <div className="scale-75 origin-top-right">
                                         <LiveMap />
                                     </div>
                                 </div>
                             )}
                             {i === 4 && (
-                                <div className="absolute top-0 right-0 w-48 h-48 opacity-20 group-hover:opacity-100 transition-all duration-500 -mr-12 -mt-12 rounded-full overflow-hidden border border-white/10 bg-neutral-900/50">
+                                <div className="absolute top-0 right-0 w-48 h-48 opacity-25 group-hover:opacity-100 transition-all duration-500 -mr-12 -mt-12 rounded-full overflow-hidden border border-slate-200 bg-slate-950/90">
                                     <div className="scale-75 origin-top-right">
                                         <AnalyticsChart />
                                     </div>
@@ -98,8 +98,8 @@ export function Features() {
                                 <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center mb-6 text-primary group-hover:scale-110 transition-transform duration-300 shadow-[0_0_15px_-3px_var(--color-primary)]">
                                     <feature.icon className="w-6 h-6" />
                                 </div>
-                                <h3 className="text-xl font-semibold mb-3 text-foreground">{feature.title}</h3>
-                                <p className="text-muted-foreground leading-relaxed">
+                                <h3 className="text-xl font-semibold mb-3 text-slate-950">{feature.title}</h3>
+                                <p className="text-slate-600 leading-relaxed">
                                     {feature.description}
                                 </p>
                             </div>
