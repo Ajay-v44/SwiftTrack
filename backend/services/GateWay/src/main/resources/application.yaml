@@ -3,6 +3,27 @@ spring:
     name: GateWay
   cloud:
     gateway:
+      globalcors:
+        add-to-simple-url-handler-mapping: true
+        cors-configurations:
+          "[/**]":
+            allowedOriginPatterns:
+              - "http://localhost:3000"
+              - "http://127.0.0.1:3000"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+              - OPTIONS
+            allowedHeaders:
+              - "*"
+            exposedHeaders:
+              - Authorization
+              - Content-Type
+            allowCredentials: true
+            maxAge: 3600
       discovery:
         locator:
           enabled: true
@@ -15,8 +36,7 @@ spring:
           filters:
             - StripPrefix=1
 server:
-  port:
-    8080
+  port: 8080
 eureka:
   client:
     service-url:

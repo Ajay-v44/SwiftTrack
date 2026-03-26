@@ -8,7 +8,7 @@ export function AppDownload() {
     return (
         <section className="py-24 relative overflow-hidden">
             <div className="container mx-auto px-4">
-                <div className="bg-gradient-to-br from-primary/20 to-purple-900/20 rounded-[3rem] border border-white/10 p-12 md:p-24 relative overflow-hidden">
+                <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 rounded-[3rem] border border-slate-800 p-12 md:p-24 relative overflow-hidden shadow-[0_40px_100px_-60px_rgba(15,23,42,0.9)]">
                     {/* Background decoration */}
                     <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/30 blur-[100px] rounded-full translate-x-1/2 -translate-y-1/2" />
 
@@ -21,12 +21,12 @@ export function AppDownload() {
 
                             <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-white leading-tight">
                                 Manage your fleet <br />
-                                <span className="text-primary bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-400">
+                                <span className="text-primary bg-clip-text text-transparent bg-gradient-to-r from-cyan-300 to-blue-400">
                                     on the go.
                                 </span>
                             </h2>
 
-                            <p className="text-lg text-muted-foreground max-w-lg">
+                            <p className="text-lg text-slate-200 max-w-lg">
                                 Download the SwiftTrack Driver and Fleet Manager apps to track shipments, assign orders, and communicate with your team from anywhere.
                             </p>
 
@@ -35,13 +35,13 @@ export function AppDownload() {
                                     <Download className="mr-2 h-5 w-5" />
                                     App Store
                                 </Button>
-                                <Button size="lg" variant="outline" className="h-14 px-8 text-lg rounded-xl glass hover:bg-white/10">
+                                <Button size="lg" variant="outline" className="h-14 px-8 text-lg rounded-xl border-white/30 bg-white/10 text-white hover:bg-white/20">
                                     <Smartphone className="mr-2 h-5 w-5" />
                                     Play Store
                                 </Button>
                             </div>
 
-                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                            <div className="flex items-center gap-4 text-sm text-slate-300">
                                 <div className="flex -space-x-2">
                                     <div className="w-8 h-8 rounded-full bg-gray-800 border-2 border-black" />
                                     <div className="w-8 h-8 rounded-full bg-gray-700 border-2 border-black" />

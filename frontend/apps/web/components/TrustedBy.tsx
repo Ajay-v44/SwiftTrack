@@ -13,12 +13,12 @@ const companies = [
 
 export function TrustedBy() {
     return (
-        <section className="py-12 border-y border-white/5 bg-black/20 overflow-hidden">
+        <section className="py-12 border-y border-slate-200/80 bg-white/80 overflow-hidden backdrop-blur">
             <div className="container mx-auto px-4">
-                <p className="text-center text-muted-foreground text-sm font-medium mb-8 uppercase tracking-widest">
+                <p className="text-center text-slate-600 text-sm font-semibold mb-8 uppercase tracking-widest">
                     Trusted by industry leaders
                 </p>
-                <div className="flex justify-center items-center gap-12 md:gap-24 flex-wrap opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
+                <div className="flex justify-center items-center gap-12 md:gap-24 flex-wrap text-slate-700/75 hover:text-slate-900 transition-all duration-500">
                     {companies.map((company, i) => (
                         <motion.div
                             key={i}

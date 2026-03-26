@@ -100,28 +100,25 @@
 
 :root {
   --radius: 0.75rem;
-  /* Premium Light Theme */
-  --background: oklch(0.985 0.01 240);
-  --foreground: oklch(0.15 0.05 240);
+  /* Premium Light Theme with stronger contrast */
+  --background: oklch(0.985 0.008 245);
+  --foreground: oklch(0.19 0.03 250);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.15 0.05 240);
+  --card-foreground: oklch(0.19 0.03 250);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.15 0.05 240);
-  --primary: oklch(0.45 0.2 270);
-  /* Vibrant Violet */
+  --popover-foreground: oklch(0.19 0.03 250);
+  --primary: oklch(0.52 0.19 258);
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.96 0.02 240);
+  --secondary: oklch(0.95 0.02 250);
   --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.96 0.02 240);
-  --muted-foreground: oklch(0.40 0 0);
-  /* Darker for better readability */
-  --accent: oklch(0.92 0.05 240);
+  --muted: oklch(0.955 0.015 250);
+  --muted-foreground: oklch(0.42 0.025 250);
+  --accent: oklch(0.91 0.04 248);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.85 0.02 240);
-  /* Slightly darker border */
-  --input: oklch(0.92 0.02 240);
-  --ring: oklch(0.45 0.2 270);
+  --border: oklch(0.87 0.018 250);
+  --input: oklch(0.93 0.015 250);
+  --ring: oklch(0.52 0.19 258);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -180,21 +177,24 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    background:
+      radial-gradient(circle at top, rgba(59, 130, 246, 0.12), transparent 40%),
+      linear-gradient(180deg, rgba(248, 250, 252, 0.98), rgba(241, 245, 249, 1));
+    @apply text-foreground;
   }
 }
 
 @layer utilities {
   .glass {
-    @apply bg-background/60 backdrop-blur-lg border border-white/10 shadow-xl;
+    @apply bg-white/85 backdrop-blur-lg border border-slate-200/80 shadow-xl;
   }
 
   .glass-card {
-    @apply bg-card/60 backdrop-blur-md border border-white/5 shadow-lg;
+    @apply bg-white/85 backdrop-blur-md border border-slate-200/80 shadow-lg;
   }
 
   .gradient-text {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-400;
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-cyan-500;
   }
 
   @keyframes blob {
