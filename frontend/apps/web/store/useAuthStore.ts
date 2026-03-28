@@ -1,31 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import Cookies from 'js-cookie';
-
-export type UserType = 
-| 'SUPER_ADMIN' 
-| 'SYSTEM_ADMIN' 
-| 'SYSTEM_USER' 
-| 'ADMIN_USER' 
-| 'TENANT_ADMIN' 
-| 'TENANT_USER' 
-| 'TENANT_DRIVER' 
-| 'TENANT_MANAGER' 
-| 'TENANT_STAFF' 
-| 'DRIVER_USER' 
-| 'CONSUMER' 
-| 'PROVIDER_USER' 
-| 'PROVIDER_ADMIN';
-
-export interface UserDetails {
-  id: string;
-  tenantId?: string | null;
-  providerId?: string | null;
-  type: UserType;
-  name: string;
-  mobile: string;
-  roles: string[];
-}
+import type { UserDetails } from '@swifttrack/types';
 
 interface AuthState {
   user: UserDetails | null;

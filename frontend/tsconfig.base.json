@@ -18,6 +18,15 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
+      "@swifttrack/api-client": [
+        "libs/api-client/src/index.ts"
+      ],
+      "@swifttrack/services": [
+        "libs/services/src/index.ts"
+      ],
+      "@swifttrack/types": [
+        "libs/types/src/index.ts"
+      ],
       "@swifttrack/shared-ui": [
         "libs/shared-ui/src/index.ts"
       ],

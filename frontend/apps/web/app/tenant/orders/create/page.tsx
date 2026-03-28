@@ -1,29 +1,25 @@
 "use client";
 
 import React, { useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
   ArrowLeft, MapPin, Navigation, Box, Weight, 
   BarChart4, Rocket, CheckCircle2, Loader2, ArrowRight
 } from 'lucide-react';
-import { useAuthStore } from '@/store/useAuthStore';
-import apiClient from '@/lib/api-client';
+import { useTenantOrderCreation } from '@/hooks/useTenantOrderCreation';
 import { toast } from 'sonner';
+import { TenantOrderQuoteFormInput } from '@swifttrack/types';
 
 export default function CreateOrderPage() {
   const router = useRouter();
-  const { user } = useAuthStore();
   const [step, setStep] = useState(1);
-  const [isLoading, setIsLoading] = useState(false);
+  const { quotes, isLoading, loadQuotes, dispatchOrder } = useTenantOrderCreation();
   
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<TenantOrderQuoteFormInput>({
     originAddress: '', originCity: '', originZip: '',
     destAddress: '', destCity: '', destZip: '',
     weight: '', dimensions: '', type: 'Standard Cargo'
   });
-
-  const [quotes, setQuotes] = useState<any[]>([]);
   const [selectedQuote, setSelectedQuote] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -32,30 +28,11 @@ export default function CreateOrderPage() {
 
   const handleGetQuotes = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     try {
-      // Mocking the get quotes API call based on the backend structure (requires proper body map)
-      /* 
-      const res = await apiClient.post('/api/order/v1/tenant/quote', { ...formData }, {
-        params: { id: user?.id }
-      });
-      setQuotes(res.data);
-      */
-      
-      // Simulating API latency & response for demo
-      setTimeout(() => {
-        setQuotes([
-          { id: 'Q-1001', provider: 'DHL Express', price: 145.00, eta: '2 Days', tag: 'Fastest' },
-          { id: 'Q-1002', provider: 'FedEx Freight', price: 120.00, eta: '3 Days', tag: 'Best Value' },
-          { id: 'Q-1003', provider: 'Internal Fleet', price: 95.00, eta: '5 Days', tag: 'Lowest Cost' }
-        ]);
-        setStep(2);
-        setIsLoading(false);
-      }, 1500);
-      
-    } catch (err: any) {
+      await loadQuotes(formData);
+      setStep(2);
+    } catch {
       toast.error('Failed to fetch quotes');
-      setIsLoading(false);
     }
   };
 
@@ -64,17 +41,12 @@ export default function CreateOrderPage() {
       toast.error('Please select a service quote');
       return;
     }
-    setIsLoading(true);
     try {
-      // API call to bind quote and create order
-      /* await apiClient.post('/api/order/v1/tenant/create', { quoteId: selectedQuote }, { params: { id: user?.id }}); */
-      setTimeout(() => {
-        toast.success('Order dispatched successfully!');
-        router.push('/tenant/orders');
-      }, 1500);
-    } catch (err) {
+      await dispatchOrder(selectedQuote);
+      toast.success('Order dispatched successfully!');
+      router.push('/tenant/orders');
+    } catch {
       toast.error('Failed to dispatch order');
-      setIsLoading(false);
     }
   };
 
@@ -258,7 +230,7 @@ export default function CreateOrderPage() {
           <div className="space-y-8 animate-in fade-in zoom-in-95 duration-500">
             <div className="text-center max-w-xl mx-auto mb-12">
               <h3 className="font-['Manrope'] text-3xl font-extrabold text-white mb-2">Select a Service Quote</h3>
-              <p className="text-[#c5c5d8]">Based on your specifications, we've sourced the best dynamic rates from your active integrations.</p>
+              <p className="text-[#c5c5d8]">Based on your specifications, we&apos;ve sourced the best dynamic rates from your active integrations.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -277,7 +249,7 @@ export default function CreateOrderPage() {
                   
                   <div className="text-center mb-6 mt-4">
                      <p className="text-[#c5c5d8] text-sm font-bold mb-2">{quote.provider}</p>
-                     <h4 className="font-['Manrope'] text-4xl font-extrabold text-white">${quote.price.toFixed(2)}</h4>
+                     <h4 className="font-['Manrope'] text-4xl font-extrabold text-white">Rs. {quote.price.toFixed(2)}</h4>
                   </div>
                   
                   <div className="bg-[#0b1326] rounded-xl p-4 flex items-center justify-between text-sm">

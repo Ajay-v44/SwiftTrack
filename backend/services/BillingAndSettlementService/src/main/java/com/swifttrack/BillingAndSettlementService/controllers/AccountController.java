@@ -1,16 +1,16 @@
 package com.swifttrack.BillingAndSettlementService.controllers;
 
+import com.swifttrack.BillingAndSettlementService.dto.FinanceSummaryResponse;
+import com.swifttrack.BillingAndSettlementService.dto.PaginatedLedgerTransactionsResponse;
+import com.swifttrack.BillingAndSettlementService.dto.TodayExpenseResponse;
 import com.swifttrack.BillingAndSettlementService.models.Account;
-import com.swifttrack.BillingAndSettlementService.models.LedgerTransaction;
 import com.swifttrack.BillingAndSettlementService.models.enums.AccountType;
 import com.swifttrack.BillingAndSettlementService.services.AccountService;
-import com.swifttrack.BillingAndSettlementService.services.LedgerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -19,7 +19,6 @@ import java.util.UUID;
 public class AccountController {
 
     private final AccountService accountService;
-    private final LedgerService ledgerService;
 
     @PostMapping("/v1/createAccount")
     public ResponseEntity<Account> createAccount(@RequestHeader("token") String token,
@@ -47,15 +46,26 @@ public class AccountController {
 
     @GetMapping("/v1/getMyAccount")
     public ResponseEntity<Account> getAccountsByUserId(@RequestHeader("token") String token,
-            @RequestParam UUID userId) {
+            @RequestParam(required = false) UUID userId) {
         return ResponseEntity.ok(accountService.getAccountsByUserId(token, userId));
     }
 
     @GetMapping("/v1/getTransactions")
-    public ResponseEntity<List<LedgerTransaction>> getTransactions(@RequestHeader("token") String token,
-            @RequestParam UUID accountId) {
-        accountService.verifyAccountAccess(token, accountId);
-        return ResponseEntity.ok(ledgerService.getTransactionsByAccountId(accountId));
+    public ResponseEntity<PaginatedLedgerTransactionsResponse> getTransactions(
+            @RequestHeader("token") String token,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size) {
+        return ResponseEntity.ok(accountService.getTransactions(token, page, size));
+    }
+
+    @GetMapping("/v1/dashboard/recent-expenses/today")
+    public ResponseEntity<TodayExpenseResponse> getTodayExpenses(@RequestHeader("token") String token) {
+        return ResponseEntity.ok(new TodayExpenseResponse(accountService.getTodayExpenses(token)));
+    }
+
+    @GetMapping("/v1/dashboard/summary")
+    public ResponseEntity<FinanceSummaryResponse> getFinanceSummary(@RequestHeader("token") String token) {
+        return ResponseEntity.ok(accountService.getFinanceSummary(token));
     }
 
     @PostMapping("/v1/reconcile")

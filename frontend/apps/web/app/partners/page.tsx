@@ -9,7 +9,7 @@ export default function PartnersPage() {
             <section className="py-20 container mx-auto px-4 text-center">
                 <h1 className="text-4xl md:text-6xl font-bold mb-6">Drive with SwiftTrack</h1>
                 <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-12">
-                    Earn more with flexible hours, instant payouts, and a steady stream of orders. Join India's fastest growing logistics network.
+                    Earn more with flexible hours, instant payouts, and a steady stream of orders. Join India&apos;s fastest growing logistics network.
                 </p>
                 <div className="flex justify-center gap-4 mb-20">
                     <Button size="lg" className="h-14 px-8 text-lg rounded-full">Sign Up to Drive</Button>

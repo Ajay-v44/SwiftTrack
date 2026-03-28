@@ -74,7 +74,7 @@ export default function ProfilePage() {
                 </Avatar>
                 <h2 className="text-xl font-bold">{user.name}</h2>
                 <Badge variant="secondary" className="mt-2 capitalize bg-primary/10 text-primary hover:bg-primary/20">
-                  {user.type.replace(/_/g, " ").toLowerCase()}
+                  {(user.type || "ACCOUNT").replace(/_/g, " ").toLowerCase()}
                 </Badge>
                 
                 <div className="mt-6 w-full flex flex-col gap-2">

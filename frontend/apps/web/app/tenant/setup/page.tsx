@@ -3,17 +3,18 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/useAuthStore";
-import apiClient from "@/lib/api-client";
+import { useTenantCompanySetup } from "@/hooks/useTenantCompanySetup";
 import { toast } from "sonner";
 import { Building2, FileCheck, CheckCircle2, ShieldCheck, Loader2, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CompanyRegistrationInput } from "@swifttrack/types";
 
 export default function CompanySetupPage() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const [isLoading, setIsLoading] = useState(false);
+  const { isLoading, submit } = useTenantCompanySetup();
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<CompanyRegistrationInput>({
     legalName: "",
     registrationNumber: "",
     incorporationDate: "",
@@ -26,20 +27,15 @@ export default function CompanySetupPage() {
       toast.error("User ID not found. Please log in again.");
       return;
     }
-    
-    setIsLoading(true);
+
     try {
-      await apiClient.post("/company/v1/register", formData, {
-        params: { id: user.id },
-      });
+      await submit(user.id, formData);
       toast.success("Organization details saved successfully!");
       // Proceed to the command center
       router.push("/tenant/dashboard");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      toast.error(error.response?.data?.message || "Failed to register company");
-    } finally {
-      setIsLoading(false);
+      toast.error("Failed to register company");
     }
   };
 
@@ -232,7 +228,7 @@ export default function CompanySetupPage() {
             />
             <div className="relative z-10">
               <p className="text-white italic font-serif leading-relaxed text-sm mb-4">
-                "SwiftTrack transformed our fleet visibility in under 24 hours."
+                &ldquo;SwiftTrack transformed our fleet visibility in under 24 hours.&rdquo;
               </p>
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-full bg-[#3e5bf2] flex items-center justify-center text-[10px] font-bold">GB</div>
