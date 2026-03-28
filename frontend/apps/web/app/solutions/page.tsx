@@ -7,7 +7,7 @@ export default function SolutionsPage() {
             <section className="py-20 container mx-auto px-4">
                 <div className="text-center max-w-3xl mx-auto mb-20">
                     <h1 className="text-4xl md:text-6xl font-bold mb-6">Solutions for every scale</h1>
-                    <p className="text-xl text-muted-foreground">Whether you're a local bakery or a global enterprise, we have the infrastructure to move your goods.</p>
+                    <p className="text-xl text-muted-foreground">Whether you&apos;re a local bakery or a global enterprise, we have the infrastructure to move your goods.</p>
                 </div>
 
                 <div className="grid lg:grid-cols-2 gap-16 items-center mb-32">

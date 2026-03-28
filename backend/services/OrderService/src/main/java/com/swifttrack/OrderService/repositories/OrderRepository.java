@@ -3,6 +3,7 @@ package com.swifttrack.OrderService.repositories;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.time.LocalDateTime;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -29,6 +30,37 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
 
         // Find by Tenant and Status
         Page<Order> findByTenantIdAndOrderStatus(UUID tenantId, OrderStatus orderStatus, Pageable pageable);
+
+        long countByTenantIdAndOrderStatus(UUID tenantId, OrderStatus orderStatus);
+
+        @Query("SELECT COUNT(o) FROM Order o WHERE o.tenantId = :tenantId AND o.orderStatus NOT IN :statuses")
+        long countByTenantIdAndOrderStatusNotIn(@Param("tenantId") UUID tenantId,
+                        @Param("statuses") List<OrderStatus> statuses);
+
+        List<Order> findTop3ByTenantIdOrderByCreatedAtDesc(UUID tenantId);
+
+        List<Order> findByTenantIdAndCreatedAtGreaterThanEqualOrderByCreatedAtAsc(UUID tenantId, LocalDateTime createdAt);
+
+        List<Order> findByTenantIdAndOrderStatusAndUpdatedAtGreaterThanEqualOrderByUpdatedAtAsc(
+                        UUID tenantId,
+                        OrderStatus orderStatus,
+                        LocalDateTime updatedAt);
+
+        @Query("""
+                        SELECT FUNCTION('DATE', o.updatedAt), COUNT(o)
+                        FROM Order o
+                        WHERE o.tenantId = :tenantId
+                          AND o.orderStatus = :orderStatus
+                          AND o.updatedAt >= :startDateTime
+                          AND o.updatedAt < :endDateTime
+                        GROUP BY FUNCTION('DATE', o.updatedAt)
+                        ORDER BY FUNCTION('DATE', o.updatedAt)
+                        """)
+        List<Object[]> countDeliveredOrdersByTenantIdGroupedByDay(
+                        @Param("tenantId") UUID tenantId,
+                        @Param("orderStatus") OrderStatus orderStatus,
+                        @Param("startDateTime") LocalDateTime startDateTime,
+                        @Param("endDateTime") LocalDateTime endDateTime);
 
         // Find by Provider Order ID
         Optional<Order> findByProviderOrderId(String providerOrderId);

@@ -9,29 +9,30 @@ import { useAuthStore } from "@/store/useAuthStore"
 export function Navbar() {
     const [isOpen, setIsOpen] = useState(false)
     const { user, logout } = useAuthStore()
-    const userTypeLabel = user?.type ? user.type.replaceAll("_", " ") : "ACCOUNT"
+    const accountType = user?.type ?? "ACCOUNT"
+    const userTypeLabel = accountType.replaceAll("_", " ")
 
     const dashboardHref = user
-        ? user.type === "SUPER_ADMIN" || user.type === "SYSTEM_ADMIN" || user.type === "ADMIN_USER"
+        ? accountType === "SUPER_ADMIN" || accountType === "SYSTEM_ADMIN" || accountType === "ADMIN_USER"
             ? "/admin/dashboard"
-            : user.type === "PROVIDER_ADMIN" || user.type === "PROVIDER_USER"
+            : accountType === "PROVIDER_ADMIN" || accountType === "PROVIDER_USER"
                 ? "/provider/dashboard"
-                : user.type === "TENANT_DRIVER" || user.type === "DRIVER_USER"
+                : accountType === "TENANT_DRIVER" || accountType === "DRIVER_USER"
                     ? "/driver/dashboard"
                     : "/tenant/dashboard"
         : "/login"
 
-    const accountAccent = user?.type?.startsWith("TENANT")
+    const accountAccent = accountType.startsWith("TENANT")
         ? "from-blue-600 to-cyan-500"
-        : user?.type?.startsWith("PROVIDER")
+        : accountType.startsWith("PROVIDER")
             ? "from-rose-600 to-orange-500"
-            : user?.type?.includes("DRIVER")
+            : accountType.includes("DRIVER")
                 ? "from-emerald-600 to-teal-500"
                 : "from-slate-800 to-slate-600"
 
-    const AccountIcon = user?.type?.startsWith("TENANT")
+    const AccountIcon = accountType.startsWith("TENANT")
         ? Building2
-        : user?.type?.startsWith("PROVIDER")
+        : accountType.startsWith("PROVIDER")
             ? ShieldCheck
             : Truck
 

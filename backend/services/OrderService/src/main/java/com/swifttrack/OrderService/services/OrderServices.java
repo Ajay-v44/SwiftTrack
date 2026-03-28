@@ -3,11 +3,14 @@ package com.swifttrack.OrderService.services;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -33,6 +36,10 @@ import com.swifttrack.OrderService.dto.MLPredictionResponse.Prediction;
 import com.swifttrack.OrderService.dto.ModelQuoteInput;
 import com.swifttrack.OrderService.dto.AddressCreateOrderRequest;
 import com.swifttrack.OrderService.dto.AddressQuoteRequest;
+import com.swifttrack.OrderService.dto.TenantDeliveryAnalyticsDto;
+import com.swifttrack.OrderService.dto.TenantDashboardOrderDto;
+import com.swifttrack.OrderService.dto.TenantDashboardSummaryDto;
+import com.swifttrack.OrderService.dto.TenantDashboardVolumePointDto;
 import com.swifttrack.OrderService.models.Order;
 import com.swifttrack.OrderService.models.OrderLocation;
 import com.swifttrack.OrderService.models.OrderQuote;
@@ -1107,6 +1114,129 @@ public class OrderServices {
                 return getOrderDetails(order);
         }
 
+        public TenantDashboardSummaryDto getTenantDashboardSummary(String token) {
+                TokenResponse tokenResponse = authInterface.getUserDetails(token).getBody();
+                if (tokenResponse == null || tokenResponse.tenantId().isEmpty()) {
+                        throw new CustomException(HttpStatus.FORBIDDEN, "Tenant token missing tenantId");
+                }
+
+                UUID tenantId = tokenResponse.tenantId().get();
+                long totalDeliveredOrders = orderRepository.countByTenantIdAndOrderStatus(tenantId, OrderStatus.DELIVERED);
+                long activeOrders = orderRepository.countByTenantIdAndOrderStatusNotIn(
+                                tenantId,
+                                List.of(OrderStatus.DELIVERED, OrderStatus.CANCELLED, OrderStatus.FAILED));
+
+                LocalDate today = LocalDate.now();
+                LocalDate startDate = today.minusDays(29);
+                List<Order> deliveredOrders = orderRepository.findByTenantIdAndOrderStatusAndUpdatedAtGreaterThanEqualOrderByUpdatedAtAsc(
+                                tenantId,
+                                OrderStatus.DELIVERED,
+                                startDate.atStartOfDay());
+
+                Map<LocalDate, Long> deliveredByDay = new LinkedHashMap<>();
+                for (LocalDate date = startDate; !date.isAfter(today); date = date.plusDays(1)) {
+                        deliveredByDay.put(date, 0L);
+                }
+
+                for (Order order : deliveredOrders) {
+                        if (order.getUpdatedAt() != null) {
+                                LocalDate orderDate = order.getUpdatedAt().toLocalDate();
+                                if (deliveredByDay.containsKey(orderDate)) {
+                                        deliveredByDay.put(orderDate, deliveredByDay.get(orderDate) + 1);
+                                }
+                        }
+                }
+
+                List<TenantDashboardVolumePointDto> deliveryVolume = deliveredByDay.entrySet().stream()
+                                .map(entry -> new TenantDashboardVolumePointDto(entry.getKey().toString(), entry.getValue()))
+                                .toList();
+
+                List<TenantDashboardOrderDto> latestOrders = orderRepository.findTop3ByTenantIdOrderByCreatedAtDesc(tenantId)
+                                .stream()
+                                .map(order -> new TenantDashboardOrderDto(
+                                                order.getId(),
+                                                order.getCustomerReferenceId(),
+                                                order.getOrderStatus().name(),
+                                                resolveOrderCity(order),
+                                                order.getCreatedAt()))
+                                .toList();
+
+                return new TenantDashboardSummaryDto(totalDeliveredOrders, activeOrders, deliveryVolume, latestOrders);
+        }
+
+        public TenantDeliveryAnalyticsDto getTenantDeliveryAnalytics(String token, LocalDate startDate, LocalDate endDate) {
+                TokenResponse tokenResponse = authInterface.getUserDetails(token).getBody();
+                if (tokenResponse == null || tokenResponse.tenantId().isEmpty()) {
+                        throw new CustomException(HttpStatus.FORBIDDEN, "Tenant token missing tenantId");
+                }
+
+                if (startDate == null || endDate == null || endDate.isBefore(startDate)) {
+                        throw new CustomException(HttpStatus.BAD_REQUEST, "Invalid date range");
+                }
+
+                if (startDate.plusDays(120).isBefore(endDate)) {
+                        throw new CustomException(HttpStatus.BAD_REQUEST, "Date range cannot exceed 120 days");
+                }
+
+                UUID tenantId = tokenResponse.tenantId().get();
+                LocalDateTime startDateTime = startDate.atStartOfDay();
+                LocalDateTime endDateTime = endDate.plusDays(1).atStartOfDay();
+
+                Map<LocalDate, Long> deliveredByDay = new LinkedHashMap<>();
+                for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+                        deliveredByDay.put(date, 0L);
+                }
+
+                List<Object[]> groupedResults = orderRepository.countDeliveredOrdersByTenantIdGroupedByDay(
+                                tenantId,
+                                OrderStatus.DELIVERED,
+                                startDateTime,
+                                endDateTime);
+
+                for (Object[] row : groupedResults) {
+                        if (row.length < 2 || row[0] == null || row[1] == null) {
+                                continue;
+                        }
+
+                        LocalDate date = row[0] instanceof LocalDate localDate
+                                        ? localDate
+                                        : LocalDate.parse(row[0].toString());
+                        long count = row[1] instanceof Number number ? number.longValue() : Long.parseLong(row[1].toString());
+                        deliveredByDay.put(date, count);
+                }
+
+                List<TenantDashboardVolumePointDto> deliveryVolume = deliveredByDay.entrySet().stream()
+                                .map(entry -> new TenantDashboardVolumePointDto(entry.getKey().toString(), entry.getValue()))
+                                .toList();
+
+                long deliveredOrders = deliveryVolume.stream()
+                                .mapToLong(TenantDashboardVolumePointDto::deliveredCount)
+                                .sum();
+                double averagePerDay = deliveryVolume.isEmpty()
+                                ? 0
+                                : BigDecimal.valueOf((double) deliveredOrders / deliveryVolume.size())
+                                                .setScale(1, RoundingMode.HALF_UP)
+                                                .doubleValue();
+                long peakDeliveredOrders = deliveryVolume.stream()
+                                .mapToLong(TenantDashboardVolumePointDto::deliveredCount)
+                                .max()
+                                .orElse(0L);
+                String peakDate = deliveryVolume.stream()
+                                .filter(point -> point.deliveredCount() == peakDeliveredOrders)
+                                .map(TenantDashboardVolumePointDto::date)
+                                .findFirst()
+                                .orElse(startDate.toString());
+
+                return new TenantDeliveryAnalyticsDto(
+                                startDate.toString(),
+                                endDate.toString(),
+                                deliveredOrders,
+                                averagePerDay,
+                                peakDeliveredOrders,
+                                peakDate,
+                                deliveryVolume);
+        }
+
         private com.swifttrack.dto.orderDto.OrderDetailsResponse getOrderDetails(Order order) {
                 OrderLocation pickup = order.getLocations().stream()
                                 .filter(loc -> loc.getLocationType() == LocationType.PICKUP)
@@ -1140,6 +1270,23 @@ public class OrderServices {
                                 pickupLng,
                                 dropoffLat,
                                 dropoffLng);
+        }
+
+        private String resolveOrderCity(Order order) {
+                if (order.getLocations() == null || order.getLocations().isEmpty()) {
+                        return "Location unavailable";
+                }
+
+                return order.getLocations().stream()
+                                .filter(loc -> loc.getLocationType() == LocationType.DROP)
+                                .map(OrderLocation::getCity)
+                                .filter(city -> city != null && !city.isBlank())
+                                .findFirst()
+                                .orElseGet(() -> order.getLocations().stream()
+                                                .map(OrderLocation::getCity)
+                                                .filter(city -> city != null && !city.isBlank())
+                                                .findFirst()
+                                                .orElse("Location unavailable"));
         }
 
         private void validateGuestOrderAccess(Order order, String guestAccessToken) {

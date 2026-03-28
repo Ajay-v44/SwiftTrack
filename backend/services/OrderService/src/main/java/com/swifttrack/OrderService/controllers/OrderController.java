@@ -2,6 +2,7 @@ package com.swifttrack.OrderService.controllers;
 
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -16,6 +17,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import com.swifttrack.OrderService.dto.AddressCreateOrderRequest;
 import com.swifttrack.OrderService.dto.AddressQuoteRequest;
+import com.swifttrack.OrderService.dto.TenantDeliveryAnalyticsDto;
+import com.swifttrack.OrderService.dto.TenantDashboardSummaryDto;
 import com.swifttrack.OrderService.services.OrderServices;
 import com.swifttrack.dto.Message;
 import com.swifttrack.dto.orderDto.CreateOrderRequest;
@@ -107,6 +110,20 @@ public class OrderController {
             @RequestHeader("token") String token,
             @PathVariable("orderId") UUID orderId) {
         return ResponseEntity.ok(orderServices.getOrderById(token, orderId));
+    }
+
+    @GetMapping("/v1/tenant/dashboard")
+    public ResponseEntity<TenantDashboardSummaryDto> getTenantDashboardSummary(
+            @RequestHeader("token") String token) {
+        return ResponseEntity.ok(orderServices.getTenantDashboardSummary(token));
+    }
+
+    @GetMapping("/v1/tenant/analytics/delivery-volume")
+    public ResponseEntity<TenantDeliveryAnalyticsDto> getTenantDeliveryAnalytics(
+            @RequestHeader("token") String token,
+            @RequestParam("startDate") LocalDate startDate,
+            @RequestParam("endDate") LocalDate endDate) {
+        return ResponseEntity.ok(orderServices.getTenantDeliveryAnalytics(token, startDate, endDate));
     }
 
     @GetMapping("/v1/guest/getOrderById/{orderId}")

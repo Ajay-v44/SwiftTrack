@@ -11,7 +11,7 @@ export default function ContactPage() {
                     <div>
                         <h1 className="text-4xl font-bold mb-6">Get in touch</h1>
                         <p className="text-muted-foreground text-lg mb-12">
-                            Have questions about our enterprise solutions or need support? We're here to help.
+                            Have questions about our enterprise solutions or need support? We&apos;re here to help.
                         </p>
 
                         <div className="space-y-8">

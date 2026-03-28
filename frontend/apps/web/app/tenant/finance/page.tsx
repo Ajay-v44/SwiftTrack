@@ -1,245 +1,329 @@
-"use client";
+"use client"
 
-import React, { useEffect, useState } from 'react';
-import { 
-  Radio, Wallet, ArrowRightLeft, Target, 
-  FileText, TrendingUp, DollarSign, Download, Settings, Filter, FileSpreadsheet
-} from 'lucide-react';
-import { useAuthStore } from '@/store/useAuthStore';
-import apiClient from '@/lib/api-client';
+import {
+  ArrowRightLeft,
+  ChevronLeft,
+  ChevronRight,
+  CreditCard,
+  Download,
+  FileSpreadsheet,
+  Filter,
+  Radio,
+  Target,
+  TrendingUp,
+  Wallet,
+} from "lucide-react"
+import { useTenantFinance } from "@/hooks/useTenantFinance"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
-const MOCK_TRANSACTIONS = [
-  { id: '#ST-10294-X', desc: 'Order #1023 Delivery Fee', date: 'Oct 24, 2024', amount: -142.00, status: 'Success' },
-  { id: '#ST-10301-T', desc: 'Wallet Top-up', date: 'Oct 23, 2024', amount: 5000.00, status: 'Success' },
-  { id: '#ST-10305-B', desc: 'Bulk Order #1045 Fuel Surcharge', date: 'Oct 22, 2024', amount: -89.50, status: 'Pending' },
-  { id: '#ST-10312-Z', desc: 'Warehouse Storage Fee - Q3', date: 'Oct 20, 2024', amount: -1240.00, status: 'Success' },
-  { id: '#ST-10319-M', desc: 'Refund: Cancelled Shipment #992', date: 'Oct 19, 2024', amount: 45.00, status: 'Success' },
-];
+const currencyFormatter = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+})
+
+const dateFormatter = new Intl.DateTimeFormat("en-IN", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+})
 
 export default function TenantFinancePage() {
-  const { user } = useAuthStore();
-  const [balance, setBalance] = useState<number>(42890.50);
+  const { summary, transactions, page, setPage, loading, error } = useTenantFinance()
 
-  useEffect(() => {
-    async function fetchFinanceData() {
-      try {
-        if (!user?.id) return;
-        const response = await apiClient.get('/api/accounts/v1/getMyAccount', {
-          params: { userId: user.id }
-        });
-        if (response.data?.balance !== undefined) {
-          setBalance(response.data.balance);
-        }
-      } catch (error) {
-        console.error("Finance data fetch error:", error);
-      }
-    }
-    fetchFinanceData();
-  }, [user]);
+  const pageNumbers = Array.from({ length: transactions.totalPages }, (_, index) => index)
+  const showPagination = transactions.totalPages > 1
+
+  const topStats = [
+    {
+      title: "Weekly Spend",
+      value: currencyFormatter.format(summary.weeklySpend),
+      icon: TrendingUp,
+      accent: "bg-indigo-50 text-indigo-700",
+    },
+    {
+      title: "Cost Savings",
+      value: currencyFormatter.format(summary.costSavings),
+      icon: Wallet,
+      accent: "bg-emerald-50 text-emerald-700",
+    },
+    {
+      title: "Unpaid Dues",
+      value: currencyFormatter.format(summary.unpaidDues),
+      icon: ArrowRightLeft,
+      accent: "bg-rose-50 text-rose-700",
+    },
+    {
+      title: "Invoices",
+      value: `${summary.invoiceCount} Total`,
+      icon: FileSpreadsheet,
+      accent: "bg-sky-50 text-sky-700",
+    },
+  ]
 
   return (
-    <div className="p-12 space-y-8 text-[#dae2fd]">
-      
-      {/* Header */}
-      <div className="flex justify-between items-center bg-[#171f33] p-4 rounded-full border border-white/5">
-        <div className="relative w-full max-w-lg ml-2">
-          <input
-            className="w-full bg-[#2d3449] border-none rounded-full py-2.5 pl-6 pr-4 text-sm focus:ring-2 focus:ring-[#3e5bf2]/30 text-[#dae2fd] placeholder:text-[#c5c5d8]/50 outline-none"
-            placeholder="Search transactions, invoices..."
-            type="text"
-          />
-        </div>
-        <div className="flex items-center gap-4 px-4 text-[#3e5bf2] text-sm font-bold bg-[#3e5bf2]/10 py-2 rounded-full">
-          Finance Hub <CheckCircleIcon className="w-4 h-4" />
-        </div>
-      </div>
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+      {error ? (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>
+      ) : null}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Main Wallet Card */}
-        <div className="lg:col-span-2 bg-gradient-to-br from-[#131b2e] to-[#1a2542] rounded-[2rem] p-10 border border-[#3e5bf2]/20 relative overflow-hidden shadow-2xl">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-[#3e5bf2]/20 rounded-full blur-[80px] -z-10"></div>
-          
-          <div className="flex justify-between items-start mb-12">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[#bac3ff] mb-2">Available Credits</p>
-              <h1 className="font-['Manrope'] text-6xl font-extrabold text-white">
-                ${balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-              </h1>
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.9fr)]">
+        <Card className="overflow-hidden border-slate-200 bg-[radial-gradient(circle_at_top_left,_rgba(99,102,241,0.14),_transparent_30%),linear-gradient(135deg,#ffffff,#f8fafc)] shadow-sm">
+          <CardContent className="flex flex-col gap-8 px-6 py-8 sm:px-8">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+              <div className="space-y-3">
+                <Badge variant="outline" className="rounded-full border-indigo-200 bg-white/80 px-3 py-1 text-indigo-700">
+                  Finance Hub
+                </Badge>
+                <div className="space-y-2">
+                  <p className="text-xs font-medium uppercase tracking-[0.24em] text-slate-500">Available Credits</p>
+                  {loading ? (
+                    <StatSkeleton className="h-14 w-52" />
+                  ) : (
+                    <div className="text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
+                      {currencyFormatter.format(summary.balance)}
+                    </div>
+                  )}
+                  <p className="max-w-lg text-sm leading-6 text-slate-600">
+                    Monitor wallet health, invoice volume, and transaction flow without leaving the tenant workspace.
+                  </p>
+                </div>
+              </div>
+
+              <div className="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                <Radio className="h-3.5 w-3.5" />
+                Live updates
+              </div>
             </div>
-            <div className="px-4 py-2 bg-[#00dce5]/10 border border-[#00dce5]/30 rounded-full flex items-center gap-2 text-[#00dce5] text-xs font-bold animate-pulse">
-              <Radio className="w-4 h-4" /> LIVE UPDATES
+
+            <div className="flex flex-wrap gap-3">
+              <Button className="rounded-full bg-slate-950 text-white hover:bg-slate-800">
+                <CreditCard className="h-4 w-4" />
+                Top Up Wallet
+              </Button>
+              <Button variant="outline" className="rounded-full border-slate-300 bg-white">
+                Transfer Funds
+              </Button>
             </div>
-          </div>
+          </CardContent>
+        </Card>
 
-          <div className="flex gap-4">
-            <button className="px-8 py-4 rounded-full bg-[#3e5bf2] hover:bg-[#2d4ce4] text-white font-bold transition-all shadow-lg flex items-center gap-2">
-              <Wallet className="w-4 h-4" /> Top-up Wallet
-            </button>
-            <button className="px-8 py-4 rounded-full bg-[#2d3449] hover:bg-[#3e495d] text-[#c5c5d8] hover:text-white font-bold transition-colors border border-white/5">
-              Transfer Funds
-            </button>
-          </div>
-        </div>
-
-        {/* Reconciliation Widget */}
-        <div className="bg-[#171f33] rounded-[2rem] p-8 border border-white/5 shadow-xl flex flex-col justify-between">
-          <div>
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-12 h-12 rounded-xl bg-[#3e5bf2]/20 text-[#3e5bf2] flex items-center justify-center">
-                <Target className="w-6 h-6" />
+        <Card className="border-slate-200 bg-white shadow-sm">
+          <CardHeader className="border-b border-slate-100 pb-5">
+            <div className="flex items-center gap-3">
+              <div className="rounded-2xl bg-slate-100 p-3 text-slate-700">
+                <Target className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="font-['Manrope'] text-lg font-bold text-white">Reconciliation</h3>
-                <p className="text-xs text-[#c5c5d8]">Review monthly statements</p>
+                <CardTitle className="text-slate-950">Reconciliation</CardTitle>
+                <CardDescription>Review statements and auto-match progress.</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-5 pt-6">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium text-slate-950">Current Statement</p>
+                  <p className="mt-1 text-sm text-slate-500">Latest invoice pack available for review.</p>
+                </div>
+                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">Ready</span>
               </div>
             </div>
 
-            <div className="bg-[#131b2e] rounded-xl p-4 border border-white/5 mb-6">
-              <div className="flex justify-between items-center mb-2">
-                <p className="text-sm font-bold text-white">March 2024</p>
-                <span className="text-[10px] uppercase font-bold text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">Ready</span>
+            <div className="space-y-3">
+              <FinanceMeta label="Pending Invoices" value="02" />
+              <FinanceMeta label="Auto-reconcile" value="Enabled" accent="text-emerald-700" />
+            </div>
+
+            <div className="space-y-2">
+              <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                <div className="h-full w-[85%] rounded-full bg-slate-950" />
               </div>
-              <p className="text-xs text-[#c5c5d8] flex items-center justify-between">
-                <span className="flex items-center gap-1"><FileText className="w-3 h-3"/> ST_Invoice_MAR.pdf</span>
-                <span className="text-white font-bold cursor-pointer hover:underline">Download</span>
-              </p>
+              <p className="text-xs text-slate-500">85% of transactions are auto-matched.</p>
             </div>
 
-            <div className="flex justify-between items-center text-sm mb-2">
-              <span className="text-[#c5c5d8]">Pending Invoices</span>
-              <span className="font-bold text-white">02</span>
+            <Button variant="outline" className="w-full rounded-full border-slate-300 bg-white">
+              View Full History
+            </Button>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {topStats.map((item) => (
+          <Card key={item.title} className="border-slate-200 bg-white shadow-sm">
+            <CardContent className="flex items-start gap-4 px-5 py-5">
+              <div className={`rounded-2xl p-3 ${item.accent}`}>
+                <item.icon className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 space-y-2">
+                <p className="text-xs font-medium uppercase tracking-[0.2em] text-slate-500">{item.title}</p>
+                {loading ? (
+                  <StatSkeleton className="h-8 w-28" />
+                ) : (
+                  <div className="break-words text-2xl font-semibold text-slate-950">{item.value}</div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </section>
+
+      <Card className="border-slate-200 bg-white shadow-sm">
+        <CardHeader className="gap-4 border-b border-slate-100 pb-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <CardTitle className="text-slate-950">Transaction History</CardTitle>
+              <CardDescription>Detailed breakdown of financial activity for the tenant account.</CardDescription>
             </div>
-            <div className="flex justify-between items-center text-sm mb-4">
-              <span className="text-[#c5c5d8]">Auto-reconcile status</span>
-              <span className="font-bold text-[#00dce5]">Enabled</span>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" className="rounded-full border-slate-300 bg-white">
+                <Filter className="h-4 w-4" />
+                Filter
+              </Button>
+              <Button variant="outline" size="sm" className="rounded-full border-slate-300 bg-white">
+                <Download className="h-4 w-4" />
+                Export
+              </Button>
             </div>
-            
-            <div className="w-full bg-[#2d3449] h-1.5 rounded-full overflow-hidden mb-2">
-              <div className="bg-[#3e5bf2] w-[85%] h-full"></div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="pt-6">
+          {loading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 5 }, (_, index) => (
+                <div key={index} className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-5">
+                  <StatSkeleton className="h-5 w-24" />
+                  <StatSkeleton className="h-5 w-full" />
+                  <StatSkeleton className="h-5 w-28" />
+                  <StatSkeleton className="h-5 w-24" />
+                  <StatSkeleton className="h-5 w-20" />
+                </div>
+              ))}
             </div>
-            <p className="text-[10px] text-[#8e8fa1] italic text-right">85% of transactions auto-matched</p>
-          </div>
-          
-          <button className="w-full py-4 mt-6 bg-[#2d3449]/50 hover:bg-[#2d3449] text-white font-bold rounded-xl text-sm transition-colors border border-white/5">
-            View Full History
-          </button>
-        </div>
-      </div>
+          ) : (
+            <div className="overflow-hidden rounded-3xl border border-slate-200">
+              <div className="overflow-x-auto">
+                <table className="min-w-[760px] w-full text-left">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <th className="px-4 py-3 text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Transaction ID</th>
+                      <th className="px-4 py-3 text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Description</th>
+                      <th className="px-4 py-3 text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Date</th>
+                      <th className="px-4 py-3 text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Amount</th>
+                      <th className="px-4 py-3 text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Type</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 bg-white">
+                    {transactions.items.map((txn) => (
+                      <tr key={txn.id} className="align-top transition hover:bg-slate-50">
+                        <td className="px-4 py-4 text-sm font-medium text-slate-700">#{txn.id.slice(0, 8).toUpperCase()}</td>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="rounded-xl bg-slate-100 p-2 text-slate-700">
+                              <FileSpreadsheet className="h-4 w-4" />
+                            </div>
+                            <span className="text-sm font-medium text-slate-950">{txn.description}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4 text-sm text-slate-600">{dateFormatter.format(new Date(txn.createdAt))}</td>
+                        <td className="px-4 py-4 text-sm font-semibold">
+                          <span className={txn.amount > 0 ? "text-emerald-700" : "text-rose-700"}>
+                            {txn.amount > 0 ? "+ " : "- "}
+                            {currencyFormatter.format(Math.abs(txn.amount))}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span
+                            className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${
+                              txn.amount > 0 ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
+                            }`}
+                          >
+                            {txn.transactionType}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                    {transactions.items.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-10 text-center text-sm text-slate-500">
+                          No transaction history found.
+                        </td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
-      {/* Transaction History Data Table */}
-      <div className="bg-[#131b2e] rounded-[2rem] p-8 border border-white/5 shadow-xl">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h2 className="font-['Manrope'] text-2xl font-bold text-white">Transaction History</h2>
-            <p className="text-xs text-[#c5c5d8] mt-1">Detailed breakdown of all financial activities</p>
+          <div className="mt-5 flex flex-col gap-3 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+            <span>
+              {loading
+                ? "Loading transactions..."
+                : `Showing ${transactions.items.length} of ${transactions.totalElements} transactions`}
+            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                disabled={loading || page === 0}
+                onClick={() => setPage((currentPage) => Math.max(currentPage - 1, 0))}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              {showPagination
+                ? pageNumbers.map((pageNumber) => (
+                    <button
+                      key={pageNumber}
+                      className={`inline-flex h-9 w-9 items-center justify-center rounded-full border text-sm font-medium transition ${
+                        pageNumber === page
+                          ? "border-slate-950 bg-slate-950 text-white"
+                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                      }`}
+                      disabled={loading}
+                      onClick={() => setPage(pageNumber)}
+                    >
+                      {pageNumber + 1}
+                    </button>
+                  ))
+                : null}
+              <button
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                disabled={loading || page >= transactions.totalPages - 1 || transactions.totalPages === 0}
+                onClick={() => setPage((currentPage) => Math.min(currentPage + 1, transactions.totalPages - 1))}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <button className="px-4 py-2 bg-[#2d3449] rounded-full text-xs font-bold text-white flex items-center gap-2 hover:bg-[#3e495d] transition-colors"><Filter className="w-3 h-3"/> Filter</button>
-            <button className="px-4 py-2 bg-[#2d3449] rounded-full text-xs font-bold text-white flex items-center gap-2 hover:bg-[#3e495d] transition-colors"><Download className="w-3 h-3"/> Export</button>
-          </div>
-        </div>
-
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="border-b border-[#2d3449]">
-              <th className="pb-4 pt-2 text-xs font-bold uppercase tracking-wider text-[#c5c5d8]">Transaction ID</th>
-              <th className="pb-4 pt-2 text-xs font-bold uppercase tracking-wider text-[#c5c5d8]">Description</th>
-              <th className="pb-4 pt-2 text-xs font-bold uppercase tracking-wider text-[#c5c5d8]">Date</th>
-              <th className="pb-4 pt-2 text-xs font-bold uppercase tracking-wider text-[#c5c5d8]">Amount</th>
-              <th className="pb-4 pt-2 text-xs font-bold uppercase tracking-wider text-[#c5c5d8]">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[#2d3449]/50">
-            {MOCK_TRANSACTIONS.map((txn, idx) => (
-              <tr key={idx} className="hover:bg-[#171f33] transition-colors group">
-                <td className="py-5 text-sm font-medium text-[#c5c5d8] italic">{txn.id}</td>
-                <td className="py-5">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-[#3e5bf2]/20 flex items-center justify-center text-[#3e5bf2]">
-                      <FileSpreadsheet className="w-4 h-4"/>
-                    </div>
-                    <span className="text-sm font-bold text-white">{txn.desc}</span>
-                  </div>
-                </td>
-                <td className="py-5 text-sm text-[#c5c5d8]">{txn.date}</td>
-                <td className="py-5 text-sm font-extrabold">
-                  <span className={txn.amount > 0 ? "text-[#00dce5]" : "text-[#ffb4ab]"}>
-                    {txn.amount > 0 ? '+' : ''} ${Math.abs(txn.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                  </span>
-                </td>
-                <td className="py-5">
-                  <span className={`px-3 py-1 text-[10px] font-bold rounded-full border ${txn.status === 'Success' ? 'bg-[#00dce5]/10 text-[#00dce5] border-[#00dce5]/20' : 'bg-[#c5c5d8]/10 text-[#c5c5d8] border-[#c5c5d8]/20'}`}>
-                    {txn.status}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        <div className="mt-6 flex justify-between items-center text-[#c5c5d8] text-xs">
-          <span>Showing 5 of 1,240 transactions</span>
-          <div className="flex gap-2">
-            <button className="w-8 h-8 rounded-full bg-[#3e5bf2] text-white flex items-center justify-center font-bold">1</button>
-            <button className="w-8 h-8 rounded-full bg-[#2d3449] hover:bg-[#3e495d] transition flex items-center justify-center font-bold">2</button>
-            <button className="w-8 h-8 rounded-full bg-[#2d3449] hover:bg-[#3e495d] transition flex items-center justify-center font-bold">3</button>
-            <span className="px-2 self-end">...</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Footer Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-[#131b2e] rounded-2xl p-6 border border-white/5 flex items-center gap-6">
-          <div className="w-12 h-12 rounded-full bg-[#3e5bf2]/10 flex items-center justify-center text-[#3e5bf2]">
-            <TrendingUp className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#c5c5d8]">Weekly Spend</p>
-            <p className="font-['Manrope'] text-2xl font-extrabold text-white">$4,231.00</p>
-          </div>
-        </div>
-        
-        <div className="bg-[#131b2e] rounded-2xl p-6 border border-white/5 flex items-center gap-6">
-          <div className="w-12 h-12 rounded-full bg-[#00dce5]/10 flex items-center justify-center text-[#00dce5]">
-            <DollarSign className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#c5c5d8]">Cost Savings</p>
-            <p className="font-['Manrope'] text-2xl font-extrabold text-white">$812.20</p>
-          </div>
-        </div>
-        
-        <div className="bg-[#131b2e] rounded-2xl p-6 border border-white/5 flex items-center gap-6">
-          <div className="w-12 h-12 rounded-full bg-[#ffb4ab]/10 flex items-center justify-center text-[#ffb4ab]">
-            <ArrowRightLeft className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#c5c5d8]">Unpaid Dues</p>
-            <p className="font-['Manrope'] text-2xl font-extrabold text-white">$0.00</p>
-          </div>
-        </div>
-
-        <div className="bg-[#131b2e] rounded-2xl p-6 border border-[#3e5bf2]/20 flex items-center gap-6 shadow-[0_0_15px_rgba(62,91,242,0.15)] overflow-hidden relative">
-          <div className="absolute right-0 top-0 w-32 h-32 bg-[#3e5bf2]/20 blur-[40px] -z-10"></div>
-          <div className="w-12 h-12 rounded-full bg-[#3e5bf2] flex items-center justify-center text-white shadow-lg shadow-[#3e5bf2]/40">
-            <FileText className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#bac3ff]">Invoices</p>
-            <p className="font-['Manrope'] text-2xl font-extrabold text-white">12 Total</p>
-          </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
-  );
+  )
 }
 
-function CheckCircleIcon({ className }: { className?: string }) {
+function FinanceMeta({
+  label,
+  value,
+  accent,
+}: {
+  label: string
+  value: string
+  accent?: string
+}) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M12 2C6.477 2 2 6.477 2 12C2 17.523 6.477 22 12 22C17.523 22 22 17.523 22 12C22 6.477 17.523 2 12 2ZM10.5 16.5L6.5 12.5L7.914 11.086L10.5 13.672L16.086 8.086L17.5 9.5L10.5 16.5Z" fill="currentColor"/>
-    </svg>
-  );
+    <div className="flex items-center justify-between text-sm">
+      <span className="text-slate-500">{label}</span>
+      <span className={`font-medium text-slate-950 ${accent || ""}`.trim()}>{value}</span>
+    </div>
+  )
+}
+
+function StatSkeleton({ className }: { className?: string }) {
+  return <div className={`animate-pulse rounded-xl bg-slate-200 ${className || ""}`.trim()} />
 }

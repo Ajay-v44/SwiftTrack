@@ -3,6 +3,11 @@ package com.swifttrack.BillingAndSettlementService.services;
 import com.swifttrack.BillingAndSettlementService.models.Account;
 import com.swifttrack.BillingAndSettlementService.models.enums.ReferenceType;
 import com.swifttrack.BillingAndSettlementService.models.enums.AccountType;
+import com.swifttrack.BillingAndSettlementService.models.enums.TransactionType;
+import com.swifttrack.BillingAndSettlementService.dto.FinanceSummaryResponse;
+import com.swifttrack.BillingAndSettlementService.dto.LedgerTransactionListItemResponse;
+import com.swifttrack.BillingAndSettlementService.dto.PaginatedLedgerTransactionsResponse;
+import com.swifttrack.BillingAndSettlementService.models.LedgerTransaction;
 import com.swifttrack.BillingAndSettlementService.repositories.AccountRepository;
 import com.swifttrack.BillingAndSettlementService.repositories.LedgerTransactionRepository;
 import com.swifttrack.FeignClient.AuthInterface;
@@ -11,12 +16,16 @@ import com.swifttrack.exception.CustomException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.swifttrack.enums.UserType;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -170,8 +179,92 @@ public class AccountService {
     }
 
     public Account getAccountsByUserId(String token, UUID userId) {
-        verifyPrivilege(token, userId);
-        return accountRepository.findByUserId(userId);
+        return resolveAccessibleAccount(token, userId);
+    }
+
+    public BigDecimal getTodayExpenses(String token) {
+        Account account = resolveAccessibleAccount(token, null);
+
+        return ledgerTransactionRepository.sumAmountByAccountIdAndTransactionTypeSince(
+                account.getId(),
+                TransactionType.DEBIT,
+                LocalDate.now().atStartOfDay());
+    }
+
+    public FinanceSummaryResponse getFinanceSummary(String token) {
+        Account account = resolveAccessibleAccount(token, null);
+        BigDecimal weeklySpend = ledgerTransactionRepository.sumAmountByAccountIdAndTransactionTypeAndReferenceTypeSince(
+                account.getId(),
+                TransactionType.DEBIT,
+                ReferenceType.ORDER,
+                LocalDate.now().minusDays(6).atStartOfDay());
+        BigDecimal costSavings = ledgerTransactionRepository.sumAmountByAccountIdAndTransactionTypeAndReferenceType(
+                account.getId(),
+                TransactionType.CREDIT,
+                ReferenceType.ADJUSTMENT);
+        BigDecimal unpaidDues = account.getBalance().compareTo(BigDecimal.ZERO) < 0
+                ? account.getBalance().abs()
+                : BigDecimal.ZERO;
+        long invoiceCount = ledgerTransactionRepository.countByAccountIdAndTransactionTypeAndReferenceType(
+                account.getId(),
+                TransactionType.DEBIT,
+                ReferenceType.ORDER);
+
+        return new FinanceSummaryResponse(
+                account.getBalance(),
+                weeklySpend,
+                costSavings,
+                unpaidDues,
+                invoiceCount);
+    }
+
+    public PaginatedLedgerTransactionsResponse getTransactions(String token, int page, int size) {
+        Account account = resolveAccessibleAccount(token, null);
+        Pageable pageable = PageRequest.of(page, size);
+        Page<LedgerTransaction> transactionsPage = ledgerTransactionRepository.findByAccountIdOrderByCreatedAtDesc(
+                account.getId(),
+                pageable);
+
+        return new PaginatedLedgerTransactionsResponse(
+                transactionsPage.getContent().stream().map(this::toLedgerTransactionListItem).toList(),
+                transactionsPage.getNumber(),
+                transactionsPage.getSize(),
+                transactionsPage.getTotalElements(),
+                transactionsPage.getTotalPages());
+    }
+
+    private LedgerTransactionListItemResponse toLedgerTransactionListItem(LedgerTransaction transaction) {
+        BigDecimal signedAmount = transaction.getTransactionType() == TransactionType.DEBIT
+                ? transaction.getAmount().negate()
+                : transaction.getAmount();
+
+        return new LedgerTransactionListItemResponse(
+                transaction.getId(),
+                transaction.getDescription(),
+                transaction.getCreatedAt(),
+                signedAmount,
+                transaction.getTransactionType().name(),
+                transaction.getReferenceType().name(),
+                transaction.getOrderId());
+    }
+
+    private Account resolveAccessibleAccount(String token, UUID requestedUserId) {
+        TokenResponse tokenResponse = resolveTokenResponse(token);
+        UUID resolvedUserId = requestedUserId;
+
+        if (tokenResponse.tenantId().isPresent()) {
+            resolvedUserId = tokenResponse.tenantId().get();
+        } else if (resolvedUserId == null) {
+            resolvedUserId = tokenResponse.id();
+        }
+
+        verifyPrivilege(token, resolvedUserId);
+
+        Account account = accountRepository.findByUserId(resolvedUserId);
+        if (account == null) {
+            throw new CustomException(HttpStatus.NOT_FOUND, "Account not found");
+        }
+        return account;
     }
 
     public List<Account> getAccountsByType(AccountType accountType) {
