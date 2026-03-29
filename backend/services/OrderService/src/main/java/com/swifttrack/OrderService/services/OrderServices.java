@@ -18,6 +18,8 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -34,12 +36,16 @@ import com.swifttrack.OrderService.dto.MLPredictionRequest;
 import com.swifttrack.OrderService.dto.MLPredictionResponse;
 import com.swifttrack.OrderService.dto.MLPredictionResponse.Prediction;
 import com.swifttrack.OrderService.dto.ModelQuoteInput;
+import com.swifttrack.OrderService.dto.BillingAccountSnapshot;
 import com.swifttrack.OrderService.dto.AddressCreateOrderRequest;
 import com.swifttrack.OrderService.dto.AddressQuoteRequest;
+import com.swifttrack.OrderService.dto.PaginatedTenantOrdersResponse;
 import com.swifttrack.OrderService.dto.TenantDeliveryAnalyticsDto;
 import com.swifttrack.OrderService.dto.TenantDashboardOrderDto;
 import com.swifttrack.OrderService.dto.TenantDashboardSummaryDto;
 import com.swifttrack.OrderService.dto.TenantDashboardVolumePointDto;
+import com.swifttrack.OrderService.dto.TenantOrderListItemDto;
+import com.swifttrack.OrderService.dto.TenantOrdersSummaryDto;
 import com.swifttrack.OrderService.models.Order;
 import com.swifttrack.OrderService.models.OrderLocation;
 import com.swifttrack.OrderService.models.OrderQuote;
@@ -83,11 +89,17 @@ import jakarta.transaction.Transactional;
 
 import com.swifttrack.FeignClient.AuthInterface;
 import com.swifttrack.dto.TokenResponse;
+import com.swifttrack.dto.billingDto.OrderDebitSummaryResponse;
+import com.swifttrack.dto.orderDto.OrderDetailsResponse;
+import com.swifttrack.dto.orderDto.OrderTrackingTimelineResponse;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.swifttrack.OrderService.models.OrderTrackingEvent;
+import com.swifttrack.OrderService.repositories.OrderTrackingEventRepository;
+import com.swifttrack.enums.UserType;
 
 @Service
 @Transactional
@@ -104,6 +116,7 @@ public class OrderServices {
         OrderQuoteRepository orderQuoteRepository;
         AuthInterface authInterface;
         AddressService addressService;
+        OrderTrackingEventRepository orderTrackingEventRepository;
         OrderTrackingStateRepository orderTrackingStateRepository;
         private final org.springframework.kafka.core.KafkaTemplate<String, Object> kafkaTemplate;
 
@@ -114,13 +127,15 @@ public class OrderServices {
 
         public OrderServices(ProviderInterface providerInterface, MapInterface mapInterface,
                         TenantInterface tenantInterface, BillingInterface billingInterface,
-                        ObjectMapper objectMapper, OrderRepository orderRepository, OrderLocationRepository orderLocationRepository,
+                        ObjectMapper objectMapper, OrderRepository orderRepository,
+                        OrderLocationRepository orderLocationRepository,
                         RestTemplate restTemplate,
                         OrderQuoteSessionRepository orderQuoteSessionRepository,
                         OrderQuoteRepository orderQuoteRepository, AuthInterface authInterface,
                         AddressService addressService,
+                        OrderTrackingEventRepository orderTrackingEventRepository,
                         OrderTrackingStateRepository orderTrackingStateRepository,
-                        org.springframework.kafka.core.KafkaTemplate<String, Object> kafkaTemplate) {
+                org.springframework.kafka.core.KafkaTemplate<String, Object> kafkaTemplate) {
                 this.providerInterface = providerInterface;
                 this.mapInterface = mapInterface;
                 this.tenantInterface = tenantInterface;
@@ -133,6 +148,7 @@ public class OrderServices {
                 this.orderQuoteRepository = orderQuoteRepository;
                 this.authInterface = authInterface;
                 this.addressService = addressService;
+                this.orderTrackingEventRepository = orderTrackingEventRepository;
                 this.orderTrackingStateRepository = orderTrackingStateRepository;
                 this.kafkaTemplate = kafkaTemplate;
         }
@@ -143,7 +159,8 @@ public class OrderServices {
                         if (tokenResponse == null || tokenResponse.tenantId().isEmpty()) {
                                 throw new RuntimeException("Tenant details are required to fetch quote");
                         }
-                        QuoteInput normalizedQuoteInput = enrichQuoteInput(toSavedAddressQuoteInput(quoteInput), tokenResponse,
+                        QuoteInput normalizedQuoteInput = enrichQuoteInput(toSavedAddressQuoteInput(quoteInput),
+                                        tokenResponse,
                                         BookingChannel.TENANT);
 
                         List<TenantDeliveryConf> deliveryConfig = Optional
@@ -160,8 +177,10 @@ public class OrderServices {
                                                 new TenantDeliveryConf("LOCAL_DRIVERS", 2),
                                                 new TenantDeliveryConf("TENANT_DRIVERS", 3));
                         }
-                        return buildQuote(token, normalizedQuoteInput, BookingChannel.TENANT, tokenResponse.tenantId().get(),
-                                        tokenResponse.id(), null, deliveryConfig, providerInterface.getTenantProviders(token));
+                        return buildQuote(token, normalizedQuoteInput, BookingChannel.TENANT,
+                                        tokenResponse.tenantId().get(),
+                                        tokenResponse.id(), null, deliveryConfig,
+                                        providerInterface.getTenantProviders(token));
 
                 } catch (CustomException e) {
                         throw e;
@@ -177,7 +196,8 @@ public class OrderServices {
                 }
                 QuoteInput normalizedQuoteInput = enrichQuoteInput(toSavedAddressQuoteInput(quoteInput), tokenResponse,
                                 BookingChannel.CONSUMER);
-                return buildSelectableQuotes(token, normalizedQuoteInput, BookingChannel.CONSUMER, tokenResponse.id(), null);
+                return buildSelectableQuotes(token, normalizedQuoteInput, BookingChannel.CONSUMER, tokenResponse.id(),
+                                null);
         }
 
         public DeliveryOptionsQuoteResponse getGuestQuote(QuoteInput quoteInput) {
@@ -229,23 +249,28 @@ public class OrderServices {
                                                 "SWIFTTRACK_DRIVER",
                                                 "LOCAL_DRIVERS",
                                                 null,
-                                                new QuoteResponse(driverBillingQuote.tenantCharge().floatValue(), "INR")));
+                                                new QuoteResponse(driverBillingQuote.tenantCharge().floatValue(),
+                                                                "INR")));
                         }
 
-                        List<ModelQuoteInput> providerCandidates = buildProviderCandidates(providerInterface.getProviders(),
+                        List<ModelQuoteInput> providerCandidates = buildProviderCandidates(
+                                        providerInterface.getProviders(),
                                         distance, pickupLocation, dropoffLocation);
                         for (ModelQuoteInput candidate : providerCandidates) {
                                 try {
                                         QuoteResponse providerQuote = token != null && !token.isBlank()
-                                                        ? providerInterface.getQuote(token, candidate.provider(), quoteInput)
-                                                        : providerInterface.getQuoteInternal(candidate.provider(), quoteInput);
+                                                        ? providerInterface.getQuote(token, candidate.provider(),
+                                                                        quoteInput)
+                                                        : providerInterface.getQuoteInternal(candidate.provider(),
+                                                                        quoteInput);
                                         if (providerQuote == null) {
                                                 continue;
                                         }
                                         com.swifttrack.dto.billingDto.QuoteResponse billingQuote = billingInterface
                                                         .getQuote(new QuoteRequest(
                                                                         orderQuoteSession.getId(),
-                                                                        Optional.of(BigDecimal.valueOf(providerQuote.price())),
+                                                                        Optional.of(BigDecimal.valueOf(
+                                                                                        providerQuote.price())),
                                                                         Optional.of(candidate.provider()),
                                                                         Optional.empty(),
                                                                         ownerUserId,
@@ -256,7 +281,8 @@ public class OrderServices {
                                         }
                                         OrderQuote savedQuote = saveOrderQuote(orderQuoteSession, "EXTERNAL_PROVIDERS",
                                                         candidate.provider(), providerQuote.currency(),
-                                                        billingQuote.tenantCharge(), null, providerQuote.quoteId(), false);
+                                                        billingQuote.tenantCharge(), null, providerQuote.quoteId(),
+                                                        false);
                                         options.add(new DeliveryOptionQuote(
                                                         savedQuote.getId(),
                                                         candidate.provider(),
@@ -267,7 +293,8 @@ public class OrderServices {
                                                                         providerQuote.currency(),
                                                                         providerQuote.quoteId())));
                                 } catch (Exception providerError) {
-                                        System.err.println("Quote option failed for provider " + candidate.provider() + ": "
+                                        System.err.println("Quote option failed for provider " + candidate.provider()
+                                                        + ": "
                                                         + providerError.getMessage());
                                 }
                         }
@@ -362,7 +389,8 @@ public class OrderServices {
                                                                 selection.aiScore(),
                                                                 selection.quoteResponse().quoteId(),
                                                                 true);
-                                                return new OrderQuoteResponse(finalQuoteResponse, orderQuoteSession.getId(),
+                                                return new OrderQuoteResponse(finalQuoteResponse,
+                                                                orderQuoteSession.getId(),
                                                                 selectedType, selection.providerCode(),
                                                                 selection.quoteResponse().quoteId());
                                         }
@@ -392,7 +420,8 @@ public class OrderServices {
                                                                 null,
                                                                 null,
                                                                 true);
-                                                return new OrderQuoteResponse(finalQuoteResponse, orderQuoteSession.getId(),
+                                                return new OrderQuoteResponse(finalQuoteResponse,
+                                                                orderQuoteSession.getId(),
                                                                 selectedType, null, null);
                                         }
                                 } catch (Exception optionError) {
@@ -408,7 +437,8 @@ public class OrderServices {
         }
 
         private OrderQuote saveOrderQuote(OrderQuoteSession orderQuoteSession, String selectedType, String providerCode,
-                        String currency, BigDecimal tenantPrice, BigDecimal aiScore, String quoteId, boolean isSelected) {
+                        String currency, BigDecimal tenantPrice, BigDecimal aiScore, String quoteId,
+                        boolean isSelected) {
                 OrderQuote orderQuote = new OrderQuote();
                 orderQuote.setProviderCode(providerCode);
                 orderQuote.setQuoteId(quoteId);
@@ -470,7 +500,8 @@ public class OrderServices {
                 if (Objects.equals(dropoffState, pickupState)) {
                         for (GetProviders provider : providers) {
                                 if (provider.supportsHyperlocal()) {
-                                        int count = orderRepository.countActiveOrdersByProvider(provider.providerCode());
+                                        int count = orderRepository
+                                                        .countActiveOrdersByProvider(provider.providerCode());
                                         modelQuoteInputList.add(new ModelQuoteInput(
                                                         provider.providerCode(),
                                                         distance.getData().getDistanceMeters(), 2,
@@ -480,7 +511,8 @@ public class OrderServices {
                 } else if (Objects.equals(dropoffCountry, pickupCountry)) {
                         for (GetProviders provider : providers) {
                                 if (provider.supportsIntercity()) {
-                                        int count = orderRepository.countActiveOrdersByProvider(provider.providerCode());
+                                        int count = orderRepository
+                                                        .countActiveOrdersByProvider(provider.providerCode());
                                         modelQuoteInputList.add(new ModelQuoteInput(
                                                         provider.providerCode(),
                                                         distance.getData().getDistanceMeters(), 2,
@@ -521,11 +553,11 @@ public class OrderServices {
         }
 
         private double parseMlThreshold() {
-                        try {
-                                return Double.parseDouble(mlThreshold);
-                        } catch (Exception e) {
-                                return 0.0;
-                        }
+                try {
+                        return Double.parseDouble(mlThreshold);
+                } catch (Exception e) {
+                        return 0.0;
+                }
         }
 
         private record ExternalProviderSelection(String providerCode, QuoteResponse quoteResponse, BigDecimal aiScore) {
@@ -553,7 +585,8 @@ public class OrderServices {
                                 BookingChannel.CONSUMER, null, userDetails.id(), null);
         }
 
-        public FinalCreateOrderResponse createGuestOrder(UUID quoteSessionId, String guestAccessToken, UUID selectedQuoteId,
+        public FinalCreateOrderResponse createGuestOrder(UUID quoteSessionId, String guestAccessToken,
+                        UUID selectedQuoteId,
                         CreateOrderRequest createOrderRequest) {
                 if (guestAccessToken == null || guestAccessToken.isBlank()) {
                         throw new RuntimeException("guestAccessToken is required");
@@ -562,7 +595,8 @@ public class OrderServices {
                                 BookingChannel.GUEST, null, null, guestAccessToken);
         }
 
-        private FinalCreateOrderResponse createOrderForContext(String token, TokenResponse tokenResponse, UUID quoteSessionId, UUID selectedQuoteId,
+        private FinalCreateOrderResponse createOrderForContext(String token, TokenResponse tokenResponse,
+                        UUID quoteSessionId, UUID selectedQuoteId,
                         CreateOrderRequest createOrderRequest, BookingChannel bookingChannel,
                         UUID tenantId, UUID ownerUserId, String guestAccessToken) {
                 OrderQuoteSession quoteSession = orderQuoteSessionRepository
@@ -667,13 +701,16 @@ public class OrderServices {
                                 order.getPaymentAmount(), resolveChoiceCode(selectedQuote));
         }
 
-        private OrderQuote resolveSelectedQuote(UUID quoteSessionId, UUID selectedQuoteId, BookingChannel bookingChannel) {
+        private OrderQuote resolveSelectedQuote(UUID quoteSessionId, UUID selectedQuoteId,
+                        BookingChannel bookingChannel) {
                 if (bookingChannel == BookingChannel.CONSUMER || bookingChannel == BookingChannel.GUEST) {
                         if (selectedQuoteId == null) {
                                 throw new RuntimeException("selectedQuoteId is required");
                         }
-                        OrderQuote selectedQuote = orderQuoteRepository.findByIdAndQuoteSessionId(selectedQuoteId, quoteSessionId)
-                                        .orElseThrow(() -> new RuntimeException("Selected quote not found for quote session"));
+                        OrderQuote selectedQuote = orderQuoteRepository
+                                        .findByIdAndQuoteSessionId(selectedQuoteId, quoteSessionId)
+                                        .orElseThrow(() -> new RuntimeException(
+                                                        "Selected quote not found for quote session"));
                         selectedQuote.setIsSelected(true);
                         return orderQuoteRepository.save(selectedQuote);
                 }
@@ -687,7 +724,8 @@ public class OrderServices {
                         throw new RuntimeException("Quote session does not belong to the requested booking channel");
                 }
                 if (bookingChannel == BookingChannel.TENANT
-                                && !Optional.ofNullable(quoteSession.getTenantId()).equals(Optional.ofNullable(tenantId))) {
+                                && !Optional.ofNullable(quoteSession.getTenantId())
+                                                .equals(Optional.ofNullable(tenantId))) {
                         throw new RuntimeException("Quote session does not belong to tenant");
                 }
                 if (bookingChannel == BookingChannel.CONSUMER
@@ -702,7 +740,8 @@ public class OrderServices {
                 }
         }
 
-        private CreateOrderResponse createExternalProviderOrder(String token, UUID quoteSessionId, OrderQuote selectedQuote,
+        private CreateOrderResponse createExternalProviderOrder(String token, UUID quoteSessionId,
+                        OrderQuote selectedQuote,
                         CreateOrderRequest createOrderRequest, BookingChannel bookingChannel) {
                 if (bookingChannel == BookingChannel.TENANT) {
                         return providerInterface.createOrder(token, quoteSessionId, createOrderRequest);
@@ -734,7 +773,8 @@ public class OrderServices {
                                 request.deliveryInstructions());
         }
 
-        private QuoteInput enrichQuoteInput(QuoteInput quoteInput, TokenResponse tokenResponse, BookingChannel bookingChannel) {
+        private QuoteInput enrichQuoteInput(QuoteInput quoteInput, TokenResponse tokenResponse,
+                        BookingChannel bookingChannel) {
                 if (bookingChannel == BookingChannel.GUEST) {
                         return validateQuoteCoordinates(quoteInput);
                 }
@@ -814,7 +854,8 @@ public class OrderServices {
                         return pickup;
                 }
 
-                UserAddress savedAddress = addressService.resolveAddress(tokenResponse, bookingChannel, pickup.addressId());
+                UserAddress savedAddress = addressService.resolveAddress(tokenResponse, bookingChannel,
+                                pickup.addressId());
                 CreateOrderRequest.Address resolvedAddress = new CreateOrderRequest.Address(
                                 savedAddress.getLine1(),
                                 savedAddress.getLine2(),
@@ -829,7 +870,8 @@ public class OrderServices {
                 return new CreateOrderRequest.LocationPoint(
                                 savedAddress.getId(),
                                 resolvedAddress,
-                                new CreateOrderRequest.Contact(savedAddress.getContactName(), savedAddress.getContactPhone()),
+                                new CreateOrderRequest.Contact(savedAddress.getContactName(),
+                                                savedAddress.getContactPhone()),
                                 savedAddress.getBusinessName(),
                                 savedAddress.getNotes(),
                                 pickup.verification());
@@ -849,7 +891,8 @@ public class OrderServices {
                 }
 
                 if (dropoff.addressId() != null) {
-                        UserAddress savedAddress = addressService.resolveAddress(tokenResponse, bookingChannel, dropoff.addressId());
+                        UserAddress savedAddress = addressService.resolveAddress(tokenResponse, bookingChannel,
+                                        dropoff.addressId());
                         CreateOrderRequest.Address resolvedAddress = new CreateOrderRequest.Address(
                                         savedAddress.getLine1(),
                                         savedAddress.getLine2(),
@@ -1065,53 +1108,25 @@ public class OrderServices {
                 return order.getOrderStatus().name();
         }
 
-        @Cacheable(value = "orders", key = "#orderId")
-        public com.swifttrack.dto.orderDto.OrderDetailsResponse getOrderById(String token, UUID orderId) {
-                TokenResponse userDetails = authInterface.getUserDetails(token).getBody();
-                Order order = orderRepository.findById(orderId)
-                                .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
-
-                OrderLocation pickup = order.getLocations().stream()
-                                .filter(loc -> loc.getLocationType() == LocationType.PICKUP)
-                                .findFirst().orElse(null);
-
-                OrderLocation dropoff = order.getLocations().stream()
-                                .filter(loc -> loc.getLocationType() == LocationType.DROP)
-                                .findFirst().orElse(null);
-
-                String city = (pickup != null) ? pickup.getCity() : null;
-                String state = (pickup != null) ? pickup.getState() : null;
-                Double pickupLat = (pickup != null && pickup.getLatitude() != null) ? pickup.getLatitude().doubleValue()
-                                : null;
-                Double pickupLng = (pickup != null && pickup.getLongitude() != null)
-                                ? pickup.getLongitude().doubleValue()
-                                : null;
-                Double dropoffLat = (dropoff != null && dropoff.getLatitude() != null)
-                                ? dropoff.getLatitude().doubleValue()
-                                : null;
-                Double dropoffLng = (dropoff != null && dropoff.getLongitude() != null)
-                                ? dropoff.getLongitude().doubleValue()
-                                : null;
-
-                String orderStatus = order.getOrderStatus().name();
-
-                return new com.swifttrack.dto.orderDto.OrderDetailsResponse(
-                                order.getId(),
-                                order.getCustomerReferenceId(),
-                                orderStatus,
-                                city,
-                                state,
-                                pickupLat,
-                                pickupLng,
-                                dropoffLat,
-                                dropoffLng);
+        public OrderDetailsResponse getOrderById(String token, UUID orderId) {
+                TokenResponse userDetails = requireAuthenticatedUser(token);
+                Order order = findDetailedOrder(orderId);
+                String accessScope = validateOrderAccess(order, userDetails);
+                return buildOrderDetailsResponse(order, accessScope, token);
         }
 
-        public com.swifttrack.dto.orderDto.OrderDetailsResponse getGuestOrderById(UUID orderId, String guestAccessToken) {
-                Order order = orderRepository.findById(orderId)
-                                .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
+        public OrderTrackingTimelineResponse getOrderTracking(String token, UUID orderId) {
+                TokenResponse userDetails = requireAuthenticatedUser(token);
+                Order order = findDetailedOrder(orderId);
+                validateOrderAccess(order, userDetails);
+                return buildOrderTrackingTimelineResponse(order);
+        }
+
+        public OrderDetailsResponse getGuestOrderById(UUID orderId,
+                        String guestAccessToken) {
+                Order order = findDetailedOrder(orderId);
                 validateGuestOrderAccess(order, guestAccessToken);
-                return getOrderDetails(order);
+                return buildOrderDetailsResponse(order, "GUEST", null);
         }
 
         public TenantDashboardSummaryDto getTenantDashboardSummary(String token) {
@@ -1121,17 +1136,19 @@ public class OrderServices {
                 }
 
                 UUID tenantId = tokenResponse.tenantId().get();
-                long totalDeliveredOrders = orderRepository.countByTenantIdAndOrderStatus(tenantId, OrderStatus.DELIVERED);
+                long totalDeliveredOrders = orderRepository.countByTenantIdAndOrderStatus(tenantId,
+                                OrderStatus.DELIVERED);
                 long activeOrders = orderRepository.countByTenantIdAndOrderStatusNotIn(
                                 tenantId,
                                 List.of(OrderStatus.DELIVERED, OrderStatus.CANCELLED, OrderStatus.FAILED));
 
                 LocalDate today = LocalDate.now();
                 LocalDate startDate = today.minusDays(29);
-                List<Order> deliveredOrders = orderRepository.findByTenantIdAndOrderStatusAndUpdatedAtGreaterThanEqualOrderByUpdatedAtAsc(
-                                tenantId,
-                                OrderStatus.DELIVERED,
-                                startDate.atStartOfDay());
+                List<Order> deliveredOrders = orderRepository
+                                .findByTenantIdAndOrderStatusAndUpdatedAtGreaterThanEqualOrderByUpdatedAtAsc(
+                                                tenantId,
+                                                OrderStatus.DELIVERED,
+                                                startDate.atStartOfDay());
 
                 Map<LocalDate, Long> deliveredByDay = new LinkedHashMap<>();
                 for (LocalDate date = startDate; !date.isAfter(today); date = date.plusDays(1)) {
@@ -1148,10 +1165,12 @@ public class OrderServices {
                 }
 
                 List<TenantDashboardVolumePointDto> deliveryVolume = deliveredByDay.entrySet().stream()
-                                .map(entry -> new TenantDashboardVolumePointDto(entry.getKey().toString(), entry.getValue()))
+                                .map(entry -> new TenantDashboardVolumePointDto(entry.getKey().toString(),
+                                                entry.getValue()))
                                 .toList();
 
-                List<TenantDashboardOrderDto> latestOrders = orderRepository.findTop3ByTenantIdOrderByCreatedAtDesc(tenantId)
+                List<TenantDashboardOrderDto> latestOrders = orderRepository
+                                .findTop3ByTenantIdOrderByCreatedAtDesc(tenantId)
                                 .stream()
                                 .map(order -> new TenantDashboardOrderDto(
                                                 order.getId(),
@@ -1164,11 +1183,9 @@ public class OrderServices {
                 return new TenantDashboardSummaryDto(totalDeliveredOrders, activeOrders, deliveryVolume, latestOrders);
         }
 
-        public TenantDeliveryAnalyticsDto getTenantDeliveryAnalytics(String token, LocalDate startDate, LocalDate endDate) {
-                TokenResponse tokenResponse = authInterface.getUserDetails(token).getBody();
-                if (tokenResponse == null || tokenResponse.tenantId().isEmpty()) {
-                        throw new CustomException(HttpStatus.FORBIDDEN, "Tenant token missing tenantId");
-                }
+        public TenantDeliveryAnalyticsDto getTenantDeliveryAnalytics(String token, LocalDate startDate,
+                        LocalDate endDate) {
+                UUID tenantId = extractTenantId(token);
 
                 if (startDate == null || endDate == null || endDate.isBefore(startDate)) {
                         throw new CustomException(HttpStatus.BAD_REQUEST, "Invalid date range");
@@ -1178,7 +1195,6 @@ public class OrderServices {
                         throw new CustomException(HttpStatus.BAD_REQUEST, "Date range cannot exceed 120 days");
                 }
 
-                UUID tenantId = tokenResponse.tenantId().get();
                 LocalDateTime startDateTime = startDate.atStartOfDay();
                 LocalDateTime endDateTime = endDate.plusDays(1).atStartOfDay();
 
@@ -1201,12 +1217,14 @@ public class OrderServices {
                         LocalDate date = row[0] instanceof LocalDate localDate
                                         ? localDate
                                         : LocalDate.parse(row[0].toString());
-                        long count = row[1] instanceof Number number ? number.longValue() : Long.parseLong(row[1].toString());
+                        long count = row[1] instanceof Number number ? number.longValue()
+                                        : Long.parseLong(row[1].toString());
                         deliveredByDay.put(date, count);
                 }
 
                 List<TenantDashboardVolumePointDto> deliveryVolume = deliveredByDay.entrySet().stream()
-                                .map(entry -> new TenantDashboardVolumePointDto(entry.getKey().toString(), entry.getValue()))
+                                .map(entry -> new TenantDashboardVolumePointDto(entry.getKey().toString(),
+                                                entry.getValue()))
                                 .toList();
 
                 long deliveredOrders = deliveryVolume.stream()
@@ -1237,39 +1255,285 @@ public class OrderServices {
                                 deliveryVolume);
         }
 
-        private com.swifttrack.dto.orderDto.OrderDetailsResponse getOrderDetails(Order order) {
-                OrderLocation pickup = order.getLocations().stream()
-                                .filter(loc -> loc.getLocationType() == LocationType.PICKUP)
-                                .findFirst().orElse(null);
+        public PaginatedTenantOrdersResponse getTenantOrders(
+                        String token,
+                        String query,
+                        LocalDate startDate,
+                        LocalDate endDate,
+                        Pageable pageable) {
+                UUID tenantId = extractTenantId(token);
+                validateOrderDateRange(startDate, endDate);
 
-                OrderLocation dropoff = order.getLocations().stream()
-                                .filter(loc -> loc.getLocationType() == LocationType.DROP)
-                                .findFirst().orElse(null);
+                LocalDate effectiveStartDate = startDate != null ? startDate : LocalDate.of(1970, 1, 1);
+                LocalDate effectiveEndDate = endDate != null ? endDate : LocalDate.now();
+                LocalDateTime startDateTime = effectiveStartDate.atStartOfDay();
+                LocalDateTime endDateTime = effectiveEndDate.plusDays(1).atStartOfDay();
+                String normalizedQuery = query != null && !query.isBlank() ? query.trim() : null;
+                UUID parsedOrderId = parseOrderId(normalizedQuery);
 
-                String city = (pickup != null) ? pickup.getCity() : null;
-                String state = (pickup != null) ? pickup.getState() : null;
-                Double pickupLat = (pickup != null && pickup.getLatitude() != null) ? pickup.getLatitude().doubleValue()
-                                : null;
-                Double pickupLng = (pickup != null && pickup.getLongitude() != null)
-                                ? pickup.getLongitude().doubleValue()
-                                : null;
-                Double dropoffLat = (dropoff != null && dropoff.getLatitude() != null)
-                                ? dropoff.getLatitude().doubleValue()
-                                : null;
-                Double dropoffLng = (dropoff != null && dropoff.getLongitude() != null)
-                                ? dropoff.getLongitude().doubleValue()
-                                : null;
+                Page<Order> orderPage = normalizedQuery == null
+                                ? orderRepository.findTenantOrders(
+                                                tenantId,
+                                                startDateTime,
+                                                endDateTime,
+                                                pageable)
+                                : orderRepository.searchTenantOrders(
+                                                tenantId,
+                                                normalizedQuery,
+                                                parsedOrderId,
+                                                startDateTime,
+                                                endDateTime,
+                                                pageable);
 
-                return new com.swifttrack.dto.orderDto.OrderDetailsResponse(
+                List<TenantOrderListItemDto> items = orderPage.getContent().stream()
+                                .map(this::toTenantOrderListItem)
+                                .toList();
+
+                long processedOrders = orderPage.getTotalElements();
+                long openIssues = countTenantOrdersByStatuses(
+                                tenantId,
+                                normalizedQuery,
+                                parsedOrderId,
+                                startDateTime,
+                                endDateTime,
+                                List.of(OrderStatus.CANCELLED, OrderStatus.FAILED));
+                long deliveredOrders = countTenantOrdersByStatuses(
+                                tenantId,
+                                normalizedQuery,
+                                parsedOrderId,
+                                startDateTime,
+                                endDateTime,
+                                List.of(OrderStatus.DELIVERED));
+                long activeOrders = countTenantOrdersByStatuses(
+                                tenantId,
+                                normalizedQuery,
+                                parsedOrderId,
+                                startDateTime,
+                                endDateTime,
+                                List.of(OrderStatus.CREATED, OrderStatus.QUOTED, OrderStatus.ASSIGNED,
+                                                OrderStatus.PICKED_UP,
+                                                OrderStatus.IN_TRANSIT));
+
+                return new PaginatedTenantOrdersResponse(
+                                items,
+                                orderPage.getNumber(),
+                                orderPage.getSize(),
+                                orderPage.getTotalElements(),
+                                orderPage.getTotalPages(),
+                                new TenantOrdersSummaryDto(processedOrders, openIssues, deliveredOrders, activeOrders));
+        }
+
+        private OrderDetailsResponse buildOrderDetailsResponse(Order order, String accessScope, String token) {
+                List<OrderDetailsResponse.OrderLocationInfo> locations = mapOrderLocations(order);
+                OrderDetailsResponse.OrderLocationInfo pickup = findLocationByType(locations, LocationType.PICKUP);
+                OrderDetailsResponse.OrderLocationInfo dropoff = findLocationByType(locations, LocationType.DROP);
+                OrderDetailsResponse.CurrentLocationInfo currentLocation = mapCurrentLocation(order);
+                String trackingStatus = resolveTrackingStatus(order);
+                OrderDebitSummaryResponse tenantDebit = resolveTenantDebit(order, accessScope, token);
+
+                return new OrderDetailsResponse(
                                 order.getId(),
+                                order.getTenantId(),
+                                order.getOwnerUserId(),
+                                order.getCreatedBy(),
+                                order.getAssignedDriverId(),
+                                accessScope,
                                 order.getCustomerReferenceId(),
-                                order.getOrderStatus().name(),
-                                city,
-                                state,
-                                pickupLat,
-                                pickupLng,
-                                dropoffLat,
-                                dropoffLng);
+                                order.getOrderStatus() == null ? null : order.getOrderStatus().name(),
+                                trackingStatus,
+                                order.getBookingChannel() == null ? null : order.getBookingChannel().name(),
+                                order.getOrderType() == null ? null : order.getOrderType().name(),
+                                order.getPaymentType() == null ? null : order.getPaymentType().name(),
+                                order.getPaymentAmount(),
+                                order.getSelectedProviderCode(),
+                                order.getProviderOrderId(),
+                                order.getQuoteSessionId(),
+                                order.getSelectedType(),
+                                pickup == null ? null : pickup.city(),
+                                pickup == null ? null : pickup.state(),
+                                pickup == null ? null : pickup.latitude(),
+                                pickup == null ? null : pickup.longitude(),
+                                dropoff == null ? null : dropoff.latitude(),
+                                dropoff == null ? null : dropoff.longitude(),
+                                order.getCreatedAt(),
+                                order.getUpdatedAt(),
+                                resolveLastStatusUpdatedAt(order),
+                                resolveLastLocationUpdatedAt(order),
+                                pickup,
+                                dropoff,
+                                currentLocation,
+                                tenantDebit,
+                                locations);
+        }
+
+        private OrderTrackingTimelineResponse buildOrderTrackingTimelineResponse(Order order) {
+                List<OrderDetailsResponse.OrderTimelineEvent> trackingHistory = mapTrackingHistory(order);
+                OrderDetailsResponse.CurrentLocationInfo currentLocation = mapCurrentLocation(order);
+
+                return new OrderTrackingTimelineResponse(
+                                order.getId(),
+                                order.getOrderStatus() == null ? null : order.getOrderStatus().name(),
+                                resolveTrackingStatus(order),
+                                resolveLastStatusUpdatedAt(order),
+                                resolveLastLocationUpdatedAt(order),
+                                currentLocation,
+                                trackingHistory);
+        }
+
+        private Order findDetailedOrder(UUID orderId) {
+                return orderRepository.findDetailedById(orderId)
+                                .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
+        }
+
+        private TokenResponse requireAuthenticatedUser(String token) {
+                TokenResponse userDetails = authInterface.getUserDetails(token).getBody();
+                if (userDetails == null || userDetails.id() == null) {
+                        throw new CustomException(HttpStatus.UNAUTHORIZED, "Invalid token or user not found");
+                }
+                return userDetails;
+        }
+
+        private String validateOrderAccess(Order order, TokenResponse userDetails) {
+                UUID userId = userDetails.id();
+                UUID tenantId = userDetails.tenantId().orElse(null);
+                UserType userType = userDetails.userType().orElse(null);
+
+                if (tenantId != null || isTenantScopedUser(userType)) {
+                        if (tenantId == null || order.getTenantId() == null || !tenantId.equals(order.getTenantId())) {
+                                throw new CustomException(HttpStatus.FORBIDDEN, "Order does not belong to this tenant");
+                        }
+                        return "TENANT";
+                }
+
+                if (userId != null && (userId.equals(order.getCreatedBy()) || userId.equals(order.getOwnerUserId()))) {
+                        return "OWNER";
+                }
+
+                throw new CustomException(HttpStatus.FORBIDDEN, "You are not allowed to access this order");
+        }
+
+        private boolean isTenantScopedUser(UserType userType) {
+                return userType == UserType.TENANT_ADMIN
+                                || userType == UserType.TENANT_USER
+                                || userType == UserType.TENANT_MANAGER
+                                || userType == UserType.TENANT_STAFF
+                                || userType == UserType.TENANT_DRIVER;
+        }
+
+        private List<OrderDetailsResponse.OrderLocationInfo> mapOrderLocations(Order order) {
+                if (order.getLocations() == null || order.getLocations().isEmpty()) {
+                        return List.of();
+                }
+
+                return order.getLocations().stream()
+                                .sorted(Comparator.comparing(OrderLocation::getCreatedAt,
+                                                Comparator.nullsLast(Comparator.naturalOrder())))
+                                .map(location -> new OrderDetailsResponse.OrderLocationInfo(
+                                                location.getId(),
+                                                location.getLocationType() == null ? null : location.getLocationType().name(),
+                                                toDouble(location.getLatitude()),
+                                                toDouble(location.getLongitude()),
+                                                location.getCity(),
+                                                location.getState(),
+                                                location.getCountry(),
+                                                location.getPincode(),
+                                                location.getLocality(),
+                                                location.getCreatedAt()))
+                                .toList();
+        }
+
+        private OrderDetailsResponse.OrderLocationInfo findLocationByType(
+                        List<OrderDetailsResponse.OrderLocationInfo> locations,
+                        LocationType locationType) {
+                return locations.stream()
+                                .filter(location -> locationType.name().equals(location.type()))
+                                .findFirst()
+                                .orElse(null);
+        }
+
+        private List<OrderDetailsResponse.OrderTimelineEvent> mapTrackingHistory(Order order) {
+                List<OrderTrackingEvent> events = orderTrackingEventRepository.findByOrderIdOrderByEventTimeAsc(order.getId());
+                return events.stream()
+                                .map(event -> new OrderDetailsResponse.OrderTimelineEvent(
+                                                event.getId(),
+                                                event.getProviderCode(),
+                                                event.getStatus() == null ? null : event.getStatus().name(),
+                                                toDouble(event.getLatitude()),
+                                                toDouble(event.getLongitude()),
+                                                event.getDescription(),
+                                                event.getEventTime(),
+                                                event.getCreatedAt()))
+                                .toList();
+        }
+
+        private String resolveTrackingStatus(Order order) {
+                OrderTrackingState trackingState = order.getTrackingState();
+                if (trackingState != null && trackingState.getCurrentStatus() != null) {
+                        return trackingState.getCurrentStatus().name();
+                }
+                return order.getOrderStatus() == null ? null : order.getOrderStatus().name();
+        }
+
+        private OrderDetailsResponse.CurrentLocationInfo mapCurrentLocation(Order order) {
+                OrderTrackingState trackingState = order.getTrackingState();
+                if (trackingState == null) {
+                        return null;
+                }
+
+                Double latitude = toDouble(trackingState.getLastLatitude());
+                Double longitude = toDouble(trackingState.getLastLongitude());
+                if (latitude == null && longitude == null && trackingState.getLastUpdatedAt() == null) {
+                        return null;
+                }
+
+                return new OrderDetailsResponse.CurrentLocationInfo(
+                                trackingState.getCurrentStatus() == null ? null : trackingState.getCurrentStatus().name(),
+                                latitude,
+                                longitude,
+                                trackingState.getLastUpdatedAt());
+        }
+
+        private OrderDebitSummaryResponse resolveTenantDebit(Order order, String accessScope, String token) {
+                if (!"TENANT".equals(accessScope) || token == null || order.getTenantId() == null) {
+                        return null;
+                }
+
+                try {
+                        BillingAccountSnapshot account = Optional.ofNullable(billingInterface.getMyAccount(token))
+                                        .map(ResponseEntity::getBody)
+                                        .orElse(null);
+                        if (account == null || account.id() == null || !order.getTenantId().equals(account.userId())) {
+                                return null;
+                        }
+
+                        return Optional.ofNullable(billingInterface.getOrderDebitSummary(account.id(), order.getId()))
+                                        .map(ResponseEntity::getBody)
+                                        .orElse(null);
+                } catch (Exception ignored) {
+                        return null;
+                }
+        }
+
+        private LocalDateTime resolveLastStatusUpdatedAt(Order order) {
+                OrderTrackingState trackingState = order.getTrackingState();
+                if (trackingState != null && trackingState.getLastUpdatedAt() != null) {
+                        return trackingState.getLastUpdatedAt();
+                }
+                return order.getUpdatedAt();
+        }
+
+        private LocalDateTime resolveLastLocationUpdatedAt(Order order) {
+                OrderTrackingState trackingState = order.getTrackingState();
+                if (trackingState != null
+                                && trackingState.getLastUpdatedAt() != null
+                                && (trackingState.getLastLatitude() != null || trackingState.getLastLongitude() != null)) {
+                        return trackingState.getLastUpdatedAt();
+                }
+                return order.getUpdatedAt();
+        }
+
+        private Double toDouble(BigDecimal value) {
+                return value == null ? null : value.doubleValue();
         }
 
         private String resolveOrderCity(Order order) {
@@ -1287,6 +1551,90 @@ public class OrderServices {
                                                 .filter(city -> city != null && !city.isBlank())
                                                 .findFirst()
                                                 .orElse("Location unavailable"));
+        }
+
+        private UUID extractTenantId(String token) {
+                TokenResponse tokenResponse = authInterface.getUserDetails(token).getBody();
+                if (tokenResponse == null || tokenResponse.tenantId().isEmpty()) {
+                        throw new CustomException(HttpStatus.FORBIDDEN, "Tenant token missing tenantId");
+                }
+                return tokenResponse.tenantId().get();
+        }
+
+        private void validateOrderDateRange(LocalDate startDate, LocalDate endDate) {
+                if (startDate == null || endDate == null) {
+                        return;
+                }
+
+                if (endDate.isBefore(startDate)) {
+                        throw new CustomException(HttpStatus.BAD_REQUEST, "Invalid date range");
+                }
+
+                if (startDate.plusDays(120).isBefore(endDate)) {
+                        throw new CustomException(HttpStatus.BAD_REQUEST, "Date range cannot exceed 120 days");
+                }
+        }
+
+        private TenantOrderListItemDto toTenantOrderListItem(Order order) {
+                String pickupCity = order.getLocations() == null ? null
+                                : order.getLocations().stream()
+                                                .filter(location -> location.getLocationType() == LocationType.PICKUP)
+                                                .map(OrderLocation::getCity)
+                                                .filter(city -> city != null && !city.isBlank())
+                                                .findFirst()
+                                                .orElse(null);
+
+                String dropoffCity = order.getLocations() == null ? null
+                                : order.getLocations().stream()
+                                                .filter(location -> location.getLocationType() == LocationType.DROP)
+                                                .map(OrderLocation::getCity)
+                                                .filter(city -> city != null && !city.isBlank())
+                                                .findFirst()
+                                                .orElse(null);
+
+                return new TenantOrderListItemDto(
+                                order.getId(),
+                                order.getCustomerReferenceId(),
+                                order.getOrderStatus().name(),
+                                pickupCity,
+                                dropoffCity,
+                                order.getSelectedProviderCode(),
+                                order.getCreatedAt());
+        }
+
+        private UUID parseOrderId(String query) {
+                if (query == null || query.isBlank()) {
+                        return null;
+                }
+
+                String normalized = query.startsWith("#") ? query.substring(1) : query;
+                try {
+                        return UUID.fromString(normalized);
+                } catch (IllegalArgumentException ignored) {
+                        return null;
+                }
+        }
+
+        private long countTenantOrdersByStatuses(
+                        UUID tenantId,
+                        String query,
+                        UUID orderId,
+                        LocalDateTime startDateTime,
+                        LocalDateTime endDateTime,
+                        List<OrderStatus> statuses) {
+                return query == null
+                                ? orderRepository.countTenantOrdersByStatuses(
+                                                tenantId,
+                                                startDateTime,
+                                                endDateTime,
+                                                statuses)
+                                : orderRepository.countSearchedTenantOrdersByStatuses(
+                                                tenantId,
+                                                query,
+                                                orderId,
+                                                startDateTime,
+                                                endDateTime,
+                                                statuses);
         }
 
         private void validateGuestOrderAccess(Order order, String guestAccessToken) {
@@ -1338,7 +1686,8 @@ public class OrderServices {
 
         private void cancelExternalProviderOrder(String token, Order order) {
                 if (order.getProviderOrderId() == null || order.getProviderOrderId().isBlank()
-                                || order.getSelectedProviderCode() == null || order.getSelectedProviderCode().isBlank()) {
+                                || order.getSelectedProviderCode() == null
+                                || order.getSelectedProviderCode().isBlank()) {
                         throw new RuntimeException("Provider order details are missing");
                 }
                 providerInterface.cancelOrder(token, order.getProviderOrderId(), order.getSelectedProviderCode());

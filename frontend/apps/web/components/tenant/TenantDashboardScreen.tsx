@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import {
   AlertCircle,
-  Bell,
   CalendarDays,
   CheckCircle2,
   Clock3,
@@ -17,11 +16,11 @@ import {
 } from "lucide-react"
 import { useAuthStore } from "@/store/useAuthStore"
 import { useTenantDashboard } from "@/hooks/useTenantDashboard"
+import { useTenantNotifications } from "@/components/tenant/TenantNotificationsProvider"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const currencyFormatter = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -42,28 +41,21 @@ const statusMeta = {
   FAILED: { label: "Failed", tone: "text-rose-700 bg-rose-50 border-rose-200", icon: AlertCircle },
 } as const
 
-const notificationTone = {
-  info: "border-sky-200 bg-sky-50 text-sky-700",
-  success: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  warning: "border-amber-200 bg-amber-50 text-amber-700",
-} as const
-
 export function TenantDashboardScreen() {
   const { user } = useAuthStore()
   const {
     overview,
     analytics,
-    notifications,
     selectedRange,
     activePreset,
     overviewLoading,
     analyticsLoading,
-    notificationsLoading,
     error,
     kpi,
     applyPresetRange,
     applyCustomRange,
   } = useTenantDashboard(user?.id)
+  const { unreadCount } = useTenantNotifications()
 
   const [draftStartDate, setDraftStartDate] = useState(selectedRange.startDate)
   const [draftEndDate, setDraftEndDate] = useState(selectedRange.endDate)
@@ -77,8 +69,6 @@ export function TenantDashboardScreen() {
     () => Math.max(...analytics.deliveryVolume.map((item) => item.deliveredCount), 1),
     [analytics.deliveryVolume]
   )
-
-  const unreadNotifications = notifications.length
 
   const topCards = [
     {
@@ -336,98 +326,64 @@ export function TenantDashboardScreen() {
                   <CardDescription>Live status plus a notification surface ready for API wiring.</CardDescription>
                 </div>
                 <Badge variant="outline" className="rounded-full border-slate-200 bg-slate-50 text-slate-700">
-                  {unreadNotifications} updates
+                  Recent orders
                 </Badge>
               </div>
             </CardHeader>
 
             <CardContent className="pt-6">
-              <Tabs defaultValue="notifications" className="gap-4">
-                <TabsList className="w-full rounded-full bg-slate-100 p-1">
-                  <TabsTrigger value="notifications" className="rounded-full data-[state=active]:bg-white">
-                    <Bell className="h-4 w-4" />
-                    Notifications
-                  </TabsTrigger>
-                  <TabsTrigger value="status" className="rounded-full data-[state=active]:bg-white">
-                    <Rocket className="h-4 w-4" />
-                    Live Status
-                  </TabsTrigger>
-                </TabsList>
+              <div className="mb-4 flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                <Rocket className="h-4 w-4 shrink-0 text-sky-600" />
+                <span>Live order updates stay here. All notifications now open from the top bell icon.</span>
+              </div>
 
-                <TabsContent value="notifications" className="space-y-3">
-                  {notificationsLoading ? (
-                    Array.from({ length: 3 }, (_, index) => <FeedSkeleton key={index} />)
-                  ) : (
-                    notifications.map((item) => (
-                      <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                        <div className="mb-3 flex items-start justify-between gap-3">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <span
-                                className={`inline-flex rounded-full border px-2 py-1 text-[11px] font-medium ${notificationTone[item.severity]}`}
-                              >
-                                {item.severity}
-                              </span>
-                              <span className="text-xs text-slate-500">{formatRelativeTime(item.createdAt)}</span>
+              <div className="space-y-3">
+                {overviewLoading ? (
+                  Array.from({ length: 3 }, (_, index) => <FeedSkeleton key={index} />)
+                ) : overview.summary.latestOrders.length > 0 ? (
+                  overview.summary.latestOrders.map((order) => {
+                    const meta = statusMeta[order.orderStatus as keyof typeof statusMeta] || {
+                      label: order.orderStatus,
+                      tone: "text-slate-700 bg-slate-50 border-slate-200",
+                      icon: Clock3,
+                    }
+                    const StatusIcon = meta.icon
+
+                    return (
+                      <Link
+                        key={order.id}
+                        href={`/tenant/orders?orderId=${order.id}`}
+                        className="block rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-slate-300 hover:bg-white"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex min-w-0 items-start gap-3">
+                            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border ${meta.tone}`}>
+                              <StatusIcon className="h-4 w-4 shrink-0" />
                             </div>
-                            <p className="text-sm font-medium text-slate-950">{item.title}</p>
-                            <p className="text-sm leading-6 text-slate-600">{item.message}</p>
-                          </div>
-                        </div>
-                        {item.actionLabel ? (
-                          <Button variant="outline" size="sm" className="rounded-full border-slate-200 bg-white">
-                            {item.actionLabel}
-                          </Button>
-                        ) : null}
-                      </div>
-                    ))
-                  )}
-                </TabsContent>
-
-                <TabsContent value="status" className="space-y-3">
-                  {overviewLoading ? (
-                    Array.from({ length: 3 }, (_, index) => <FeedSkeleton key={index} />)
-                  ) : overview.summary.latestOrders.length > 0 ? (
-                    overview.summary.latestOrders.map((order) => {
-                      const meta = statusMeta[order.orderStatus as keyof typeof statusMeta] || {
-                        label: order.orderStatus,
-                        tone: "text-slate-700 bg-slate-50 border-slate-200",
-                        icon: Clock3,
-                      }
-                      const StatusIcon = meta.icon
-
-                      return (
-                        <div key={order.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex gap-3">
-                              <div className={`mt-0.5 rounded-full border p-2 ${meta.tone}`}>
-                                <StatusIcon className="h-4 w-4" />
-                              </div>
-                              <div className="space-y-1">
-                                <p className="text-sm font-medium text-slate-950">
-                                  {order.customerReferenceId || order.id.slice(0, 8)}
-                                </p>
-                                <p className="flex items-center gap-1 text-xs text-slate-500">
-                                  <MapPin className="h-3.5 w-3.5" />
-                                  {order.city || "Unknown city"}
-                                </p>
-                                <p className="text-xs text-slate-500">{formatRelativeTime(order.createdAt)}</p>
-                              </div>
+                            <div className="min-w-0 space-y-1">
+                              <p className="truncate text-sm font-medium text-slate-950">
+                                {order.customerReferenceId || order.id.slice(0, 8)}
+                              </p>
+                              <p className="flex items-center gap-1 text-xs text-slate-500">
+                                <MapPin className="h-3.5 w-3.5 shrink-0" />
+                                <span className="truncate">{order.city || "Unknown city"}</span>
+                              </p>
+                              <p className="text-xs text-slate-500">{formatRelativeTime(order.createdAt)}</p>
                             </div>
-                            <Badge variant="outline" className={`rounded-full ${meta.tone}`}>
-                              {meta.label}
-                            </Badge>
                           </div>
+                          <Badge variant="outline" className={`shrink-0 rounded-full ${meta.tone}`}>
+                            {meta.label}
+                          </Badge>
                         </div>
-                      )
-                    })
-                  ) : (
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-                      No recent tenant orders found.
-                    </div>
-                  )}
-                </TabsContent>
-              </Tabs>
+                      </Link>
+                    )
+                  })
+                ) : (
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                    No recent tenant orders found.
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </section>
@@ -446,8 +402,8 @@ export function TenantDashboardScreen() {
               />
               <SnapshotPanel
                 title="Unread Updates"
-                value={`${unreadNotifications}`}
-                description="Notification feed entries refreshing every minute."
+                value={`${unreadCount}`}
+                description="Open the header bell to review or delete notifications."
               />
               <SnapshotPanel
                 title="Latest Orders"

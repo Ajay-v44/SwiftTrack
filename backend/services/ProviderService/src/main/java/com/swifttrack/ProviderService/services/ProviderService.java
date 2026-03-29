@@ -14,6 +14,7 @@ import com.swifttrack.ProviderService.dto.CreateProviderAndServicableAreas;
 import com.swifttrack.ProviderService.dto.CreateServicableAreas;
 import com.swifttrack.ProviderService.dto.GetProviders;
 import com.swifttrack.ProviderService.dto.ProviderOnBoardingInput;
+import com.swifttrack.ProviderService.dto.TenantProviderConfigResponse;
 import com.swifttrack.ProviderService.models.Provider;
 import com.swifttrack.ProviderService.models.ProviderOnboardingRequest;
 import com.swifttrack.ProviderService.models.ProviderServicableAreas;
@@ -164,6 +165,19 @@ public class ProviderService {
                 .collect(Collectors.toList());
     }
 
+    public List<TenantProviderConfigResponse> getTenantProviderConfigs(String token) {
+        TokenResponse tokenResponse = authInterface.getUserDetails(token).getBody();
+        if (tokenResponse == null || tokenResponse.tenantId() == null || tokenResponse.tenantId().isEmpty())
+            throw new CustomException(HttpStatus.FORBIDDEN, "Unauthorized");
+        return getTenantProviderConfigsByTenantId(tokenResponse.tenantId().get());
+    }
+
+    public List<TenantProviderConfigResponse> getTenantProviderConfigsByTenantId(UUID tenantId) {
+        return tenantProviderConfigRepository.findByTenantId(tenantId).stream()
+                .map(this::toTenantProviderConfigResponse)
+                .collect(Collectors.toList());
+    }
+
     public Message requestProviderOnboarding(String token, ProviderOnBoardingInput providerOnboardingRequest) {
         TokenResponse tokenResponse = authInterface.getUserDetails(token).getBody();
         if (tokenResponse == null)
@@ -266,5 +280,29 @@ public class ProviderService {
 
         tenantProviderConfigRepository.delete(config);
         return new Message("Tenant provider removed successfully");
+    }
+
+    private TenantProviderConfigResponse toTenantProviderConfigResponse(TenantProviderConfig tenantProviderConfig) {
+        Provider provider = tenantProviderConfig.getProvider();
+
+        return new TenantProviderConfigResponse(
+                provider.getId(),
+                provider.getProviderName(),
+                provider.getProviderCode(),
+                provider.getDescription(),
+                provider.getLogoUrl(),
+                provider.getWebsiteUrl(),
+                provider.isSupportsHyperlocal(),
+                provider.isSupportsCourier(),
+                provider.isSupportsSameDay(),
+                provider.isSupportsIntercity(),
+                provider.getProviderServicableAreas().stream()
+                        .map(providerServicableAreas -> providerServicableAreas.getCity())
+                        .collect(Collectors.toList()),
+                tenantProviderConfig.isEnabled(),
+                tenantProviderConfig.isVerified(),
+                tenantProviderConfig.getDisabledReason(),
+                tenantProviderConfig.getCreatedAt(),
+                tenantProviderConfig.getUpdatedAt());
     }
 }

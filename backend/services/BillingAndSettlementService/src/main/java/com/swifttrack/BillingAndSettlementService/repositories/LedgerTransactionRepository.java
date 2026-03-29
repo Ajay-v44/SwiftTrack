@@ -37,6 +37,12 @@ public interface LedgerTransactionRepository extends JpaRepository<LedgerTransac
 
     Page<LedgerTransaction> findByAccountIdOrderByCreatedAtDesc(UUID accountId, Pageable pageable);
 
+    Optional<LedgerTransaction> findFirstByAccountIdAndOrderIdAndTransactionTypeAndReferenceTypeOrderByCreatedAtDesc(
+            UUID accountId,
+            UUID orderId,
+            TransactionType transactionType,
+            ReferenceType referenceType);
+
     @Query("SELECT COALESCE(SUM(lt.amount), 0) FROM LedgerTransaction lt " +
            "WHERE lt.accountId = :accountId AND lt.transactionType = :transactionType AND lt.createdAt >= :fromDateTime")
     BigDecimal sumAmountByAccountIdAndTransactionTypeSince(
@@ -65,4 +71,13 @@ public interface LedgerTransactionRepository extends JpaRepository<LedgerTransac
             UUID accountId,
             TransactionType transactionType,
             ReferenceType referenceType);
+
+    @Query("SELECT COALESCE(SUM(lt.amount), 0) FROM LedgerTransaction lt " +
+           "WHERE lt.accountId = :accountId AND lt.orderId = :orderId " +
+           "AND lt.transactionType = :transactionType AND lt.referenceType = :referenceType")
+    BigDecimal sumAmountByAccountIdAndOrderIdAndTransactionTypeAndReferenceType(
+            @Param("accountId") UUID accountId,
+            @Param("orderId") UUID orderId,
+            @Param("transactionType") TransactionType transactionType,
+            @Param("referenceType") ReferenceType referenceType);
 }

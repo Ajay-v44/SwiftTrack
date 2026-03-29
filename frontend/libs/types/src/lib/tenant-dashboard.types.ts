@@ -45,5 +45,6 @@ export interface TenantDashboardNotification {
   message: string
   severity: "info" | "success" | "warning"
   createdAt: string
+  unread: boolean
   actionLabel?: string
 }
