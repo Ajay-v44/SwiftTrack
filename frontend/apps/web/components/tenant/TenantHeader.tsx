@@ -2,13 +2,15 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Bell, LayoutDashboard, LogOut, Menu, Package, Search, Users, Wallet } from "lucide-react"
+import { Bell, LayoutDashboard, LogOut, Menu, Package, Search, Trash2, Users, Wallet } from "lucide-react"
 import { useAuthStore } from "@/store/useAuthStore"
+import { useTenantNotifications } from "@/components/tenant/TenantNotificationsProvider"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 
 export default function TenantHeader() {
   const { user, logout } = useAuthStore()
+  const { notifications, unreadCount, loading, isOpen, setIsOpen, deleteNotification } = useTenantNotifications()
   const router = useRouter()
   const pathname = usePathname()
 
@@ -81,10 +83,89 @@ export default function TenantHeader() {
       </div>
 
       <div className="ml-3 flex shrink-0 items-center gap-2 sm:ml-6 sm:gap-4">
-        <button className="relative rounded-full border border-slate-200 bg-white p-2.5 text-slate-600 transition hover:bg-slate-50">
-          <Bell className="h-4 w-4" />
-          <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-emerald-500" />
-        </button>
+        <Sheet open={isOpen} onOpenChange={setIsOpen}>
+          <SheetTrigger asChild>
+            <button className="relative rounded-full border border-slate-200 bg-white p-2.5 text-slate-600 transition hover:bg-slate-50">
+              <Bell className="h-4 w-4" />
+              {unreadCount > 0 ? (
+                <span className="absolute -right-1 -top-1 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-semibold text-white">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              ) : null}
+            </button>
+          </SheetTrigger>
+          <SheetContent side="right" className="w-full max-w-md border-l border-slate-200 bg-white p-0">
+            <SheetHeader className="border-b border-slate-200 px-6 py-5 text-left">
+              <SheetTitle className="text-slate-950">Notifications</SheetTitle>
+              <SheetDescription>
+                {unreadCount > 0 ? `${unreadCount} unread updates` : "All caught up"}
+              </SheetDescription>
+            </SheetHeader>
+
+            <div className="flex-1 overflow-y-auto px-4 py-4">
+              {loading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 4 }, (_, index) => (
+                    <div key={index} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <div className="h-4 w-24 animate-pulse rounded-full bg-slate-200" />
+                      <div className="mt-3 h-4 w-40 animate-pulse rounded-full bg-slate-200" />
+                      <div className="mt-2 h-3 w-full animate-pulse rounded-full bg-slate-200" />
+                    </div>
+                  ))}
+                </div>
+              ) : notifications.length > 0 ? (
+                <div className="space-y-3">
+                  {notifications.map((notification) => (
+                    <div
+                      key={notification.id}
+                      className={`rounded-2xl border p-4 transition ${
+                        notification.unread ? "border-indigo-200 bg-indigo-50/50" : "border-slate-200 bg-slate-50"
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="min-w-0 flex-1 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="rounded-full bg-white px-2 py-1 text-[11px] font-medium uppercase text-slate-600">
+                              {notification.severity}
+                            </span>
+                            <span className="text-xs text-slate-500">{formatRelativeTime(notification.createdAt)}</span>
+                            {notification.unread ? (
+                              <span className="rounded-full bg-emerald-500 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white">
+                                New
+                              </span>
+                            ) : null}
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium text-slate-950">{notification.title}</p>
+                            <p className="text-sm leading-6 text-slate-600">{notification.message}</p>
+                          </div>
+                          {notification.actionLabel ? (
+                            <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+                              {notification.actionLabel}
+                            </p>
+                          ) : null}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => deleteNotification(notification.id)}
+                          className="rounded-full border border-slate-200 bg-white p-2 text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
+                          aria-label={`Delete ${notification.title}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center">
+                  <p className="text-sm font-medium text-slate-900">No notifications left</p>
+                  <p className="mt-2 text-sm text-slate-500">New tenant updates will appear here.</p>
+                </div>
+              )}
+            </div>
+          </SheetContent>
+        </Sheet>
 
         <div className="hidden text-right sm:block">
           <p className="text-sm font-medium text-slate-950">{user?.name || "Tenant User"}</p>
@@ -110,4 +191,25 @@ export default function TenantHeader() {
       </div>
     </header>
   )
+}
+
+function formatRelativeTime(date: string) {
+  const diff = Date.now() - new Date(date).getTime()
+  const minutes = Math.max(Math.round(diff / 60_000), 0)
+
+  if (minutes < 1) {
+    return "just now"
+  }
+
+  if (minutes < 60) {
+    return `${minutes}m ago`
+  }
+
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) {
+    return `${hours}h ago`
+  }
+
+  const days = Math.round(hours / 24)
+  return `${days}d ago`
 }

@@ -3,6 +3,8 @@ package com.swifttrack.AuthService.controllers;
 import java.util.List;
 import java.util.UUID;
 
+import com.swifttrack.AuthService.Dto.PaginatedTenantUsersResponse;
+import com.swifttrack.AuthService.Dto.UserTypeGroupResponse;
 import com.swifttrack.enums.UserType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +25,7 @@ import com.swifttrack.AuthService.Dto.MobileNumAuth;
 import com.swifttrack.AuthService.Dto.RegisterUser;
 import com.swifttrack.AuthService.Dto.TokenResponse;
 import com.swifttrack.AuthService.Models.Enum.VerificationStatus;
+import com.swifttrack.AuthService.Services.UserTypeCatalogService;
 import com.swifttrack.AuthService.Services.UserServices;
 import com.swifttrack.dto.AddTenantUsers;
 import com.swifttrack.dto.ListOfTenantUsers;
@@ -42,6 +45,8 @@ public class UserController {
 
         @Autowired
         private UserServices userService;
+        @Autowired
+        private UserTypeCatalogService userTypeCatalogService;
 
         @PostMapping("v1/register")
         @Operation(summary = "Register a new user", description = "Create a new user account with email, mobile, and password")
@@ -126,6 +131,38 @@ public class UserController {
         public ResponseEntity<List<ListOfTenantUsers>> getTenantUsers(@RequestParam String token,
                         @RequestParam UserType userType) {
                 return ResponseEntity.ok(userService.getTenantUsers(token, userType));
+        }
+
+        @PostMapping(value = "v1/getTenantUsers", params = { "page", "size" })
+        @Operation(summary = "Get tenant users with pagination via POST", description = "Backward-compatible paginated tenant user endpoint for clients that still call POST")
+        public ResponseEntity<PaginatedTenantUsersResponse> getTenantUsersPaginatedPost(
+                        @RequestParam String token,
+                        @RequestParam(required = false) String query,
+                        @RequestParam(required = false) List<UserType> userTypes,
+                        @RequestParam(defaultValue = "0") int page,
+                        @RequestParam(defaultValue = "10") int size,
+                        @RequestParam(defaultValue = "false") boolean includeRequestingUser) {
+                return ResponseEntity.ok(
+                                userService.getTenantUsers(token, query, userTypes, page, size, includeRequestingUser));
+        }
+
+        @GetMapping("v1/getTenantUsers")
+        @Operation(summary = "Get tenant users with pagination", description = "Get tenant users for the authenticated tenant with pagination, filters, and role details")
+        public ResponseEntity<PaginatedTenantUsersResponse> getTenantUsersPaginated(
+                        @RequestParam String token,
+                        @RequestParam(required = false) String query,
+                        @RequestParam(required = false) List<UserType> userTypes,
+                        @RequestParam(defaultValue = "0") int page,
+                        @RequestParam(defaultValue = "10") int size,
+                        @RequestParam(defaultValue = "false") boolean includeRequestingUser) {
+                return ResponseEntity.ok(
+                                userService.getTenantUsers(token, query, userTypes, page, size, includeRequestingUser));
+        }
+
+        @GetMapping("v1/user-types")
+        @Operation(summary = "Get user type catalog", description = "Returns user type groups and mapped user types for dynamic filtering")
+        public ResponseEntity<List<UserTypeGroupResponse>> getUserTypeCatalog() {
+                return ResponseEntity.ok(userTypeCatalogService.getActiveUserTypeGroups());
         }
 
         @PostMapping("v1/registerDriver")

@@ -3,10 +3,14 @@ import { serviceEndpoints } from "./endpoints"
 import {
   AccountResponse,
   PaginatedLedgerTransactionsResponse,
+  TenantOrderDetailsResponse,
+  TenantOrderTrackingResponse,
+  PaginatedTenantOrdersResponse,
   TenantDashboardDateRange,
   TenantDashboardSummary,
   TenantDeliveryAnalytics,
   TenantFinanceSummary,
+  TenantOrdersFilterInput,
   TodayExpenseResponse,
 } from "@swifttrack/types"
 
@@ -43,4 +47,39 @@ export function fetchTenantTransactionsApi(page: number, size: number) {
       params: { page, size },
     }
   )
+}
+
+export function fetchTenantOrdersApi(filters: TenantOrdersFilterInput) {
+  const { page, size, startDate, endDate } = filters
+
+  return httpClient.get<PaginatedTenantOrdersResponse>(`${serviceEndpoints.orders}/v1/tenant/orders`, {
+    params: {
+      page,
+      size,
+      startDate,
+      endDate,
+    },
+  })
+}
+
+export function searchTenantOrdersApi(filters: TenantOrdersFilterInput & { query: string }) {
+  const { query, page, size, startDate, endDate } = filters
+
+  return httpClient.get<PaginatedTenantOrdersResponse>(`${serviceEndpoints.orders}/v1/tenant/orders/search`, {
+    params: {
+      query,
+      page,
+      size,
+      startDate,
+      endDate,
+    },
+  })
+}
+
+export function fetchTenantOrderDetailsApi(orderId: string) {
+  return httpClient.get<TenantOrderDetailsResponse>(`${serviceEndpoints.orders}/v1/getOrderById/${orderId}`)
+}
+
+export function fetchTenantOrderTrackingApi(orderId: string) {
+  return httpClient.get<TenantOrderTrackingResponse>(`${serviceEndpoints.orders}/v1/getOrderTracking/${orderId}`)
 }

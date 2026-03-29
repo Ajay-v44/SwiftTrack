@@ -6,6 +6,7 @@ import com.swifttrack.BillingAndSettlementService.dto.TodayExpenseResponse;
 import com.swifttrack.BillingAndSettlementService.models.Account;
 import com.swifttrack.BillingAndSettlementService.models.enums.AccountType;
 import com.swifttrack.BillingAndSettlementService.services.AccountService;
+import com.swifttrack.dto.billingDto.OrderDebitSummaryResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -66,6 +67,13 @@ public class AccountController {
     @GetMapping("/v1/dashboard/summary")
     public ResponseEntity<FinanceSummaryResponse> getFinanceSummary(@RequestHeader("token") String token) {
         return ResponseEntity.ok(accountService.getFinanceSummary(token));
+    }
+
+    @GetMapping("/v1/internal/orderDebit")
+    public ResponseEntity<OrderDebitSummaryResponse> getOrderDebitSummaryInternal(
+            @RequestParam UUID accountId,
+            @RequestParam UUID orderId) {
+        return ResponseEntity.ok(accountService.getOrderDebitSummaryInternal(accountId, orderId));
     }
 
     @PostMapping("/v1/reconcile")

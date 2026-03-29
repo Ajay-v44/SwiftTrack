@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -11,7 +12,7 @@ import com.swifttrack.AuthService.Models.UserModel;
 import com.swifttrack.AuthService.Models.Enum.VerificationStatus;
 import com.swifttrack.enums.UserType;
 
-public interface UserRepo extends JpaRepository<UserModel, UUID> {
+public interface UserRepo extends JpaRepository<UserModel, UUID>, JpaSpecificationExecutor<UserModel> {
     UserModel findByName(String username);
 
     UserModel findByEmail(String email);

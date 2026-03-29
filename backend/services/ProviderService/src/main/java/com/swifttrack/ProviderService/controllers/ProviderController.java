@@ -23,6 +23,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import com.swifttrack.ProviderService.dto.CreateProviderAndServicableAreas;
 import com.swifttrack.ProviderService.dto.GetProviders;
 import com.swifttrack.ProviderService.dto.ProviderOnBoardingInput;
+import com.swifttrack.ProviderService.dto.TenantProviderConfigResponse;
 import com.swifttrack.ProviderService.services.ProviderService;
 import com.swifttrack.dto.Message;
 
@@ -99,9 +100,24 @@ public class ProviderController {
         return ResponseEntity.ok(providerService.getTenantProviders(token));
     }
 
+    @GetMapping(value = "/v1/getTenantProviders", params = "includeMetadata")
+    @Operation(summary = "Get tenant providers with config metadata", description = "Retrieve configured tenant providers including enabled and disabled state metadata")
+    public ResponseEntity<List<TenantProviderConfigResponse>> getTenantProvidersWithMetadata(
+            @RequestHeader String token,
+            @RequestParam Boolean includeMetadata) {
+        return ResponseEntity.ok(providerService.getTenantProviderConfigs(token));
+    }
+
     @GetMapping("/v1/internal/getTenantProviders")
     public ResponseEntity<List<GetProviders>> getTenantProvidersInternal(@RequestParam UUID tenantId) {
         return ResponseEntity.ok(providerService.getTenantProvidersByTenantId(tenantId));
+    }
+
+    @GetMapping(value = "/v1/internal/getTenantProviders", params = { "tenantId", "includeMetadata" })
+    public ResponseEntity<List<TenantProviderConfigResponse>> getTenantProvidersInternalWithMetadata(
+            @RequestParam UUID tenantId,
+            @RequestParam Boolean includeMetadata) {
+        return ResponseEntity.ok(providerService.getTenantProviderConfigsByTenantId(tenantId));
     }
 
     @PutMapping("/v1/tenantProviders/status")

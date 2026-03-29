@@ -5,12 +5,10 @@ import {
   createDashboardDateRange,
   fetchTenantDashboardOverviewService,
   fetchTenantDeliveryAnalyticsService,
-  fetchTenantNotificationsService,
 } from "@swifttrack/services"
 import {
   TenantDashboardData,
   TenantDashboardDateRange,
-  TenantDashboardNotification,
   TenantDeliveryAnalytics,
 } from "@swifttrack/types"
 
@@ -43,12 +41,10 @@ const presetDays = {
 export function useTenantDashboard(userId?: string) {
   const [overview, setOverview] = useState<TenantDashboardData>(initialOverview)
   const [analytics, setAnalytics] = useState<TenantDeliveryAnalytics>(initialAnalytics)
-  const [notifications, setNotifications] = useState<TenantDashboardNotification[]>([])
   const [selectedRange, setSelectedRange] = useState<TenantDashboardDateRange>(createDashboardDateRange(30))
   const [activePreset, setActivePreset] = useState<keyof typeof presetDays | "CUSTOM">("30D")
   const [overviewLoading, setOverviewLoading] = useState(true)
   const [analyticsLoading, setAnalyticsLoading] = useState(true)
-  const [notificationsLoading, setNotificationsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -122,35 +118,6 @@ export function useTenantDashboard(userId?: string) {
     }
   }, [selectedRange.endDate, selectedRange.startDate, userId])
 
-  useEffect(() => {
-    let active = true
-
-    async function loadNotifications() {
-      setNotificationsLoading(true)
-
-      try {
-        const response = await fetchTenantNotificationsService()
-        if (active) {
-          setNotifications(response)
-        }
-      } catch (err) {
-        console.error("Tenant notifications fetch failed", err)
-      } finally {
-        if (active) {
-          setNotificationsLoading(false)
-        }
-      }
-    }
-
-    loadNotifications()
-    const intervalId = window.setInterval(loadNotifications, 60_000)
-
-    return () => {
-      active = false
-      window.clearInterval(intervalId)
-    }
-  }, [])
-
   const kpi = useMemo(() => {
     const delivered = analytics.deliveredOrders
     const active = overview.summary.activeOrders
@@ -178,12 +145,10 @@ export function useTenantDashboard(userId?: string) {
   return {
     overview,
     analytics,
-    notifications,
     selectedRange,
     activePreset,
     overviewLoading,
     analyticsLoading,
-    notificationsLoading,
     error,
     kpi,
     applyPresetRange,

@@ -30,6 +30,10 @@ function getCookieValue(name: string) {
   return cookie ? decodeURIComponent(cookie.slice(prefix.length)) : undefined
 }
 
+export function getAuthTokenFromBrowser() {
+  return getCookieValue("auth_token")
+}
+
 function removeCookie(name: string) {
   if (!isBrowser()) {
     return
@@ -99,6 +103,23 @@ httpClient.interceptors.response.use(
 
     if ((status === 401 || status === 403) && isProtectedRequest(error.config)) {
       logoutUser()
+    }
+
+    // Safety net: catch auth failures that downstream services accidentally return as 500
+    if (status === 500 && isProtectedRequest(error.config)) {
+      const data = error.response?.data as Record<string, unknown> | undefined
+      const message =
+        typeof data?.["message"] === "string" ? (data["message"] as string).toLowerCase() : ""
+      if (
+        message.includes("expired token") ||
+        message.includes("invalid token") ||
+        message.includes("missing auth token") ||
+        message.includes("[401]") ||
+        message.includes("unauthorized") ||
+        message.includes("getuserdetails")
+      ) {
+        logoutUser()
+      }
     }
 
     return Promise.reject(error)

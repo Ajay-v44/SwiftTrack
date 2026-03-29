@@ -11,7 +11,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.http.HttpStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.jpa.domain.Specification;
 
+import com.swifttrack.AuthService.Dto.PaginatedTenantUsersResponse;
+import com.swifttrack.AuthService.Dto.TenantUserListItemResponse;
 import com.swifttrack.AuthService.Dto.LoginResponse;
 import com.swifttrack.AuthService.Dto.LoginUser;
 import com.swifttrack.AuthService.Dto.MobileNumAuth;
@@ -52,6 +60,8 @@ public class UserServices {
     UserMapper userMapper;
     @Autowired
     BillingAndSettlementInterface billingAndSettlementInterface;
+    @Autowired
+    UserTypeCatalogService userTypeCatalogService;
 
     public String registerUser(RegisterUser registerUser) {
         // validation
@@ -322,6 +332,7 @@ public class UserServices {
                 com.swifttrack.enums.VerificationStatus.valueOf(userModel.getVerificationStatus().name()));
     }
 
+    @Transactional(readOnly = true)
     public List<ListOfTenantUsers> getTenantUsers(String token, UserType userType) {
         Map<String, Object> map = jwtUtil.decodeToken(token);
         if (map.containsKey("mobile")) {
@@ -351,6 +362,52 @@ public class UserServices {
             return users.stream().map(userMapper::toTenantUser).collect(Collectors.toList());
         }
         throw new CustomException(HttpStatus.UNAUTHORIZED, "Invalid Token");
+    }
+
+    @Transactional(readOnly = true)
+    public PaginatedTenantUsersResponse getTenantUsers(
+            String token,
+            String query,
+            List<UserType> userTypes,
+            int page,
+            int size,
+            boolean includeRequestingUser) {
+        userTypeCatalogService.ensureSeedData();
+
+        UserModel callingUser = getAuthenticatedUser(token);
+        boolean platformAdmin = isPlatformAdmin(callingUser.getType());
+        if (callingUser.getTenantId() == null && !platformAdmin) {
+            throw new CustomException(HttpStatus.FORBIDDEN, "You are not part of any organization");
+        }
+
+        List<UserType> resolvedUserTypes = normalizeRequestedUserTypes(userTypes, platformAdmin);
+        UUID tenantId = platformAdmin ? null : callingUser.getTenantId();
+        UUID excludedUserId = includeRequestingUser ? null : callingUser.getId();
+
+        Pageable pageable = PageRequest.of(
+                Math.max(page, 0),
+                Math.min(Math.max(size, 1), 100),
+                Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        Specification<UserModel> specification = buildTenantUsersSpecification(
+                tenantId,
+                excludedUserId,
+                query,
+                resolvedUserTypes);
+
+        Page<UserModel> result = userRepo.findAll(specification, pageable);
+
+        List<TenantUserListItemResponse> content = result.getContent().stream()
+                .map(this::toTenantUserListItem)
+                .toList();
+
+        return new PaginatedTenantUsersResponse(
+                content,
+                result.getNumber(),
+                result.getSize(),
+                result.getTotalElements(),
+                result.getTotalPages(),
+                userTypeCatalogService.getActiveUserTypeGroups());
     }
 
     private boolean isPlatformAdmin(UserType userType) {
@@ -432,12 +489,98 @@ public class UserServices {
 
         UserModel targetUser = userRepo.findById(request.userId())
                 .orElseThrow(() -> new ResourceNotFoundException("User to be updated doesn't exist"));
-        if (!Objects.equals(callingUser.getTenantId(), targetUser.getTenantId()))
+        boolean platformAdmin = callingUser.getType() == UserType.SUPER_ADMIN || callingUser.getType() == UserType.SYSTEM_ADMIN;
+        if (!platformAdmin && !Objects.equals(callingUser.getTenantId(), targetUser.getTenantId()))
             throw new CustomException(HttpStatus.FORBIDDEN, "Cannot update user from another tenant");
 
         targetUser.setStatus(request.status());
         targetUser.setVerificationStatus(VerificationStatus.valueOf(request.verificationStatus().name()));
         userRepo.save(targetUser);
         return new Message("User status and verification updated successfully");
+    }
+
+    private UserModel getAuthenticatedUser(String token) {
+        Map<String, Object> map = jwtUtil.decodeToken(token);
+        if (!map.containsKey("mobile")) {
+            throw new CustomException(HttpStatus.UNAUTHORIZED, "Invalid Token");
+        }
+
+        UserModel userModel = userRepo.findByMobile((String) map.get("mobile"));
+        if (userModel == null) {
+            throw new ResourceNotFoundException("User account doesn't exist");
+        }
+        if (Boolean.FALSE.equals(userModel.getStatus())) {
+            throw new CustomException(HttpStatus.FORBIDDEN, "User account is not verified");
+        }
+        return userModel;
+    }
+
+    private List<UserType> normalizeRequestedUserTypes(List<UserType> userTypes, boolean platformAdmin) {
+        if (userTypes == null || userTypes.isEmpty()) {
+            return null;
+        }
+
+        if (!platformAdmin) {
+            List<UserType> invalidTenantTypes = userTypes.stream()
+                    .filter(type -> !isTenantScopedUser(type))
+                    .toList();
+            if (!invalidTenantTypes.isEmpty()) {
+                throw new CustomException(HttpStatus.FORBIDDEN, "Tenant admins can only filter tenant-scoped users");
+            }
+        }
+
+        return userTypes.stream().distinct().toList();
+    }
+
+    private Specification<UserModel> buildTenantUsersSpecification(
+            UUID tenantId,
+            UUID excludedUserId,
+            String query,
+            List<UserType> userTypes) {
+        return (root, criteriaQuery, criteriaBuilder) -> {
+            List<jakarta.persistence.criteria.Predicate> predicates = new java.util.ArrayList<>();
+
+            if (tenantId != null) {
+                predicates.add(criteriaBuilder.equal(root.get("tenantId"), tenantId));
+            }
+            if (excludedUserId != null) {
+                predicates.add(criteriaBuilder.notEqual(root.get("id"), excludedUserId));
+            }
+            if (query != null && !query.trim().isEmpty()) {
+                String normalizedQuery = "%" + query.trim().toLowerCase() + "%";
+                predicates.add(criteriaBuilder.or(
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), normalizedQuery),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("email")), normalizedQuery),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("mobile")), normalizedQuery)));
+            }
+            if (userTypes != null && !userTypes.isEmpty()) {
+                predicates.add(root.get("type").in(userTypes));
+            }
+
+            return criteriaBuilder.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        };
+    }
+
+    private TenantUserListItemResponse toTenantUserListItem(UserModel userModel) {
+        List<String> roles = userModel.getUserRoles() == null ? List.of() : userModel.getUserRoles().stream()
+                .filter(userRole -> userRole.getRoles() != null)
+                .map(userRole -> userRole.getRoles().getName())
+                .distinct()
+                .sorted()
+                .toList();
+
+        return new TenantUserListItemResponse(
+                userModel.getId(),
+                userModel.getName(),
+                userModel.getMobile(),
+                userModel.getEmail(),
+                userModel.getStatus(),
+                userModel.getVerificationStatus() == null
+                        ? null
+                        : com.swifttrack.enums.VerificationStatus.valueOf(userModel.getVerificationStatus().name()),
+                userModel.getType(),
+                roles,
+                userModel.getCreatedAt(),
+                userModel.getUpdatedAt());
     }
 }

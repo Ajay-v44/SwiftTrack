@@ -116,7 +116,8 @@ public class InternalDriverAssignmentConsumer {
         orderRepository.save(order);
     }
 
-    private boolean tryAssignByOption(Order order, String option, BigDecimal distanceKm, java.util.UUID excludedDriverId) {
+    private boolean tryAssignByOption(Order order, String option, BigDecimal distanceKm,
+            java.util.UUID excludedDriverId) {
         if ("TENANT_DRIVERS".equals(option) || "LOCAL_DRIVERS".equals(option)) {
             if ((order.getSelectedType() == null || !option.equalsIgnoreCase(order.getSelectedType()))
                     && !repriceInternalOrder(order, option, distanceKm)) {
@@ -189,7 +190,8 @@ public class InternalDriverAssignmentConsumer {
 
         GetProviders chosenProvider = providers.stream()
                 .filter(provider -> provider.providerCode() != null && !provider.providerCode().isBlank())
-                .min(Comparator.comparingInt(provider -> orderRepository.countActiveOrdersByProvider(provider.providerCode())))
+                .min(Comparator
+                        .comparingInt(provider -> orderRepository.countActiveOrdersByProvider(provider.providerCode())))
                 .orElse(null);
 
         if (chosenProvider == null || order.getPickupLatitude() == null || order.getPickupLongitude() == null
@@ -264,7 +266,8 @@ public class InternalDriverAssignmentConsumer {
     private com.swifttrack.dto.orderDto.CreateOrderRequest buildProviderCreateOrderRequest(Order order,
             String providerCode, QuoteResponse providerQuote) {
         com.swifttrack.dto.orderDto.CreateOrderRequest original = deserializeCreateOrderPayload(order);
-        if (original == null || original.pickup() == null || original.dropoff() == null || original.pickup().address() == null
+        if (original == null || original.pickup() == null || original.dropoff() == null
+                || original.pickup().address() == null
                 || original.dropoff().address() == null) {
             return null;
         }

@@ -12,6 +12,7 @@ import com.swifttrack.BillingAndSettlementService.repositories.AccountRepository
 import com.swifttrack.BillingAndSettlementService.repositories.LedgerTransactionRepository;
 import com.swifttrack.FeignClient.AuthInterface;
 import com.swifttrack.dto.TokenResponse;
+import com.swifttrack.dto.billingDto.OrderDebitSummaryResponse;
 import com.swifttrack.exception.CustomException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -193,11 +194,12 @@ public class AccountService {
 
     public FinanceSummaryResponse getFinanceSummary(String token) {
         Account account = resolveAccessibleAccount(token, null);
-        BigDecimal weeklySpend = ledgerTransactionRepository.sumAmountByAccountIdAndTransactionTypeAndReferenceTypeSince(
-                account.getId(),
-                TransactionType.DEBIT,
-                ReferenceType.ORDER,
-                LocalDate.now().minusDays(6).atStartOfDay());
+        BigDecimal weeklySpend = ledgerTransactionRepository
+                .sumAmountByAccountIdAndTransactionTypeAndReferenceTypeSince(
+                        account.getId(),
+                        TransactionType.DEBIT,
+                        ReferenceType.ORDER,
+                        LocalDate.now().minusDays(6).atStartOfDay());
         BigDecimal costSavings = ledgerTransactionRepository.sumAmountByAccountIdAndTransactionTypeAndReferenceType(
                 account.getId(),
                 TransactionType.CREDIT,
@@ -231,6 +233,32 @@ public class AccountService {
                 transactionsPage.getSize(),
                 transactionsPage.getTotalElements(),
                 transactionsPage.getTotalPages());
+    }
+
+    public OrderDebitSummaryResponse getOrderDebitSummaryInternal(UUID accountId, UUID orderId) {
+        Account account = accountRepository.findById(accountId)
+                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Account not found"));
+
+        BigDecimal debitedAmount = ledgerTransactionRepository.sumAmountByAccountIdAndOrderIdAndTransactionTypeAndReferenceType(
+                accountId,
+                orderId,
+                TransactionType.DEBIT,
+                ReferenceType.ORDER);
+
+        LedgerTransaction latestDebit = ledgerTransactionRepository
+                .findFirstByAccountIdAndOrderIdAndTransactionTypeAndReferenceTypeOrderByCreatedAtDesc(
+                        accountId,
+                        orderId,
+                        TransactionType.DEBIT,
+                        ReferenceType.ORDER)
+                .orElse(null);
+
+        return new OrderDebitSummaryResponse(
+                account.getId(),
+                orderId,
+                debitedAmount,
+                latestDebit == null ? null : latestDebit.getCreatedAt(),
+                latestDebit == null ? null : latestDebit.getDescription());
     }
 
     private LedgerTransactionListItemResponse toLedgerTransactionListItem(LedgerTransaction transaction) {

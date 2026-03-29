@@ -90,6 +90,16 @@ public class AuthService {
     }
 
     public TokenResponse getUserDetails(String token) {
-        return authInterface.getUserDetails(token).getBody();
+        try {
+            return authInterface.getUserDetails(token).getBody();
+        } catch (FeignException e) {
+            String errorMessage = extractErrorMessage(e.contentUTF8());
+            System.err.println("[TENANT-SERVICE] Auth Service Error in getUserDetails: " + errorMessage);
+            throw new CustomException(HttpStatus.valueOf(e.status()), errorMessage);
+        } catch (Exception e) {
+            System.err.println("[TENANT-SERVICE] Unexpected Error in getUserDetails: " + e.getMessage());
+            e.printStackTrace();
+            throw new CustomException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
+        }
     }
 }
