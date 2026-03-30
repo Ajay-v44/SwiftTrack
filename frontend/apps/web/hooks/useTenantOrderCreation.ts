@@ -1,35 +1,35 @@
 "use client"
 
 import { useState } from "react"
-import { dispatchTenantOrderService, fetchTenantOrderQuotesService } from "@swifttrack/services"
-import { TenantOrderQuote, TenantOrderQuoteFormInput } from "@swifttrack/types"
+import { createTenantOrderService, fetchTenantOrderQuotesService } from "@swifttrack/services"
+import { TenantCreateOrderInput, TenantOrderQuote, TenantOrderQuoteFormInput } from "@swifttrack/types"
 
 export function useTenantOrderCreation() {
-  const [quotes, setQuotes] = useState<TenantOrderQuote[]>([])
+  const [quote, setQuote] = useState<TenantOrderQuote | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
   async function loadQuotes(input: TenantOrderQuoteFormInput) {
     setIsLoading(true)
     try {
       const response = await fetchTenantOrderQuotesService(input)
-      setQuotes(response)
+      setQuote(response)
       return response
     } finally {
       setIsLoading(false)
     }
   }
 
-  async function dispatchOrder(quoteId: string) {
+  async function dispatchOrder(input: TenantCreateOrderInput) {
     setIsLoading(true)
     try {
-      await dispatchTenantOrderService(quoteId)
+      return await createTenantOrderService(input)
     } finally {
       setIsLoading(false)
     }
   }
 
   return {
-    quotes,
+    quote,
     isLoading,
     loadQuotes,
     dispatchOrder,

@@ -1,21 +1,100 @@
 export interface TenantOrderQuoteFormInput {
-  originAddress: string
-  originCity: string
-  originZip: string
-  destAddress: string
-  destCity: string
-  destZip: string
-  weight: string
-  dimensions: string
-  type: string
+  pickupAddressId: string
+  dropoffLat: number
+  dropoffLng: number
 }
 
 export interface TenantOrderQuote {
-  id: string
-  provider: string
+  quoteSessionId: string
+  quoteId: string | null
+  selectedType: string | null
+  providerCode: string | null
   price: number
-  eta: string
-  tag: string
+  currency: string | null
+}
+
+export interface TenantSavedAddress {
+  id: string
+  label: string | null
+  line1: string
+  line2: string | null
+  city: string
+  state: string
+  country: string
+  pincode: string
+  locality: string | null
+  latitude: number | null
+  longitude: number | null
+  contactName: string
+  contactPhone: string
+  businessName: string | null
+  notes: string | null
+  isDefault: boolean
+}
+
+export interface TenantSavedAddressInput {
+  label?: string | null
+  line1: string
+  line2?: string | null
+  city: string
+  state: string
+  country: string
+  pincode: string
+  locality?: string | null
+  latitude: number
+  longitude: number
+  contactName: string
+  contactPhone: string
+  businessName?: string | null
+  notes?: string | null
+  isDefault?: boolean
+}
+
+export interface TenantPlaceSuggestion {
+  placeId: string | null
+  displayName: string | null
+  formattedAddress: string | null
+  city: string | null
+  state: string | null
+  country: string | null
+  countryCode: string | null
+  postalCode: string | null
+  locality: string | null
+  latitude: number
+  longitude: number
+}
+
+export interface TenantDropoffLocationDraft {
+  addressId?: string | null
+  label?: string | null
+  line1: string
+  line2?: string | null
+  city: string
+  state: string
+  country: string
+  pincode: string
+  locality?: string | null
+  latitude: number
+  longitude: number
+  contactName: string
+  contactPhone: string
+  businessName?: string | null
+  notes?: string | null
+}
+
+export interface TenantCreateOrderInput {
+  quoteSessionId: string
+  orderReference: string
+  paymentType: "PREPAID" | "COD"
+  pickupAddressId: string
+  dropoff: TenantDropoffLocationDraft
+  packageInfo: {
+    totalValue?: number | null
+    totalWeightGrams: number
+    size: "SMALL" | "MEDIUM" | "LARGE" | "XL"
+    description: string
+  }
+  deliveryInstructions?: string | null
 }
 
 export interface TenantOrdersFilterInput {
