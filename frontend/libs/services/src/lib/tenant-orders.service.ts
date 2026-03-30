@@ -1,37 +1,71 @@
 import {
+  createTenantAddressApi,
+  createTenantOrderApi,
+  fetchPlaceSuggestionsApi,
+  fetchTenantAddressesApi,
   fetchTenantOrderDetailsApi,
+  fetchTenantOrderQuoteApi,
   fetchTenantOrderTrackingApi,
   fetchTenantOrdersApi,
   searchTenantOrdersApi,
+  setTenantDefaultAddressApi,
+  updateTenantAddressApi,
+  type RawMapPlaceSuggestion,
 } from "@swifttrack/api-client"
 import {
   PaginatedTenantOrdersResponse,
+  TenantCreateOrderInput,
   TenantOrderDetailsResponse,
   TenantOrderListItem,
   TenantOrderQuote,
   TenantOrderQuoteFormInput,
   TenantOrderTrackingResponse,
   TenantOrdersFilterInput,
+  TenantPlaceSuggestion,
+  TenantSavedAddress,
+  TenantSavedAddressInput,
 } from "@swifttrack/types"
 
-function wait(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
 export async function fetchTenantOrderQuotesService(
-  _input: TenantOrderQuoteFormInput
-): Promise<TenantOrderQuote[]> {
-  await wait(1500)
-
-  return [
-    { id: "Q-1001", provider: "DHL Express", price: 145, eta: "2 Days", tag: "Fastest" },
-    { id: "Q-1002", provider: "FedEx Freight", price: 120, eta: "3 Days", tag: "Best Value" },
-    { id: "Q-1003", provider: "Internal Fleet", price: 95, eta: "5 Days", tag: "Lowest Cost" },
-  ]
+  input: TenantOrderQuoteFormInput
+): Promise<TenantOrderQuote> {
+  const response = await fetchTenantOrderQuoteApi(input)
+  return response.data
 }
 
-export async function dispatchTenantOrderService(_quoteId: string): Promise<void> {
-  await wait(1500)
+export async function createTenantOrderService(input: TenantCreateOrderInput): Promise<{ orderId: string }> {
+  const response = await createTenantOrderApi(input)
+  return response.data
+}
+
+export async function fetchTenantAddressesService(): Promise<TenantSavedAddress[]> {
+  const response = await fetchTenantAddressesApi()
+  return response.data
+}
+
+export async function createTenantAddressService(input: TenantSavedAddressInput): Promise<TenantSavedAddress> {
+  const response = await createTenantAddressApi(input)
+  return response.data
+}
+
+export async function updateTenantAddressService(
+  addressId: string,
+  input: TenantSavedAddressInput
+): Promise<TenantSavedAddress> {
+  const response = await updateTenantAddressApi(addressId, input)
+  return response.data
+}
+
+export async function setTenantDefaultAddressService(addressId: string): Promise<TenantSavedAddress> {
+  const response = await setTenantDefaultAddressApi(addressId)
+  return response.data
+}
+
+export async function fetchPlaceSuggestionsService(query: string, limit = 5): Promise<TenantPlaceSuggestion[]> {
+  const response = await fetchPlaceSuggestionsApi(query, limit)
+  return (response.data.data ?? [])
+    .map(mapPlaceSuggestion)
+    .filter((item): item is TenantPlaceSuggestion => item !== null)
 }
 
 export async function fetchTenantOrdersService(
@@ -45,6 +79,29 @@ export async function fetchTenantOrdersService(
     : await fetchTenantOrdersApi(filters)
 
   return response.data
+}
+
+function mapPlaceSuggestion(raw: RawMapPlaceSuggestion): TenantPlaceSuggestion | null {
+  const latitude = raw.coordinates?.lat
+  const longitude = raw.coordinates?.lng
+
+  if (typeof latitude !== "number" || typeof longitude !== "number") {
+    return null
+  }
+
+  return {
+    placeId: raw.place_id,
+    displayName: raw.display_name,
+    formattedAddress: raw.formatted_address,
+    city: raw.city,
+    state: raw.state,
+    country: raw.country,
+    countryCode: raw.country_code,
+    postalCode: raw.postal_code,
+    locality: raw.locality,
+    latitude,
+    longitude,
+  }
 }
 
 export async function fetchTenantOrderDetailsService(orderId: string): Promise<TenantOrderDetailsResponse> {

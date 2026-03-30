@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Bell, LayoutDashboard, LogOut, Menu, Package, Search, Trash2, Users, Wallet } from "lucide-react"
+import { Bell, LayoutDashboard, LogOut, MapPinHouse, Menu, Package, Search, Trash2, Users, Wallet } from "lucide-react"
 import { useAuthStore } from "@/store/useAuthStore"
 import { useTenantNotifications } from "@/components/tenant/TenantNotificationsProvider"
 import { Button } from "@/components/ui/button"
@@ -17,6 +17,7 @@ export default function TenantHeader() {
   const navigation = [
     { name: "Dashboard", href: "/tenant/dashboard", icon: LayoutDashboard },
     { name: "Orders", href: "/tenant/orders", icon: Package },
+    { name: "Addresses", href: "/tenant/addresses", icon: MapPinHouse },
     { name: "Finance", href: "/tenant/finance", icon: Wallet },
     { name: "Team Management", href: "/tenant/team", icon: Users },
   ]

@@ -31,6 +31,7 @@ export const serviceEndpoints = {
   authRoles: `${gatewayBaseUrl}/authservice/user-role`,
   authAssignRole: `${gatewayBaseUrl}/authservice/api/assignRole`,
   billingAccounts: `${gatewayBaseUrl}/billingandsettlementservice/api/accounts`,
+  mapService: `${gatewayBaseUrl}/mapservice`,
   orders: `${gatewayBaseUrl}/orderservice/api/order`,
   tenantService: `${gatewayBaseUrl}/tenantservice`,
   tenantCompany: `${gatewayBaseUrl}/tenantservice/company`,
