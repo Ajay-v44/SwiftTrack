@@ -5,9 +5,11 @@ import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import {
   AlertCircle,
+  BookOpenText,
   CalendarDays,
   CheckCircle2,
   Clock3,
+  CodeXml,
   CreditCard,
   MapPin,
   Package2,
@@ -133,6 +135,9 @@ export function TenantDashboardScreen() {
               </Button>
               <Button asChild variant="outline" className="rounded-full border-slate-300 bg-white">
                 <Link href="/tenant/orders">View Orders</Link>
+              </Button>
+              <Button asChild variant="outline" className="rounded-full border-slate-300 bg-white">
+                <Link href="/tenant/docs">Docs</Link>
               </Button>
             </div>
           </div>
@@ -436,6 +441,47 @@ export function TenantDashboardScreen() {
             </CardContent>
           </Card>
         </section>
+
+        <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+          <Card className="border-slate-200 bg-[linear-gradient(135deg,#0f172a,#111827)] text-white shadow-sm">
+            <CardContent className="flex flex-col gap-5 px-6 py-6">
+              <div className="flex items-center gap-3 text-sky-300">
+                <BookOpenText className="h-5 w-5" />
+                <span className="text-xs font-medium uppercase tracking-[0.2em]">Docs</span>
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-2xl font-semibold tracking-tight">Developer docs for SDK and APIs</h2>
+                <p className="max-w-2xl text-sm leading-6 text-slate-300">
+                  Walk through auth, address creation, quote generation, order creation, tracking, and cancellation with
+                  production base URLs and SDK-first examples.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Button asChild className="rounded-full bg-white text-slate-950 hover:bg-slate-100">
+                  <Link href="/tenant/docs">Open Docs</Link>
+                </Button>
+                <Button asChild variant="outline" className="rounded-full border-white/20 bg-white/5 text-white hover:bg-white/10">
+                  <a href="https://pypi.org/project/swifttrack/" target="_blank" rel="noreferrer">
+                    PyPI Package
+                  </a>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
+            <DocsPromoCard
+              icon={CodeXml}
+              title="SDK-first integration"
+              description="Install `swifttrack`, set the production base URL, and follow a working Python flow."
+            />
+            <DocsPromoCard
+              icon={MapPin}
+              title="API-by-API reference"
+              description="Structured endpoint docs cover auth, addresses, quotes, order lifecycle, tracking, and cancellation."
+            />
+          </div>
+        </section>
       </div>
     </div>
   )
@@ -486,6 +532,30 @@ function AnalyticsBadge({
       <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">{label}</p>
       {loading ? <DashboardSkeleton className="mt-2 h-7 w-24" /> : <p className="mt-2 text-lg font-semibold text-slate-950">{value}</p>}
     </div>
+  )
+}
+
+function DocsPromoCard({
+  icon: Icon,
+  title,
+  description,
+}: {
+  icon: ComponentType<{ className?: string }>
+  title: string
+  description: string
+}) {
+  return (
+    <Card className="border-slate-200 bg-white shadow-sm">
+      <CardContent className="flex items-start gap-4 px-5 py-5">
+        <div className="rounded-2xl bg-slate-100 p-3 text-slate-700">
+          <Icon className="h-5 w-5" />
+        </div>
+        <div className="space-y-2">
+          <p className="text-base font-semibold text-slate-950">{title}</p>
+          <p className="text-sm leading-6 text-slate-600">{description}</p>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 

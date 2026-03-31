@@ -1,4 +1,5 @@
 import {
+  cancelTenantOrderApi,
   createTenantAddressApi,
   createTenantOrderApi,
   fetchPlaceSuggestionsApi,
@@ -9,6 +10,8 @@ import {
   fetchTenantOrdersApi,
   searchTenantOrdersApi,
   setTenantDefaultAddressApi,
+  type RawTenantCreateOrderResponse,
+  type RawTenantOrderQuoteResponse,
   updateTenantAddressApi,
   type RawMapPlaceSuggestion,
 } from "@swifttrack/api-client"
@@ -30,12 +33,12 @@ export async function fetchTenantOrderQuotesService(
   input: TenantOrderQuoteFormInput
 ): Promise<TenantOrderQuote> {
   const response = await fetchTenantOrderQuoteApi(input)
-  return response.data
+  return mapTenantQuoteResponse(response.data)
 }
 
 export async function createTenantOrderService(input: TenantCreateOrderInput): Promise<{ orderId: string }> {
   const response = await createTenantOrderApi(input)
-  return response.data
+  return mapTenantCreateOrderResponse(response.data)
 }
 
 export async function fetchTenantAddressesService(): Promise<TenantSavedAddress[]> {
@@ -66,6 +69,10 @@ export async function fetchPlaceSuggestionsService(query: string, limit = 5): Pr
   return (response.data.data ?? [])
     .map(mapPlaceSuggestion)
     .filter((item): item is TenantPlaceSuggestion => item !== null)
+}
+
+export async function cancelTenantOrderService(orderId: string): Promise<void> {
+  await cancelTenantOrderApi(orderId)
 }
 
 export async function fetchTenantOrdersService(
@@ -101,6 +108,23 @@ function mapPlaceSuggestion(raw: RawMapPlaceSuggestion): TenantPlaceSuggestion |
     locality: raw.locality,
     latitude,
     longitude,
+  }
+}
+
+function mapTenantQuoteResponse(raw: RawTenantOrderQuoteResponse): TenantOrderQuote {
+  return {
+    quoteSessionId: raw.quoteSessionId,
+    quoteId: raw.quoteId ?? raw.quoteResponse?.quoteId ?? null,
+    selectedType: raw.selectedType ?? null,
+    providerCode: raw.providerCode ?? null,
+    price: typeof raw.quoteResponse?.price === "number" ? raw.quoteResponse.price : 0,
+    currency: raw.quoteResponse?.currency ?? null,
+  }
+}
+
+function mapTenantCreateOrderResponse(raw: RawTenantCreateOrderResponse): { orderId: string } {
+  return {
+    orderId: raw.orderId,
   }
 }
 

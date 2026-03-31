@@ -97,6 +97,10 @@ export default function CreateOrderPage() {
     () => addresses.find((address) => address.id === dropSavedAddressId) ?? null,
     [addresses, dropSavedAddressId]
   )
+  const availableDropAddresses = useMemo(
+    () => addresses.filter((address) => address.id !== pickupAddressId),
+    [addresses, pickupAddressId]
+  )
 
   useEffect(() => {
     void loadAddresses()
@@ -107,6 +111,12 @@ export default function CreateOrderPage() {
       setPickupAddressId(addresses[0].id)
     }
   }, [addresses, pickupAddressId])
+
+  useEffect(() => {
+    if (dropSavedAddressId && dropSavedAddressId === pickupAddressId) {
+      setDropSavedAddressId("")
+    }
+  }, [dropSavedAddressId, pickupAddressId])
 
   useEffect(() => {
     const activeDrop = getActiveDropoff(dropMode, savedDropAddress, dropoffForm)
@@ -248,7 +258,11 @@ export default function CreateOrderPage() {
                   title="Drop"
                   value={getActiveDropoff(dropMode, savedDropAddress, dropoffForm)?.city || "Required"}
                 />
-                <QuickStat icon={Package} title="Quote" value={quote ? `${quote.currency || "INR"} ${quote.price.toFixed(2)}` : "Pending"} />
+                <QuickStat
+                  icon={Package}
+                  title="Quote"
+                  value={quote && typeof quote.price === "number" ? `${quote.currency || "INR"} ${quote.price.toFixed(2)}` : "Pending"}
+                />
               </div>
             </div>
           </CardContent>
@@ -319,16 +333,16 @@ export default function CreateOrderPage() {
               </div>
 
               {dropMode === "saved" ? (
-                addresses.length === 0 ? (
+                availableDropAddresses.length === 0 ? (
                   <EmptyState
-                    title="No saved addresses available"
-                    description="Add an address first, then you can use it for dropoff as well."
+                    title="No alternate drop address available"
+                    description="Add another saved address or use the one-time drop option. Pickup and drop cannot be the same saved address."
                     actionLabel="Open address book"
                     href="/tenant/addresses"
                   />
                 ) : (
                   <div className="grid gap-4">
-                    {addresses.map((address) => (
+                    {availableDropAddresses.map((address) => (
                       <AddressSelectionCard
                         key={`drop-${address.id}`}
                         address={address}
@@ -437,7 +451,7 @@ export default function CreateOrderPage() {
                 {quote ? (
                   <div className="space-y-2">
                     <div className="text-3xl font-semibold tracking-tight text-slate-950">
-                      {quote.currency || "INR"} {quote.price.toFixed(2)}
+                      {quote.currency || "INR"} {typeof quote.price === "number" ? quote.price.toFixed(2) : "0.00"}
                     </div>
                     <div className="text-sm text-slate-600">
                       {quote.providerCode || "SwiftTrack"} via {quote.selectedType || "default routing"}

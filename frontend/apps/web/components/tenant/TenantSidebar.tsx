@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, MapPinHouse, Package, Users, Wallet } from "lucide-react"
+import { BookOpenText, LayoutDashboard, MapPinHouse, Package, Users, Wallet } from "lucide-react"
 import { useAuthStore } from "@/store/useAuthStore"
 
 export default function TenantSidebar() {
@@ -13,6 +13,7 @@ export default function TenantSidebar() {
     { name: "Dashboard", href: "/tenant/dashboard", icon: LayoutDashboard },
     { name: "Orders", href: "/tenant/orders", icon: Package },
     { name: "Addresses", href: "/tenant/addresses", icon: MapPinHouse },
+    { name: "Docs", href: "/tenant/docs", icon: BookOpenText },
     { name: "Finance", href: "/tenant/finance", icon: Wallet },
     { name: "Team Management", href: "/tenant/team", icon: Users },
   ]

@@ -62,7 +62,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 p-4 relative overflow-hidden">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-50 px-4 pb-8 pt-24 dark:bg-slate-950 sm:px-6 sm:pb-10 sm:pt-28">
       <div className="absolute top-1/4 -left-20 w-72 h-72 bg-primary/20 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob" />
       <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-purple-500/20 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-2000" />
 
@@ -70,9 +70,9 @@ export default function LoginPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-md z-10"
+        className="z-10 w-full max-w-md"
       >
-        <div className="text-center mb-10">
+        <div className="mb-8 text-center sm:mb-10">
           <motion.h1
             className="text-4xl font-bold gradient-text tracking-tight mb-2"
             initial={{ scale: 0.9 }}
@@ -83,7 +83,7 @@ export default function LoginPage() {
           <p className="text-muted-foreground">Premium Fleet &amp; Order Management</p>
         </div>
 
-        <Card className="glass-card">
+        <Card className="glass-card max-h-[calc(100svh-8.5rem)] overflow-y-auto sm:max-h-none">
           <CardHeader>
             <CardTitle className="text-2xl">Welcome Back</CardTitle>
             <CardDescription>

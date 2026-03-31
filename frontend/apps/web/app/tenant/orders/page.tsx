@@ -6,11 +6,13 @@ import Link from "next/link"
 import {
   AlertTriangle,
   CalendarDays,
+  CircleSlash,
   ChevronLeft,
   ChevronRight,
   Clock3,
   Download,
   Filter,
+  Loader2,
   MapPin,
   PackageCheck,
   PackageSearch,
@@ -20,9 +22,11 @@ import {
 } from "lucide-react"
 import {
   buildFallbackTenantOrderDetails,
+  cancelTenantOrderService,
   fetchTenantOrderDetailsService,
   fetchTenantOrderTrackingService,
 } from "@swifttrack/services"
+import { toast } from "sonner"
 import type { TenantOrderDetailsResponse, TenantOrderTrackingResponse } from "@swifttrack/types"
 import { TenantOrderDetailsSheet } from "@/components/tenant/TenantOrderDetailsSheet"
 import { useTenantOrders } from "@/hooks/useTenantOrders"
@@ -43,7 +47,7 @@ const statusTone = {
 } as const
 
 export default function TenantOrdersPage() {
-  const { orders, loading, error, query, setQuery, dateRange, setDateRange, page, setPage, pagination } =
+  const { orders, loading, error, query, setQuery, dateRange, setDateRange, page, setPage, pagination, refresh } =
     useTenantOrders()
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
@@ -51,6 +55,7 @@ export default function TenantOrdersPage() {
   const [detailsError, setDetailsError] = useState<string | null>(null)
   const [orderDetails, setOrderDetails] = useState<TenantOrderDetailsResponse | null>(null)
   const [orderTracking, setOrderTracking] = useState<TenantOrderTrackingResponse | null>(null)
+  const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null)
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -115,6 +120,24 @@ export default function TenantOrdersPage() {
   function openOrderDetails(orderId: string) {
     setSelectedOrderId(orderId)
     setDetailsOpen(true)
+  }
+
+  async function handleCancelOrder(orderId: string) {
+    setCancellingOrderId(orderId)
+    try {
+      await cancelTenantOrderService(orderId)
+      toast.success("Order cancelled successfully")
+      refresh()
+      if (selectedOrderId === orderId) {
+        setDetailsOpen(false)
+        setSelectedOrderId(null)
+      }
+    } catch (cancelError) {
+      console.error("Order cancellation failed", cancelError)
+      toast.error("Failed to cancel order")
+    } finally {
+      setCancellingOrderId(null)
+    }
   }
 
   const summaryCards = [
@@ -262,7 +285,7 @@ export default function TenantOrdersPage() {
           ) : (
             <div className="overflow-hidden rounded-3xl border border-slate-200">
               <div className="overflow-x-auto">
-                <table className="min-w-[980px] w-full text-left">
+                <table className="min-w-[1080px] w-full text-left">
                   <thead className="bg-slate-50">
                     <tr>
                       <th className="px-4 py-3 text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Tracking ID</th>
@@ -271,6 +294,7 @@ export default function TenantOrdersPage() {
                       <th className="px-4 py-3 text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Operator</th>
                       <th className="px-4 py-3 text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Status</th>
                       <th className="px-4 py-3 text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Created</th>
+                      <th className="px-4 py-3 text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 bg-white">
@@ -300,11 +324,36 @@ export default function TenantOrdersPage() {
                           <StatusBadge status={order.orderStatus} />
                         </td>
                         <td className="px-4 py-4 text-sm text-slate-500">{formatDate(order.createdAt)}</td>
+                        <td className="px-4 py-4">
+                          {canCancelOrder(order.orderStatus) ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="rounded-full border-rose-200 bg-white text-rose-700 hover:bg-rose-50 hover:text-rose-800"
+                              disabled={cancellingOrderId === order.id}
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                void handleCancelOrder(order.id)
+                              }}
+                            >
+                              {cancellingOrderId === order.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <CircleSlash className="h-4 w-4" />
+                              )}
+                              Cancel
+                            </Button>
+                          ) : (
+                            <span className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400">
+                              Not cancellable
+                            </span>
+                          )}
+                        </td>
                       </tr>
                     ))}
                     {orders.items.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-4 py-12 text-center text-sm text-slate-500">
+                        <td colSpan={7} className="px-4 py-12 text-center text-sm text-slate-500">
                           No tenant orders matched the current search or date range.
                         </td>
                       </tr>
@@ -420,4 +469,8 @@ function formatDate(date: string) {
     month: "short",
     year: "numeric",
   }).format(new Date(date))
+}
+
+function canCancelOrder(status: string) {
+  return status === "CREATED" || status === "ASSIGNED"
 }
