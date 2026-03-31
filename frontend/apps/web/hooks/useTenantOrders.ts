@@ -37,6 +37,7 @@ export function useTenantOrders() {
   const [dateRange, setDateRange] = useState(createDefaultDateRange())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
   const deferredQuery = useDeferredValue(query)
 
   useEffect(() => {
@@ -81,7 +82,7 @@ export function useTenantOrders() {
     return () => {
       active = false
     }
-  }, [dateRange.endDate, dateRange.startDate, deferredQuery, page, size])
+  }, [dateRange.endDate, dateRange.startDate, deferredQuery, page, reloadKey, size])
 
   const pagination = useMemo(
     () => ({
@@ -106,5 +107,6 @@ export function useTenantOrders() {
     size,
     setSize,
     pagination,
+    refresh: () => setReloadKey((current) => current + 1),
   }
 }
