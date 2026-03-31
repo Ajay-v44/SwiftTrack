@@ -34,6 +34,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { useTenantSetupGuard } from "@/hooks/useTenantSetupGuard"
 
 const statusTone = {
   CREATED: "bg-slate-100 text-slate-700",
@@ -47,6 +48,7 @@ const statusTone = {
 } as const
 
 export default function TenantOrdersPage() {
+  const { createOrderHref } = useTenantSetupGuard()
   const { orders, loading, error, query, setQuery, dateRange, setDateRange, page, setPage, pagination, refresh } =
     useTenantOrders()
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null)
@@ -192,7 +194,7 @@ export default function TenantOrdersPage() {
                 </p>
               </div>
               <Button asChild className="rounded-full bg-slate-950 text-white hover:bg-slate-800">
-                <Link href="/tenant/orders/create">
+                <Link href={createOrderHref}>
                   <PlusCircle className="h-4 w-4" />
                   Create Order
                 </Link>

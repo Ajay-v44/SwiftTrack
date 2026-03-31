@@ -23,6 +23,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { useTenantSetupGuard } from "@/hooks/useTenantSetupGuard"
 
 const currencyFormatter = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -45,6 +46,7 @@ const statusMeta = {
 
 export function TenantDashboardScreen() {
   const { user } = useAuthStore()
+  const { createOrderHref } = useTenantSetupGuard()
   const {
     overview,
     analytics,
@@ -128,7 +130,7 @@ export function TenantDashboardScreen() {
 
             <div className="flex flex-wrap gap-3">
               <Button asChild className="rounded-full bg-slate-950 text-white hover:bg-slate-800">
-                <Link href="/tenant/orders/create">Create Order</Link>
+                <Link href={createOrderHref}>Create Order</Link>
               </Button>
               <Button asChild variant="outline" className="rounded-full border-slate-300 bg-white">
                 <Link href="/tenant/finance">Top Up Wallet</Link>

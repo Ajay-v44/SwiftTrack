@@ -2,11 +2,12 @@
 
 import {
   Activity,
-  Clock3,
   CreditCard,
+  Dot,
   MapPinned,
   PackageSearch,
-  Truck,
+  ShieldCheck,
+  TimerReset,
   UserRound,
 } from "lucide-react"
 import type {
@@ -85,6 +86,8 @@ export function TenantOrderDetailsSheet({
   const currentLocation = tracking?.currentLocation || details?.currentLocation || null
   const trackingStatus = tracking?.trackingStatus || details?.trackingStatus || details?.orderStatus || "Unknown"
   const statusToneClass = statusTone[trackingStatus] || "bg-slate-100 text-slate-700 border-slate-200"
+  const routeConfidence = currentLocation ? "Live signal available" : "Waiting for live signal"
+  const routePhase = currentLocation ? "Vehicle on route" : "Route staged"
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -129,25 +132,25 @@ export function TenantOrderDetailsSheet({
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <InfoCard
                   icon={PackageSearch}
-                  label="Order Status"
-                  value={details.orderStatus}
-                  helper={`Tracking: ${trackingStatus}`}
+                  label="Current State"
+                  value={trackingStatus}
+                  helper={`Order lifecycle: ${details.orderStatus}`}
                 />
                 <InfoCard
-                  icon={Clock3}
-                  label="Last Status Update"
-                  value={formatDateTime(tracking?.lastStatusUpdatedAt || details.lastStatusUpdatedAt)}
-                  helper={`Created ${formatDateTime(details.createdAt)}`}
+                  icon={TimerReset}
+                  label="Route Phase"
+                  value={routePhase}
+                  helper={routeConfidence}
                 />
                 <InfoCard
                   icon={Activity}
-                  label="Last Location Update"
+                  label="Last GPS Update"
                   value={formatDateTime(tracking?.lastLocationUpdatedAt || details.lastLocationUpdatedAt)}
                   helper={currentLocation ? "Latest tracked order position available" : "No tracked position yet"}
                 />
                 <InfoCard
-                  icon={Truck}
-                  label="Provider / Assignment"
+                  icon={ShieldCheck}
+                  label="Dispatch Source"
                   value={details.selectedProviderCode || "Internal"}
                   helper={details.assignedDriverId ? `Driver ${details.assignedDriverId.slice(0, 8)}` : "Driver pending"}
                 />
@@ -155,45 +158,72 @@ export function TenantOrderDetailsSheet({
 
               <Card className="border-slate-200 bg-white shadow-sm">
                 <CardHeader className="border-b border-slate-100 pb-4">
-                  <CardTitle className="flex items-center gap-2 text-lg text-slate-950">
-                    <MapPinned className="h-5 w-5 text-slate-700" />
-                    Live Route Map
-                  </CardTitle>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <CardTitle className="flex items-center gap-2 text-lg text-slate-950">
+                      <MapPinned className="h-5 w-5 text-slate-700" />
+                      Live Tracking
+                    </CardTitle>
+                    <div className="flex flex-wrap items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-600">
+                      <Dot className="h-4 w-4 text-emerald-500" />
+                      Tracking focus: pickup, live position, dropoff
+                    </div>
+                  </div>
                 </CardHeader>
-                <CardContent className="space-y-4 pt-5">
+                <CardContent className="space-y-5 pt-5">
                   <TenantOrderMap
                     pickup={details.pickup}
                     dropoff={details.dropoff}
                     driverLocation={currentLocation}
+                    trackingStatus={trackingStatus}
                   />
-                  <div className="grid gap-3 md:grid-cols-3">
-                    <RouteCard
-                      title="Pickup"
-                      subtitle={formatLocationLine(
-                        details.pickup?.city,
-                        details.pickup?.state,
-                        details.pickup?.locality
-                      )}
-                      meta={formatCoordinates(details.pickup?.latitude, details.pickup?.longitude)}
-                    />
-                    <RouteCard
-                      title="Latest Position"
-                      subtitle={
-                        currentLocation
-                          ? formatCoordinates(currentLocation.latitude, currentLocation.longitude)
-                          : "No tracked position yet"
-                      }
-                      meta={formatDateTime(currentLocation?.updatedAt)}
-                    />
-                    <RouteCard
-                      title="Drop"
-                      subtitle={formatLocationLine(
-                        details.dropoff?.city,
-                        details.dropoff?.state,
-                        details.dropoff?.locality
-                      )}
-                      meta={formatCoordinates(details.dropoff?.latitude, details.dropoff?.longitude)}
-                    />
+                  <div className="grid gap-3 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
+                    <div className="grid gap-3 md:grid-cols-3">
+                      <RouteCard
+                        title="Pickup"
+                        subtitle={formatLocationLine(
+                          details.pickup?.city,
+                          details.pickup?.state,
+                          details.pickup?.locality
+                        )}
+                        meta={formatCoordinates(details.pickup?.latitude, details.pickup?.longitude)}
+                        tone="teal"
+                      />
+                      <RouteCard
+                        title="Live Position"
+                        subtitle={
+                          currentLocation
+                            ? formatCoordinates(currentLocation.latitude, currentLocation.longitude)
+                            : "No tracked position yet"
+                        }
+                        meta={formatDateTime(currentLocation?.updatedAt)}
+                        tone="amber"
+                      />
+                      <RouteCard
+                        title="Dropoff"
+                        subtitle={formatLocationLine(
+                          details.dropoff?.city,
+                          details.dropoff?.state,
+                          details.dropoff?.locality
+                        )}
+                        meta={formatCoordinates(details.dropoff?.latitude, details.dropoff?.longitude)}
+                        tone="blue"
+                      />
+                    </div>
+                    <div className="rounded-3xl border border-slate-200 bg-slate-950 p-5 text-white shadow-sm">
+                      <p className="text-[11px] uppercase tracking-[0.22em] text-slate-400">Tracking Summary</p>
+                      <p className="mt-3 text-lg font-semibold text-white">{trackingStatus}</p>
+                      <div className="mt-4 space-y-3 text-sm text-slate-300">
+                        <SummaryRow label="Order Created" value={formatDateTime(details.createdAt)} />
+                        <SummaryRow
+                          label="Status Updated"
+                          value={formatDateTime(tracking?.lastStatusUpdatedAt || details.lastStatusUpdatedAt)}
+                        />
+                        <SummaryRow
+                          label="Location Updated"
+                          value={formatDateTime(tracking?.lastLocationUpdatedAt || details.lastLocationUpdatedAt)}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -210,7 +240,7 @@ export function TenantOrderDetailsSheet({
                         .reverse()
                         .map((event) => (
                           <div key={event.id} className="flex gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                            <div className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-slate-900" />
+                            <div className="mt-1.5 flex h-3 w-3 shrink-0 rounded-full bg-slate-900 ring-4 ring-slate-200/80" />
                             <div className="min-w-0 space-y-1">
                               <div className="flex flex-wrap items-center gap-2">
                                 <Badge variant="outline" className={`rounded-full ${statusTone[event.status || ""] || "bg-slate-100 text-slate-700 border-slate-200"}`}>
@@ -331,12 +361,37 @@ function InfoCard({
   )
 }
 
-function RouteCard({ title, subtitle, meta }: { title: string; subtitle: string; meta: string }) {
+function RouteCard({
+  title,
+  subtitle,
+  meta,
+  tone,
+}: {
+  title: string
+  subtitle: string
+  meta: string
+  tone: "teal" | "amber" | "blue"
+}) {
+  const toneClass = {
+    teal: "border-teal-100 bg-teal-50/70",
+    amber: "border-amber-100 bg-amber-50/70",
+    blue: "border-blue-100 bg-blue-50/70",
+  }
+
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+    <div className={`rounded-2xl border p-4 ${toneClass[tone]}`}>
       <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">{title}</p>
       <p className="mt-2 text-sm font-medium text-slate-900">{subtitle}</p>
       <p className="mt-1 text-xs text-slate-500">{meta}</p>
+    </div>
+  )
+}
+
+function SummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 border-b border-white/8 pb-3 last:border-b-0 last:pb-0">
+      <span className="text-slate-400">{label}</span>
+      <span className="text-right font-medium text-white">{value}</span>
     </div>
   )
 }

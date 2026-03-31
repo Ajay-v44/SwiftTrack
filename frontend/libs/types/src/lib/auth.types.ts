@@ -27,3 +27,18 @@ export interface LoginResponse {
   accessToken: string
   tokenType?: string
 }
+
+export interface TenantRegisterInput {
+  name: string
+  email: string
+  mobile: string
+  password: string
+}
+
+export interface TenantSetupStatus {
+  companyRegistered: boolean
+  providersConfigured: boolean
+  deliveryPreferencesConfigured: boolean
+  setupComplete: boolean
+  nextStep: "company" | "providers" | "delivery" | "complete"
+}

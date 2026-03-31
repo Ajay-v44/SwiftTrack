@@ -33,12 +33,15 @@ public class CompanyService {
     }
 
     public Message registerCompany(String token, java.util.UUID id, RegisterOrg registerOrg) {
-        // validation
+        if (companyRepository.existsById(id)) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "Company already registered for this tenant");
+        }
+
         if (companyRepository.findByTenantCode(registerOrg.tenantCode()) != null ||
                 companyRepository.findByOrganizationName(registerOrg.organizationName()) != null ||
-                companyRepository.findByOrganizationEmail(registerOrg.organizationEmail()) != null ||
-                companyRepository.findByOrganizationPhone(registerOrg.organizationPhone()) != null ||
-                companyRepository.findByOrganizationWebsite(registerOrg.organizationWebsite()) != null)
+                (hasText(registerOrg.organizationEmail()) && companyRepository.findByOrganizationEmail(registerOrg.organizationEmail()) != null) ||
+                (hasText(registerOrg.organizationPhone()) && companyRepository.findByOrganizationPhone(registerOrg.organizationPhone()) != null) ||
+                (hasText(registerOrg.organizationWebsite()) && companyRepository.findByOrganizationWebsite(registerOrg.organizationWebsite()) != null))
             throw new CustomException(HttpStatus.BAD_REQUEST, "Company already exists");
         TenantModel company = new TenantModel();
         company.setId(id);
@@ -59,6 +62,10 @@ public class CompanyService {
         billingAndSettlementInterface.createAccount(token, id, AccountType.TENANT);
 
         return new Message("Company Registered Successfully");
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 
     public Message addTenantUsers(String token, List<AddTenantUsers> addTenantUsers) {

@@ -1,247 +1,510 @@
-"use client";
+"use client"
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/store/useAuthStore";
-import { useTenantCompanySetup } from "@/hooks/useTenantCompanySetup";
-import { toast } from "sonner";
-import { Building2, FileCheck, CheckCircle2, ShieldCheck, Loader2, Info } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { CompanyRegistrationInput } from "@swifttrack/types";
+import { Suspense, useEffect, useMemo, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { Building2, CheckCircle2, Loader2, Network, Route, ShieldAlert } from "lucide-react"
+import { toast } from "sonner"
+import {
+  configureTenantProvidersService,
+  fetchActiveDeliveryOptionsService,
+  fetchAvailableProvidersService,
+  fetchConfiguredTenantProvidersService,
+  fetchTenantDeliveryConfigurationService,
+  fetchTenantSetupStatusService,
+  registerTenantCompanyService,
+  saveTenantDeliveryConfigurationService,
+} from "@swifttrack/services"
+import type {
+  CompanyRegistrationInput,
+  DeliveryOptionResponse,
+  ProviderSummary,
+  TenantDeliveryPriorityInput,
+  TenantSetupStatus,
+} from "@swifttrack/types"
+import { useAuthStore } from "@/store/useAuthStore"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
-export default function CompanySetupPage() {
-  const router = useRouter();
-  const { user } = useAuthStore();
-  const { isLoading, submit } = useTenantCompanySetup();
+type SetupStep = "company" | "providers" | "delivery"
 
-  const [formData, setFormData] = useState<CompanyRegistrationInput>({
-    legalName: "",
-    registrationNumber: "",
-    incorporationDate: "",
-    industryVertical: "Third-Party Logistics (3PL)",
-  });
+const DEFAULT_COMPANY_FORM: CompanyRegistrationInput = {
+  legalName: "",
+  registrationNumber: "",
+  incorporationDate: "",
+  industryVertical: "Third-Party Logistics (3PL)",
+}
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user?.id) {
-      toast.error("User ID not found. Please log in again.");
-      return;
+const STEP_ORDER: SetupStep[] = ["company", "providers", "delivery"]
+
+export default function TenantSetupPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-slate-500" />
+      </div>
+    }>
+      <TenantSetupPageContent />
+    </Suspense>
+  )
+}
+
+function TenantSetupPageContent() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { user } = useAuthStore()
+
+  const [setupStatus, setSetupStatus] = useState<TenantSetupStatus | null>(null)
+  const [loadingStatus, setLoadingStatus] = useState(true)
+  const [companySaving, setCompanySaving] = useState(false)
+  const [providerSaving, setProviderSaving] = useState(false)
+  const [deliverySaving, setDeliverySaving] = useState(false)
+
+  const [companyForm, setCompanyForm] = useState<CompanyRegistrationInput>(DEFAULT_COMPANY_FORM)
+  const [providers, setProviders] = useState<ProviderSummary[]>([])
+  const [selectedProviderIds, setSelectedProviderIds] = useState<string[]>([])
+  const [deliveryOptions, setDeliveryOptions] = useState<DeliveryOptionResponse[]>([])
+  const [deliveryOrder, setDeliveryOrder] = useState<string[]>([])
+
+  const requestedStep = searchParams.get("step")
+  const currentStep = useMemo<SetupStep>(() => {
+    const fallbackStep =
+      setupStatus?.nextStep === "providers" || setupStatus?.nextStep === "delivery" ? setupStatus.nextStep : "company"
+
+    if (requestedStep === "providers" || requestedStep === "delivery" || requestedStep === "company") {
+      const requestedIndex = STEP_ORDER.indexOf(requestedStep)
+      const fallbackIndex = STEP_ORDER.indexOf(fallbackStep)
+      return requestedIndex > fallbackIndex ? fallbackStep : requestedStep
     }
 
+    return fallbackStep
+  }, [requestedStep, setupStatus?.nextStep])
+
+  useEffect(() => {
+    void bootstrap()
+  }, [])
+
+  async function bootstrap() {
+    setLoadingStatus(true)
     try {
-      await submit(user.id, formData);
-      toast.success("Organization details saved successfully!");
-      // Proceed to the command center
-      router.push("/tenant/dashboard");
-    } catch (error: unknown) {
-      console.error(error);
-      toast.error("Failed to register company");
-    }
-  };
+      const status = await fetchTenantSetupStatusService()
+      setSetupStatus(status)
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
+      if (status.setupComplete) {
+        router.replace("/tenant/dashboard")
+        return
+      }
+
+      await Promise.all([loadProviders(), loadDeliveryOptions()])
+    } catch (error) {
+      console.error(error)
+      toast.error("Failed to load tenant setup state")
+    } finally {
+      setLoadingStatus(false)
+    }
+  }
+
+  async function loadProviders() {
+    const [availableProviders, configuredProviders] = await Promise.all([
+      fetchAvailableProvidersService(),
+      fetchConfiguredTenantProvidersService().catch(() => []),
+    ])
+
+    setProviders(availableProviders)
+    setSelectedProviderIds(configuredProviders.map((provider) => provider.id))
+  }
+
+  async function loadDeliveryOptions() {
+    const [options, configured] = await Promise.all([
+      fetchActiveDeliveryOptionsService(),
+      fetchTenantDeliveryConfigurationService().catch(() => []),
+    ])
+
+    setDeliveryOptions(options)
+    if (configured.length > 0) {
+      const configuredOrder = configured
+        .slice()
+        .sort((left, right) => left.priority - right.priority)
+        .map((item) => item.optionType)
+      setDeliveryOrder(configuredOrder)
+      return
+    }
+
+    setDeliveryOrder(options.map((option) => option.optionType))
+  }
+
+  function updateStep(step: SetupStep) {
+    router.replace(`/tenant/setup?step=${step}`)
+  }
+
+  async function refreshStatus(nextStepFallback: SetupStep) {
+    const status = await fetchTenantSetupStatusService()
+    setSetupStatus(status)
+
+    if (status.setupComplete) {
+      toast.success("Tenant setup completed")
+      router.replace("/tenant/dashboard")
+      return
+    }
+
+    updateStep((status.nextStep === "complete" ? nextStepFallback : status.nextStep) as SetupStep)
+  }
+
+  async function handleCompanySubmit(event: React.FormEvent) {
+    event.preventDefault()
+    if (!user?.id) {
+      toast.error("Please log in again")
+      return
+    }
+
+    setCompanySaving(true)
+    try {
+      await registerTenantCompanyService(user.id, companyForm)
+      toast.success("Company details saved")
+      await refreshStatus("providers")
+    } catch (error) {
+      console.error(error)
+      toast.error("Failed to save company details")
+    } finally {
+      setCompanySaving(false)
+    }
+  }
+
+  async function handleProvidersSubmit() {
+    if (selectedProviderIds.length === 0) {
+      toast.error("Select at least one external provider")
+      return
+    }
+
+    setProviderSaving(true)
+    try {
+      await configureTenantProvidersService(selectedProviderIds)
+      toast.success("External providers configured")
+      await refreshStatus("delivery")
+    } catch (error) {
+      console.error(error)
+      toast.error("Failed to configure providers")
+    } finally {
+      setProviderSaving(false)
+    }
+  }
+
+  async function handleDeliverySubmit() {
+    if (deliveryOrder.length === 0) {
+      toast.error("Choose at least one delivery preference")
+      return
+    }
+
+    const payload: TenantDeliveryPriorityInput[] = deliveryOrder.map((deliveryOption, index) => ({
+      deliveryOption,
+      priority: index + 1,
+    }))
+
+    setDeliverySaving(true)
+    try {
+      await saveTenantDeliveryConfigurationService(payload)
+      toast.success("Delivery preferences saved")
+      await refreshStatus("delivery")
+    } catch (error) {
+      console.error(error)
+      toast.error("Failed to save delivery preferences")
+    } finally {
+      setDeliverySaving(false)
+    }
+  }
+
+  function toggleProvider(providerId: string) {
+    setSelectedProviderIds((current) =>
+      current.includes(providerId) ? current.filter((id) => id !== providerId) : [...current, providerId]
+    )
+  }
+
+  function moveDeliveryOption(optionType: string, direction: "up" | "down") {
+    setDeliveryOrder((current) => {
+      const index = current.indexOf(optionType)
+      if (index === -1) {
+        return current
+      }
+
+      const targetIndex = direction === "up" ? index - 1 : index + 1
+      if (targetIndex < 0 || targetIndex >= current.length) {
+        return current
+      }
+
+      const next = [...current]
+      const [item] = next.splice(index, 1)
+      next.splice(targetIndex, 0, item)
+      return next
+    })
+  }
+
+  function toggleDeliveryOption(optionType: string) {
+    setDeliveryOrder((current) =>
+      current.includes(optionType) ? current.filter((item) => item !== optionType) : [...current, optionType]
+    )
+  }
+
+  const stepState = {
+    company: setupStatus?.companyRegistered ?? false,
+    providers: setupStatus?.providersConfigured ?? false,
+    delivery: setupStatus?.deliveryPreferencesConfigured ?? false,
+  }
+
+  if (loadingStatus) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-slate-500" />
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-[#0b1326] text-[#dae2fd] font-['Inter'] flex flex-col items-center py-20 px-6">
-      
-      {/* Header Section */}
-      <div className="text-center mb-16 max-w-2xl">
-        <h1 className="text-xl font-black mb-6 bg-gradient-to-r from-[#3e5bf2] to-[#00dce5] bg-clip-text text-transparent inline-block tracking-tight">
-          SwiftTrack
-        </h1>
-        <h2 className="font-['Manrope'] text-5xl font-extrabold text-white mb-4 tracking-tight">
-          Company Registration
-        </h2>
-        <p className="text-[#c5c5d8] text-lg">
-          Set up your command center and begin orchestrating your logistics network.
-        </p>
-      </div>
-
-      {/* Stepper Indicator */}
-      <div className="flex items-center justify-between w-full max-w-3xl mb-16 relative">
-        <div className="absolute top-6 left-0 w-full h-0.5 bg-[#2d3449] -z-10">
-          <div className="h-full bg-gradient-to-r from-[#3e5bf2] to-[#00dce5] w-1/4"></div>
-        </div>
-
-        <div className="flex flex-col items-center gap-4 cursor-default">
-          <div className="w-12 h-12 rounded-full bg-[#3e5bf2] text-white flex items-center justify-center font-bold ring-4 ring-[#3e5bf2]/20 outline outline-8 outline-[#0b1326]">
-            <Building2 className="w-5 h-5" />
-          </div>
-          <span className="text-xs font-bold text-[#bac3ff] uppercase tracking-widest tracking-[0.2em] mt-1 space-y-1">Basic Info</span>
-        </div>
-
-        <div className="flex flex-col items-center gap-4 opacity-50 cursor-not-allowed">
-          <div className="w-12 h-12 rounded-full bg-[#2d3449] text-[#c5c5d8] flex items-center justify-center font-bold outline outline-8 outline-[#0b1326]">
-            <FileCheck className="w-5 h-5" />
-          </div>
-          <span className="text-xs font-bold text-[#c5c5d8] uppercase tracking-[0.2em] mt-1">Contact</span>
-        </div>
-
-        <div className="flex flex-col items-center gap-4 opacity-50 cursor-not-allowed">
-          <div className="w-12 h-12 rounded-full bg-[#2d3449] text-[#c5c5d8] flex items-center justify-center font-bold outline outline-8 outline-[#0b1326]">
-            <ShieldCheck className="w-5 h-5" />
-          </div>
-          <span className="text-xs font-bold text-[#c5c5d8] uppercase tracking-[0.2em] mt-1">Verification</span>
-        </div>
-
-        <div className="flex flex-col items-center gap-4 opacity-50 cursor-not-allowed">
-          <div className="w-12 h-12 rounded-full bg-[#2d3449] text-[#c5c5d8] flex items-center justify-center font-bold outline outline-8 outline-[#0b1326]">
-            <CheckCircle2 className="w-5 h-5" />
-          </div>
-          <span className="text-xs font-bold text-[#c5c5d8] uppercase tracking-[0.2em] mt-1">Complete</span>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 w-full max-w-5xl">
-        
-        {/* Main Form Box */}
-        <div className="lg:col-span-3 bg-[#131b2e] border border-white/5 rounded-[2rem] p-10 shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-8 pt-10 text-[6rem] font-black text-white/5 leading-none select-none pointer-events-none font-['Manrope']">01</div>
-          
-          <h3 className="font-['Manrope'] text-2xl font-bold text-white mb-10 pb-6 border-b border-[#2d3449]/50 relative">
-            Establish Identity
-          </h3>
-
-          <form onSubmit={handleSubmit} className="space-y-8">
-            <div className="space-y-3">
-              <label className="text-[10px] uppercase font-bold tracking-widest text-[#bac3ff]">Legal Company Name</label>
-              <input
-                type="text"
-                name="legalName"
-                required
-                value={formData.legalName}
-                onChange={handleChange}
-                placeholder="e.g. Global Logistics Corp"
-                className="w-full bg-[#171f33] border-none rounded-xl px-5 py-4 text-[#dae2fd] text-sm focus:ring-2 focus:ring-[#3e5bf2]/50 placeholder:text-[#c5c5d8]/50 transition-all font-medium"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-6">
-              <div className="space-y-3">
-                <label className="text-[10px] uppercase font-bold tracking-widest text-[#bac3ff]">Registration Number</label>
-                <input
-                  type="text"
-                  name="registrationNumber"
-                  required
-                  value={formData.registrationNumber}
-                  onChange={handleChange}
-                  placeholder="REG-2024-XXXX"
-                  className="w-full bg-[#171f33] border-none rounded-xl px-5 py-4 text-[#dae2fd] text-sm focus:ring-2 focus:ring-[#3e5bf2]/50 placeholder:text-[#c5c5d8]/50 transition-all font-medium"
-                />
-              </div>
-
-              <div className="space-y-3">
-                <label className="text-[10px] uppercase font-bold tracking-widest text-[#bac3ff]">Incorporation Date</label>
-                <div className="relative">
-                  <input
-                    type="date"
-                    name="incorporationDate"
-                    required
-                    value={formData.incorporationDate}
-                    onChange={handleChange}
-                    className="w-full bg-[#171f33] border-none rounded-xl px-5 py-4 text-[#dae2fd] text-sm focus:ring-2 focus:ring-[#3e5bf2]/50 placeholder:text-[#c5c5d8]/50 transition-all font-medium [color-scheme:dark]"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <label className="text-[10px] uppercase font-bold tracking-widest text-[#bac3ff]">Industry Vertical</label>
-              <select
-                name="industryVertical"
-                className="w-full bg-[#171f33] border-none rounded-xl px-5 py-4 text-[#dae2fd] text-sm focus:ring-2 focus:ring-[#3e5bf2]/50 appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23c5c5d8%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3e%3cpolyline points=%226 9 12 15 18 9%22%3e%3c/polyline%3e%3c/svg%3e')] bg-[length:20px_20px] bg-[position:right_1.25rem_center] bg-no-repeat font-medium"
-                required
-                value={formData.industryVertical}
-                onChange={handleChange}
-              >
-                <option value="Third-Party Logistics (3PL)">Third-Party Logistics (3PL)</option>
-                <option value="Freight Forwarding">Freight Forwarding</option>
-                <option value="E-commerce Fulfillment">E-commerce Fulfillment</option>
-                <option value="Direct Carrier">Direct Carrier</option>
-                <option value="Enterprise Fleet">Enterprise Fleet</option>
-              </select>
-            </div>
-
-            <div className="pt-8 flex items-center justify-between border-t border-[#2d3449]/50">
-              <button
-                type="button"
-                className="text-sm font-bold text-[#c5c5d8] hover:text-white transition-colors cursor-pointer"
-                onClick={() => router.back()}
-              >
-                Save Draft
-              </button>
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className="bg-[#3e5bf2] hover:bg-[#2d4ce4] text-white px-8 py-6 rounded-full font-bold text-sm h-auto transition-all active:scale-[0.98] disabled:opacity-70 flex items-center gap-2"
-              >
-                {isLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <>
-                    Continue
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 12h14m-7-7l7 7-7 7" />
-                    </svg>
-                  </>
-                )}
-              </Button>
-            </div>
-          </form>
-        </div>
-
-        {/* Side Info Panel */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-[#171f33] border border-white/5 rounded-[2rem] p-10 shadow-lg h-full flex flex-col justify-center">
-            <div className="w-12 h-12 rounded-xl bg-[#2d4ce4]/20 text-[#3e5bf2] flex items-center justify-center mb-8">
-              <Info className="w-6 h-6" />
-            </div>
-            
-            <h4 className="font-['Manrope'] text-xl font-bold text-white mb-4">Why we need this?</h4>
-            <p className="text-[#c5c5d8] text-sm leading-relaxed mb-8">
-              Providing accurate registration data ensures your account is verified swiftly, granting you immediate access to our global carrier network and financial tools.
-            </p>
-
-            <ul className="space-y-4">
-              <li className="flex items-start gap-3">
-                <div className="w-4 h-4 mt-0.5 rounded-full bg-[#00dce5]/20 flex items-center justify-center shrink-0">
-                  <div className="w-2 h-2 rounded-full bg-[#00dce5]"></div>
-                </div>
-                <span className="text-[#c5c5d8] text-xs leading-relaxed">SEC compliant data encryption</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <div className="w-4 h-4 mt-0.5 rounded-full bg-[#00dce5]/20 flex items-center justify-center shrink-0">
-                  <div className="w-2 h-2 rounded-full bg-[#00dce5]"></div>
-                </div>
-                <span className="text-[#c5c5d8] text-xs leading-relaxed">Automated tax ID validation</span>
-              </li>
-            </ul>
-          </div>
-
-          <div className="bg-gradient-to-br from-[#131b2e] to-[#2d3449] p-6 border border-white/5 rounded-2xl relative overflow-hidden group hover:border-[#3e5bf2]/30 transition-colors">
-            <img 
-              src="https://images.unsplash.com/photo-1586528116311-ad8ed7c83a56?q=80&w=2070&auto=format&fit=crop" 
-              alt="Warehouse blur" 
-              className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-20 group-hover:scale-105 transition-transform duration-700"
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+      <Card className="border-slate-200 bg-white shadow-sm">
+        <CardHeader className="border-b border-slate-100">
+          <CardTitle className="text-2xl text-slate-950">Complete Tenant Onboarding</CardTitle>
+          <CardDescription>
+            Registration creates the tenant admin account. Finish company setup, provider configuration, and delivery
+            preferences before creating orders.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6 pt-6">
+          <div className="grid gap-3 md:grid-cols-3">
+            <StepCard
+              title="Company"
+              description="Register your tenant organization"
+              icon={Building2}
+              active={currentStep === "company"}
+              complete={stepState.company}
             />
-            <div className="relative z-10">
-              <p className="text-white italic font-serif leading-relaxed text-sm mb-4">
-                &ldquo;SwiftTrack transformed our fleet visibility in under 24 hours.&rdquo;
-              </p>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-[#3e5bf2] flex items-center justify-center text-[10px] font-bold">GB</div>
-                <span className="text-[10px] font-bold text-[#00dce5] uppercase tracking-widest">Global Cargo Partners</span>
-              </div>
+            <StepCard
+              title="Providers"
+              description="Enable external delivery providers"
+              icon={Network}
+              active={currentStep === "providers"}
+              complete={stepState.providers}
+            />
+            <StepCard
+              title="Delivery"
+              description="Set delivery preference priority"
+              icon={Route}
+              active={currentStep === "delivery"}
+              complete={stepState.delivery}
+            />
+          </div>
+
+          {currentStep === "company" ? (
+            <form onSubmit={handleCompanySubmit}>
+              <Card className="border-slate-200 shadow-none">
+                <CardHeader>
+                  <CardTitle className="text-lg">Company Registration</CardTitle>
+                  <CardDescription>This creates the tenant organization record tied to your account.</CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-4 md:grid-cols-2">
+                  <Field
+                    id="legalName"
+                    label="Legal Company Name"
+                    value={companyForm.legalName}
+                    onChange={(value) => setCompanyForm((current) => ({ ...current, legalName: value }))}
+                  />
+                  <Field
+                    id="registrationNumber"
+                    label="Registration Number"
+                    value={companyForm.registrationNumber}
+                    onChange={(value) => setCompanyForm((current) => ({ ...current, registrationNumber: value }))}
+                  />
+                  <Field
+                    id="incorporationDate"
+                    label="Incorporation Date"
+                    type="date"
+                    value={companyForm.incorporationDate}
+                    onChange={(value) => setCompanyForm((current) => ({ ...current, incorporationDate: value }))}
+                  />
+                  <div className="space-y-2">
+                    <Label htmlFor="industryVertical">Industry Vertical</Label>
+                    <select
+                      id="industryVertical"
+                      value={companyForm.industryVertical}
+                      onChange={(event) =>
+                        setCompanyForm((current) => ({ ...current, industryVertical: event.target.value }))
+                      }
+                      className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm"
+                    >
+                      <option value="Third-Party Logistics (3PL)">Third-Party Logistics (3PL)</option>
+                      <option value="Freight Forwarding">Freight Forwarding</option>
+                      <option value="E-commerce Fulfillment">E-commerce Fulfillment</option>
+                      <option value="Enterprise Fleet">Enterprise Fleet</option>
+                    </select>
+                  </div>
+                  <div className="md:col-span-2">
+                    <Button type="submit" disabled={companySaving}>
+                      {companySaving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                      Save Company Details
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </form>
+          ) : null}
+
+          {currentStep === "providers" ? (
+            <Card className="border-slate-200 shadow-none">
+              <CardHeader>
+                <CardTitle className="text-lg">Configure External Providers</CardTitle>
+                <CardDescription>Select at least one provider to enable order routing.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-3 md:grid-cols-2">
+                  {providers.map((provider) => {
+                    const selected = selectedProviderIds.includes(provider.id)
+                    return (
+                      <button
+                        key={provider.id}
+                        type="button"
+                        onClick={() => toggleProvider(provider.id)}
+                        className={`rounded-2xl border p-4 text-left transition ${
+                          selected
+                            ? "border-slate-900 bg-slate-900 text-white"
+                            : "border-slate-200 bg-white text-slate-900 hover:border-slate-300"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-semibold">{provider.providerName}</p>
+                            <p className={`mt-1 text-sm ${selected ? "text-slate-200" : "text-slate-500"}`}>
+                              {provider.description || provider.providerCode}
+                            </p>
+                          </div>
+                          {selected ? <CheckCircle2 className="h-5 w-5" /> : null}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+                <Button onClick={handleProvidersSubmit} disabled={providerSaving}>
+                  {providerSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  Save Providers
+                </Button>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {currentStep === "delivery" ? (
+            <Card className="border-slate-200 shadow-none">
+              <CardHeader>
+                <CardTitle className="text-lg">Delivery Preferences</CardTitle>
+                <CardDescription>Order the delivery options by priority for quote and order flows.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {deliveryOptions.length === 0 ? (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    No active delivery options are available yet.
+                  </div>
+                ) : (
+                  deliveryOptions.map((option) => {
+                    const enabled = deliveryOrder.includes(option.optionType)
+                    const priority = enabled ? deliveryOrder.indexOf(option.optionType) + 1 : null
+                    return (
+                      <div key={option.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 p-4">
+                        <div>
+                          <p className="font-medium text-slate-950">{option.optionType}</p>
+                          <p className="text-sm text-slate-500">
+                            {enabled ? `Priority ${priority}` : "Disabled for tenant routing"}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button type="button" variant="outline" onClick={() => toggleDeliveryOption(option.optionType)}>
+                            {enabled ? "Disable" : "Enable"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            disabled={!enabled}
+                            onClick={() => moveDeliveryOption(option.optionType, "up")}
+                          >
+                            Move Up
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            disabled={!enabled}
+                            onClick={() => moveDeliveryOption(option.optionType, "down")}
+                          >
+                            Move Down
+                          </Button>
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+                <Button onClick={handleDeliverySubmit} disabled={deliverySaving || deliveryOrder.length === 0}>
+                  {deliverySaving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  Save Delivery Preferences
+                </Button>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+            <div className="flex items-start gap-2">
+              <ShieldAlert className="mt-0.5 h-4 w-4 text-slate-500" />
+              Your progress is stored on the server. If you leave, log out, or come back later, login resumes from the
+              next incomplete setup step automatically.
             </div>
           </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+function StepCard({
+  title,
+  description,
+  icon: Icon,
+  active,
+  complete,
+}: {
+  title: string
+  description: string
+  icon: typeof Building2
+  active: boolean
+  complete: boolean
+}) {
+  return (
+    <div className={`rounded-3xl border p-4 ${active ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white"} `}>
+      <div className="flex items-center gap-3">
+        <div className={`rounded-2xl p-3 ${active ? "bg-white/10" : "bg-slate-100 text-slate-700"}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <div>
+          <p className="font-semibold">{title}</p>
+          <p className={`text-sm ${active ? "text-slate-200" : "text-slate-500"}`}>{description}</p>
         </div>
       </div>
-      
-      <div className="mt-20 flex justify-center w-full max-w-5xl items-center border-t border-white/5 pt-8 pb-8 text-[#8e8fa1] text-[10px] uppercase font-bold tracking-[0.2em]">
-        <span>POWERED BY SWIFTTRACK KINETIC ENGINE © {new Date().getFullYear()}</span>
-      </div>
+      {complete ? <p className={`mt-3 text-xs font-medium ${active ? "text-emerald-300" : "text-emerald-600"}`}>Completed</p> : null}
     </div>
-  );
+  )
+}
+
+function Field({
+  id,
+  label,
+  type = "text",
+  value,
+  onChange,
+}: {
+  id: string
+  label: string
+  type?: string
+  value: string
+  onChange: (value: string) => void
+}) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
+      <Input id={id} type={type} value={value} onChange={(event) => onChange(event.target.value)} required />
+    </div>
+  )
 }

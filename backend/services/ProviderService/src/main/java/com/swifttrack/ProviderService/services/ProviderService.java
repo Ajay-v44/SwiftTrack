@@ -114,17 +114,18 @@ public class ProviderService {
 
     public Message configureTenantProviders(String token, List<UUID> providers) {
         TokenResponse tokenResponse = authInterface.getUserDetails(token).getBody();
-        if (tokenResponse == null || tokenResponse.tenantId() == null || tokenResponse.tenantId().isEmpty())
+        UUID tenantScopeId = resolveTenantScopeId(tokenResponse);
+        if (tenantScopeId == null)
             throw new CustomException(HttpStatus.FORBIDDEN, "Unauthorized");
         for (UUID providerId : providers) {
             Provider provider = providerRepository.findById(providerId).orElse(null);
             if (provider != null) {
                 TenantProviderConfig existingConfig = tenantProviderConfigRepository
-                        .findByTenantIdAndProviderId(tokenResponse.tenantId().get(), providerId);
+                        .findByTenantIdAndProviderId(tenantScopeId, providerId);
                 if (existingConfig == null) {
                     TenantProviderConfig tenantProviderConfig = new TenantProviderConfig();
                     tenantProviderConfig.setProvider(provider);
-                    tenantProviderConfig.setTenantId(tokenResponse.tenantId().get());
+                    tenantProviderConfig.setTenantId(tenantScopeId);
                     tenantProviderConfig.setEnabled(true);
                     tenantProviderConfig.setCreatedBy(tokenResponse.id());
                     tenantProviderConfig.setUpdatedBy(tokenResponse.id());
@@ -142,9 +143,10 @@ public class ProviderService {
 
     public List<GetProviders> getTenantProviders(String token) {
         TokenResponse tokenResponse = authInterface.getUserDetails(token).getBody();
-        if (tokenResponse == null || tokenResponse.tenantId() == null || tokenResponse.tenantId().isEmpty())
+        UUID tenantScopeId = resolveTenantScopeId(tokenResponse);
+        if (tenantScopeId == null)
             throw new CustomException(HttpStatus.FORBIDDEN, "Unauthorized");
-        return getTenantProvidersByTenantId(tokenResponse.tenantId().get());
+        return getTenantProvidersByTenantId(tenantScopeId);
     }
 
     public List<GetProviders> getTenantProvidersByTenantId(UUID tenantId) {
@@ -167,9 +169,10 @@ public class ProviderService {
 
     public List<TenantProviderConfigResponse> getTenantProviderConfigs(String token) {
         TokenResponse tokenResponse = authInterface.getUserDetails(token).getBody();
-        if (tokenResponse == null || tokenResponse.tenantId() == null || tokenResponse.tenantId().isEmpty())
+        UUID tenantScopeId = resolveTenantScopeId(tokenResponse);
+        if (tenantScopeId == null)
             throw new CustomException(HttpStatus.FORBIDDEN, "Unauthorized");
-        return getTenantProviderConfigsByTenantId(tokenResponse.tenantId().get());
+        return getTenantProviderConfigsByTenantId(tenantScopeId);
     }
 
     public List<TenantProviderConfigResponse> getTenantProviderConfigsByTenantId(UUID tenantId) {
@@ -251,13 +254,14 @@ public class ProviderService {
 
     public Message setTenantProviderStatus(String token, UUID providerId, Boolean enabled, String disabledReason) {
         TokenResponse tokenResponse = authInterface.getUserDetails(token).getBody();
-        if (tokenResponse == null || tokenResponse.tenantId() == null || tokenResponse.tenantId().isEmpty())
+        UUID tenantScopeId = resolveTenantScopeId(tokenResponse);
+        if (tenantScopeId == null)
             throw new CustomException(HttpStatus.FORBIDDEN, "Unauthorized");
         if (enabled == null)
             throw new CustomException(HttpStatus.BAD_REQUEST, "enabled flag is required");
 
         TenantProviderConfig config = tenantProviderConfigRepository
-                .findByTenantIdAndProviderId(tokenResponse.tenantId().get(), providerId);
+                .findByTenantIdAndProviderId(tenantScopeId, providerId);
         if (config == null)
             throw new CustomException(HttpStatus.NOT_FOUND, "Provider config not found for tenant");
 
@@ -270,11 +274,12 @@ public class ProviderService {
 
     public Message removeTenantProvider(String token, UUID providerId) {
         TokenResponse tokenResponse = authInterface.getUserDetails(token).getBody();
-        if (tokenResponse == null || tokenResponse.tenantId() == null || tokenResponse.tenantId().isEmpty())
+        UUID tenantScopeId = resolveTenantScopeId(tokenResponse);
+        if (tenantScopeId == null)
             throw new CustomException(HttpStatus.FORBIDDEN, "Unauthorized");
 
         TenantProviderConfig config = tenantProviderConfigRepository
-                .findByTenantIdAndProviderId(tokenResponse.tenantId().get(), providerId);
+                .findByTenantIdAndProviderId(tenantScopeId, providerId);
         if (config == null)
             throw new CustomException(HttpStatus.NOT_FOUND, "Provider config not found for tenant");
 
@@ -304,5 +309,13 @@ public class ProviderService {
                 tenantProviderConfig.getDisabledReason(),
                 tenantProviderConfig.getCreatedAt(),
                 tenantProviderConfig.getUpdatedAt());
+    }
+
+    private UUID resolveTenantScopeId(TokenResponse tokenResponse) {
+        if (tokenResponse == null || tokenResponse.id() == null) {
+            return null;
+        }
+
+        return tokenResponse.tenantId().orElse(tokenResponse.id());
     }
 }

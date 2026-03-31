@@ -4,7 +4,14 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { AxiosError } from "axios"
 import { toast } from "sonner"
-import { fetchUserDetailsService, loginWithEmailService, loginWithMobileOtpService } from "@swifttrack/services"
+import {
+  fetchTenantSetupStatusService,
+  fetchUserDetailsService,
+  loginWithEmailService,
+  loginWithMobileOtpService,
+  registerTenantService,
+} from "@swifttrack/services"
+import type { TenantRegisterInput, UserDetails } from "@swifttrack/types"
 import { useAuthStore } from "@/store/useAuthStore"
 
 export function useLogin() {
@@ -12,6 +19,17 @@ export function useLogin() {
   const { setAuth, setUser } = useAuthStore()
   const [isLoading, setIsLoading] = useState(false)
   const [otpSent, setOtpSent] = useState(false)
+
+  async function resolveTenantRoute(userDetails: UserDetails) {
+    const setupStatus = await fetchTenantSetupStatusService()
+
+    if (!setupStatus.setupComplete) {
+      router.push(`/tenant/setup?step=${setupStatus.nextStep}`)
+      return
+    }
+
+    router.push("/tenant/dashboard")
+  }
 
   async function handleUserBootstrap(token: string) {
     const userDetails = await fetchUserDetailsService(token)
@@ -28,7 +46,7 @@ export function useLogin() {
       userDetails.type === "TENANT_MANAGER" ||
       userDetails.type === "TENANT_USER"
     ) {
-      router.push(userDetails.tenantId ? "/tenant/dashboard" : "/tenant/setup")
+      await resolveTenantRoute(userDetails)
       return
     }
 
@@ -65,6 +83,23 @@ export function useLogin() {
     }
   }
 
+  async function registerTenant(payload: TenantRegisterInput) {
+    setIsLoading(true)
+    try {
+      await registerTenantService(payload)
+      toast.success("Tenant account created successfully")
+      const { accessToken } = await loginWithEmailService(payload.email, payload.password)
+      setAuth(accessToken)
+      await handleUserBootstrap(accessToken)
+    } catch (error: unknown) {
+      const message = getErrorMessage(error, "Failed to register tenant")
+      toast.error(message)
+      throw error
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   async function loginWithPhone(mobileNum: string, otp: string) {
     setIsLoading(true)
     try {
@@ -94,6 +129,7 @@ export function useLogin() {
     otpSent,
     loginWithEmail,
     loginWithPhone,
+    registerTenant,
   }
 }
   function getErrorMessage(error: unknown, fallback: string) {
