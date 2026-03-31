@@ -1,6 +1,5 @@
 "use client"
 
-import * as React from "react"
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Mail, Phone, Lock, ArrowRight, Loader2, CheckCircle2 } from "lucide-react"
@@ -21,12 +20,18 @@ import {
 import { useLogin } from "@/hooks/useLogin"
 
 export default function LoginPage() {
-  const { isLoading, otpSent, loginWithEmail, loginWithPhone } = useLogin()
+  const { isLoading, otpSent, loginWithEmail, loginWithPhone, registerTenant } = useLogin()
+  const [authMode, setAuthMode] = useState<"login" | "signup">("login")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [mobile, setMobile] = useState("")
   const [otp, setOtp] = useState("")
   const [activeTab, setActiveTab] = useState("email")
+  const [signupName, setSignupName] = useState("")
+  const [signupEmail, setSignupEmail] = useState("")
+  const [signupMobile, setSignupMobile] = useState("")
+  const [signupPassword, setSignupPassword] = useState("")
+  const [signupConfirmPassword, setSignupConfirmPassword] = useState("")
 
   const handleEmailLogin = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -61,6 +66,30 @@ export default function LoginPage() {
     }
   }
 
+  const handleTenantSignup = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!signupName || !signupEmail || !signupMobile || !signupPassword || !signupConfirmPassword) {
+      toast.error("Please fill in all registration fields")
+      return
+    }
+
+    if (signupPassword !== signupConfirmPassword) {
+      toast.error("Passwords do not match")
+      return
+    }
+
+    try {
+      await registerTenant({
+        name: signupName,
+        email: signupEmail,
+        mobile: signupMobile,
+        password: signupPassword,
+      })
+    } catch {
+      return
+    }
+  }
+
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-50 px-4 pb-8 pt-24 dark:bg-slate-950 sm:px-6 sm:pb-10 sm:pt-28">
       <div className="absolute top-1/4 -left-20 w-72 h-72 bg-primary/20 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob" />
@@ -85,12 +114,103 @@ export default function LoginPage() {
 
         <Card className="glass-card max-h-[calc(100svh-8.5rem)] overflow-y-auto sm:max-h-none">
           <CardHeader>
-            <CardTitle className="text-2xl">Welcome Back</CardTitle>
+            <div className="flex rounded-full bg-muted/50 p-1">
+              <button
+                type="button"
+                onClick={() => setAuthMode("login")}
+                className={`flex-1 rounded-full px-4 py-2 text-sm font-medium transition ${
+                  authMode === "login" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
+                }`}
+              >
+                Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => setAuthMode("signup")}
+                className={`flex-1 rounded-full px-4 py-2 text-sm font-medium transition ${
+                  authMode === "signup" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
+                }`}
+              >
+                Register Tenant
+              </button>
+            </div>
+            <CardTitle className="text-2xl">{authMode === "login" ? "Welcome Back" : "Create Tenant Account"}</CardTitle>
             <CardDescription>
-              Choose your preferred login method to continue
+              {authMode === "login"
+                ? "Choose your preferred login method to continue"
+                : "Create your tenant admin account. Company, providers, and delivery preferences come next."}
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {authMode === "signup" ? (
+              <form onSubmit={handleTenantSignup} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="signup-name">Full Name</Label>
+                  <Input
+                    id="signup-name"
+                    placeholder="Ajay Kumar"
+                    value={signupName}
+                    onChange={(event) => setSignupName(event.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-email">Work Email</Label>
+                  <Input
+                    id="signup-email"
+                    type="email"
+                    placeholder="name@company.com"
+                    value={signupEmail}
+                    onChange={(event) => setSignupEmail(event.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-mobile">Mobile Number</Label>
+                  <Input
+                    id="signup-mobile"
+                    type="tel"
+                    placeholder="+91 9876543210"
+                    value={signupMobile}
+                    onChange={(event) => setSignupMobile(event.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-password">Password</Label>
+                  <Input
+                    id="signup-password"
+                    type="password"
+                    value={signupPassword}
+                    onChange={(event) => setSignupPassword(event.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-confirm-password">Confirm Password</Label>
+                  <Input
+                    id="signup-confirm-password"
+                    type="password"
+                    value={signupConfirmPassword}
+                    onChange={(event) => setSignupConfirmPassword(event.target.value)}
+                    required
+                  />
+                </div>
+                <Button className="w-full mt-2 h-11 bg-primary hover:bg-primary/90 transition-all font-medium" disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating account...
+                    </>
+                  ) : (
+                    <>
+                      Register & Continue
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </>
+                  )}
+                </Button>
+              </form>
+            ) : (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-8 bg-muted/50 p-1">
                 <TabsTrigger value="email" className="flex items-center gap-2">
@@ -232,6 +352,7 @@ export default function LoginPage() {
                 </motion.div>
               </AnimatePresence>
             </Tabs>
+            )}
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
             <div className="relative w-full">

@@ -14,5 +14,5 @@
    admin@swifttrack.com
    admin123
 
-   thalapthy@gmail.com
-   thalapthy
+   thalapathy@gmail.com
+   test2

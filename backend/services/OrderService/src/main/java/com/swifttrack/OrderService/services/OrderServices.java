@@ -156,7 +156,8 @@ public class OrderServices {
         public OrderQuoteResponse getQuote(String token, AddressQuoteRequest quoteInput) {
                 try {
                         TokenResponse tokenResponse = authInterface.getUserDetails(token).getBody();
-                        if (tokenResponse == null || tokenResponse.tenantId().isEmpty()) {
+                        UUID tenantScopeId = resolveTenantScopeId(tokenResponse);
+                        if (tokenResponse == null || tenantScopeId == null) {
                                 throw new RuntimeException("Tenant details are required to fetch quote");
                         }
                         QuoteInput normalizedQuoteInput = enrichQuoteInput(toSavedAddressQuoteInput(quoteInput),
@@ -178,7 +179,7 @@ public class OrderServices {
                                                 new TenantDeliveryConf("TENANT_DRIVERS", 3));
                         }
                         return buildQuote(token, normalizedQuoteInput, BookingChannel.TENANT,
-                                        tokenResponse.tenantId().get(),
+                                        tenantScopeId,
                                         tokenResponse.id(), null, deliveryConfig,
                                         providerInterface.getTenantProviders(token));
 
@@ -566,12 +567,13 @@ public class OrderServices {
         public FinalCreateOrderResponse createOrder(String token, UUID quoteSessionId,
                         AddressCreateOrderRequest createOrderRequest) {
                 TokenResponse userDetails = authInterface.getUserDetails(token).getBody();
-                if (userDetails == null || userDetails.tenantId().isEmpty()) {
+                UUID tenantScopeId = resolveTenantScopeId(userDetails);
+                if (userDetails == null || tenantScopeId == null) {
                         throw new RuntimeException("Invalid user or tenant context");
                 }
                 return createOrderForContext(token, userDetails, quoteSessionId, null,
                                 toSavedAddressCreateOrderRequest(createOrderRequest),
-                                BookingChannel.TENANT, userDetails.tenantId().get(), userDetails.id(), null);
+                                BookingChannel.TENANT, tenantScopeId, userDetails.id(), null);
         }
 
         public FinalCreateOrderResponse createConsumerOrder(String token, UUID quoteSessionId, UUID selectedQuoteId,
@@ -1131,11 +1133,10 @@ public class OrderServices {
 
         public TenantDashboardSummaryDto getTenantDashboardSummary(String token) {
                 TokenResponse tokenResponse = authInterface.getUserDetails(token).getBody();
-                if (tokenResponse == null || tokenResponse.tenantId().isEmpty()) {
+                UUID tenantId = resolveTenantScopeId(tokenResponse);
+                if (tenantId == null) {
                         throw new CustomException(HttpStatus.FORBIDDEN, "Tenant token missing tenantId");
                 }
-
-                UUID tenantId = tokenResponse.tenantId().get();
                 long totalDeliveredOrders = orderRepository.countByTenantIdAndOrderStatus(tenantId,
                                 OrderStatus.DELIVERED);
                 long activeOrders = orderRepository.countByTenantIdAndOrderStatusNotIn(
@@ -1395,7 +1396,7 @@ public class OrderServices {
 
         private String validateOrderAccess(Order order, TokenResponse userDetails) {
                 UUID userId = userDetails.id();
-                UUID tenantId = userDetails.tenantId().orElse(null);
+                UUID tenantId = resolveTenantScopeId(userDetails);
                 UserType userType = userDetails.userType().orElse(null);
 
                 if (tenantId != null || isTenantScopedUser(userType)) {
@@ -1555,10 +1556,19 @@ public class OrderServices {
 
         private UUID extractTenantId(String token) {
                 TokenResponse tokenResponse = authInterface.getUserDetails(token).getBody();
-                if (tokenResponse == null || tokenResponse.tenantId().isEmpty()) {
+                UUID tenantScopeId = resolveTenantScopeId(tokenResponse);
+                if (tenantScopeId == null) {
                         throw new CustomException(HttpStatus.FORBIDDEN, "Tenant token missing tenantId");
                 }
-                return tokenResponse.tenantId().get();
+                return tenantScopeId;
+        }
+
+        private UUID resolveTenantScopeId(TokenResponse tokenResponse) {
+                if (tokenResponse == null || tokenResponse.id() == null) {
+                        return null;
+                }
+
+                return tokenResponse.tenantId().orElse(tokenResponse.id());
         }
 
         private void validateOrderDateRange(LocalDate startDate, LocalDate endDate) {
@@ -1657,8 +1667,9 @@ public class OrderServices {
                 }
 
                 if (order.getBookingChannel() == BookingChannel.TENANT) {
-                        if (userDetails.tenantId().isEmpty() || order.getTenantId() == null
-                                        || !order.getTenantId().equals(userDetails.tenantId().get())) {
+                        UUID tenantScopeId = resolveTenantScopeId(userDetails);
+                        if (tenantScopeId == null || order.getTenantId() == null
+                                        || !order.getTenantId().equals(tenantScopeId)) {
                                 throw new RuntimeException("Order does not belong to tenant");
                         }
                         return;

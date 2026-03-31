@@ -84,7 +84,7 @@ public class TenantDeliveryConfigurationService {
                         && userDetails.userType().get() != UserType.TENANT_USER)) {
             throw new CustomException(HttpStatus.UNAUTHORIZED, "Unauthorized to perform this action");
         }
-        UUID tenantId = userDetails.id();
+        UUID tenantId = resolveTenantScopeId(userDetails);
         validateConfigurationInput(configurationInput);
         ensureDefaultDeliveryOptions();
 
@@ -169,8 +169,15 @@ public class TenantDeliveryConfigurationService {
                     "Only TENANT_ADMIN or TENANT_USER can configure delivery system");
         }
 
-        return tokenResponse.tenantId()
-                .orElseThrow(() -> new CustomException(HttpStatus.FORBIDDEN, "Tenant ID not found in token"));
+        return resolveTenantScopeId(tokenResponse);
+    }
+
+    private UUID resolveTenantScopeId(TokenResponse tokenResponse) {
+        if (tokenResponse == null || tokenResponse.id() == null) {
+            throw new CustomException(HttpStatus.UNAUTHORIZED, "Invalid token or user not found");
+        }
+
+        return tokenResponse.tenantId().orElse(tokenResponse.id());
     }
 
     public List<TenantDeliveryConf> getTenantDeliveryConfiguration(String token) {

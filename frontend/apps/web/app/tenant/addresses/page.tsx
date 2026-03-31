@@ -289,6 +289,12 @@ function PlaceAutocompleteInput({ onSelect }: { onSelect: (place: TenantPlaceSug
   const [open, setOpen] = useState(false)
   const [message, setMessage] = useState("Type at least 3 characters to search places.")
 
+  function selectPlace(place: TenantPlaceSuggestion) {
+    onSelect(place)
+    setQuery(place.formattedAddress || place.displayName || "")
+    setOpen(false)
+  }
+
   useEffect(() => {
     if (query.trim().length < 3) {
       setResults([])
@@ -344,11 +350,14 @@ function PlaceAutocompleteInput({ onSelect }: { onSelect: (place: TenantPlaceSug
                 key={`${result.placeId ?? "place"}-${result.latitude}-${result.longitude}-${index}`}
                 type="button"
                 className="flex w-full flex-col rounded-xl px-3 py-3 text-left transition hover:bg-slate-50"
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => {
-                  onSelect(result)
-                  setQuery(result.formattedAddress || result.displayName || "")
-                  setOpen(false)
+                onPointerDown={(event) => {
+                  event.preventDefault()
+                  selectPlace(result)
+                }}
+                onClick={(event) => {
+                  if (event.detail === 0) {
+                    selectPlace(result)
+                  }
                 }}
               >
                 <span className="text-sm font-medium text-slate-900">{getPrimaryLine(result)}</span>

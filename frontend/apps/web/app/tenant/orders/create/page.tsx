@@ -18,6 +18,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { useTenantSetupGuard } from "@/hooks/useTenantSetupGuard"
 
 type DropMode = "saved" | "one-time"
 
@@ -77,6 +78,7 @@ const EMPTY_SHIPMENT_FORM: ShipmentFormState = {
 
 export default function CreateOrderPage() {
   const router = useRouter()
+  const { loading: setupLoading, setupStatus, canCreateOrder } = useTenantSetupGuard()
   const [addresses, setAddresses] = useState<TenantSavedAddress[]>([])
   const [addressesLoading, setAddressesLoading] = useState(true)
   const [pickupAddressId, setPickupAddressId] = useState("")
@@ -105,6 +107,17 @@ export default function CreateOrderPage() {
   useEffect(() => {
     void loadAddresses()
   }, [])
+
+  useEffect(() => {
+    if (setupLoading) {
+      return
+    }
+
+    if (!canCreateOrder) {
+      toast.error("Complete tenant setup before creating orders")
+      router.replace(`/tenant/setup?step=${setupStatus?.nextStep ?? "company"}`)
+    }
+  }, [canCreateOrder, router, setupLoading, setupStatus?.nextStep])
 
   useEffect(() => {
     if (!pickupAddressId && addresses.length > 0) {
@@ -543,6 +556,12 @@ function PlaceAutocompleteInput({ onSelect }: { onSelect: (place: TenantPlaceSug
   const [open, setOpen] = useState(false)
   const [message, setMessage] = useState("Start typing to search places in India.")
 
+  function selectPlace(place: TenantPlaceSuggestion) {
+    onSelect(place)
+    setQuery(place.formattedAddress || place.displayName || "")
+    setOpen(false)
+  }
+
   useEffect(() => {
     if (query.trim().length < 3) {
       setResults([])
@@ -604,11 +623,14 @@ function PlaceAutocompleteInput({ onSelect }: { onSelect: (place: TenantPlaceSug
                 key={`${result.placeId ?? "place"}-${result.latitude}-${result.longitude}-${index}`}
                 type="button"
                 className="flex w-full flex-col rounded-xl px-3 py-3 text-left transition hover:bg-slate-50"
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => {
-                  onSelect(result)
-                  setQuery(result.formattedAddress || result.displayName || "")
-                  setOpen(false)
+                onPointerDown={(event) => {
+                  event.preventDefault()
+                  selectPlace(result)
+                }}
+                onClick={(event) => {
+                  if (event.detail === 0) {
+                    selectPlace(result)
+                  }
                 }}
               >
                 <span className="text-sm font-medium text-slate-900">{getPrimaryLine(result)}</span>
