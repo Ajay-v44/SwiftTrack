@@ -54,37 +54,7 @@ export async function fetchTenantDeliveryAnalyticsService(
 }
 
 export async function fetchTenantNotificationsService(): Promise<TenantDashboardNotification[]> {
-  const now = Date.now()
-
-  return [
-    {
-      id: "ops-spike",
-      title: "Dispatch volume trending up",
-      message: "Delivered orders are up in your active date range. Monitor staffing before the next peak.",
-      severity: "success",
-      createdAt: new Date(now - 8 * 60 * 1000).toISOString(),
-      unread: true,
-      actionLabel: "Review staffing",
-    },
-    {
-      id: "wallet-watch",
-      title: "Wallet threshold watch",
-      message: "Today's expenses are posting in real time. Keep wallet balance above your daily operating buffer.",
-      severity: "warning",
-      createdAt: new Date(now - 21 * 60 * 1000).toISOString(),
-      unread: true,
-      actionLabel: "Open finance",
-    },
-    {
-      id: "route-focus",
-      title: "Latest orders need attention",
-      message: "Use the live status panel to inspect newly created or in-transit orders without leaving the dashboard.",
-      severity: "info",
-      createdAt: new Date(now - 55 * 60 * 1000).toISOString(),
-      unread: true,
-      actionLabel: "View orders",
-    },
-  ]
+  return []
 }
 
 function normalizeSummary(summary?: TenantDashboardSummary): TenantDashboardSummary {

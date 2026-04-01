@@ -45,15 +45,27 @@ export function NotificationManager() {
        }
 
        // Handle foreground messaging
-       onMessageListener()
-         .then((payload: any) => {
-           if (payload?.notification) {
-             toast(payload.notification.title, {
-               description: payload.notification.body,
-             });
-           }
-         })
-         .catch((err) => console.log('failed: ', err));
+       let unsubscribe: (() => void) | undefined;
+       onMessageListener((payload: any) => {
+         if (payload?.notification) {
+           toast(payload.notification.title, {
+             description: payload.notification.body,
+           });
+
+           const audio = new Audio('/notification.mp3');
+           audio.play().catch(e => console.log('Audio play failed:', e));
+
+           window.dispatchEvent(
+             new CustomEvent('onFirebaseMessage', { detail: payload })
+           );
+         }
+       }).then(unsub => {
+         unsubscribe = unsub;
+       }).catch((err) => console.log('failed: ', err));
+
+       return () => {
+         if (unsubscribe) unsubscribe();
+       };
     }
   }, [user?.id]);
 
