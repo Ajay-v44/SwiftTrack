@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { AppShell } from "@/components/AppShell";
+import { NotificationManager } from "@/components/NotificationManager";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -28,6 +29,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.className} antialiased min-h-screen bg-background text-foreground selection:bg-primary/30`}>
         <AppShell>{children}</AppShell>
+        <NotificationManager />
         <Toaster />
       </body>
     </html>
