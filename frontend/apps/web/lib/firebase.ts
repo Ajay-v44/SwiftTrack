@@ -87,14 +87,12 @@ const sendTokenToServer = async (token: string, userId: string, tenantId?: strin
   }
 };
 
-export const onMessageListener = async () => {
+export const onMessageListener = async (callback: (payload: any) => void) => {
   const msg = await messaging();
-  if (!msg) return new Promise((resolve) => resolve(null));
+  if (!msg) return () => {};
 
-  return new Promise((resolve) => {
-    onMessage(msg, (payload) => {
-      console.log("Message received. ", payload);
-      resolve(payload);
-    });
+  return onMessage(msg, (payload) => {
+    console.log("Message received. ", payload);
+    callback(payload);
   });
 };

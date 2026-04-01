@@ -33,7 +33,12 @@ export function TenantNotificationsProvider({
       try {
         const response = await fetchTenantNotificationsService()
         if (active) {
-          setNotifications(response)
+          setNotifications((current) => {
+             // Only append if not already there (rudimentary uniqueness merge)
+             const existingIds = new Set(current.map(n => n.id));
+             const toAdd = response.filter(n => !existingIds.has(n.id));
+             return [...toAdd, ...current];
+          })
         }
       } catch (error) {
         console.error("Tenant notifications fetch failed", error)
@@ -45,11 +50,30 @@ export function TenantNotificationsProvider({
     }
 
     loadNotifications()
-    const intervalId = window.setInterval(loadNotifications, 60_000)
+
+    function handleFirebaseMessage(event: Event) {
+      const customEvent = event as CustomEvent;
+      const payload = customEvent.detail;
+      
+      if (payload && payload.notification) {
+        const newNotification: TenantDashboardNotification = {
+          id: payload.messageId || Math.random().toString(36).substring(7),
+          title: payload.notification.title || "New Update",
+          message: payload.notification.body || "",
+          severity: "info",
+          createdAt: new Date().toISOString(),
+          unread: true,
+        };
+
+        setNotifications((current) => [newNotification, ...current]);
+      }
+    }
+
+    window.addEventListener("onFirebaseMessage", handleFirebaseMessage);
 
     return () => {
       active = false
-      window.clearInterval(intervalId)
+      window.removeEventListener("onFirebaseMessage", handleFirebaseMessage);
     }
   }, [])
 
