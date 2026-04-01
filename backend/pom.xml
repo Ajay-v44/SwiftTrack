@@ -41,7 +41,7 @@
         <!-- Each folder with its own pom.xml -->
         <module>common</module>
         <module>services/EurekaServer</module>
-        <module>services/Gateway</module>
+        <module>services/GateWay</module>
         <module>services/AuthService</module>
         <module>services/TenantService</module>
         <module>services/ProviderService</module>
@@ -51,6 +51,7 @@
         <module>services/AIDispatchService</module>
         <module>services/BillingAndSettlementService</module>
         <module>services/AdminService</module>
+        <module>services/NotificationService</module>
 <!--        <module>services/user-service</module>-->
 <!--        <module>services/order-service</module>-->
 <!--        <module>infra</module>-->
