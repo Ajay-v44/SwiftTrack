@@ -19,11 +19,11 @@ export default function OrderTrackingScreen() {
   const order = orders.find(o => o.id === orderId);
 
   // Status mapping for simple timeline
-  const statuses = ['ACCEPTED', 'IN_TRANSIT', 'DELIVERED'];
+  const statuses = ['ACCEPTED', 'PICKED_UP', 'IN_TRANSIT', 'DELIVERED'];
   const currentStatusIndex = statuses.indexOf(order?.status || 'ACCEPTED');
 
   const handleUpdateStatus = async () => {
-     if (currentStatusIndex < statuses.length - 1) {
+     if (currentStatusIndex < statuses.length - 1 && currentStatusIndex !== -1) {
        const nextStatus = statuses[currentStatusIndex + 1];
        await dispatch(updateOrderStatus({ orderId, status: nextStatus }));
      }
@@ -121,7 +121,7 @@ export default function OrderTrackingScreen() {
                     </View>
                     <View style={styles.timelineContent}>
                        <Text style={[styles.timelineStatusText, isCompleted ? styles.textCompleted : styles.textPending]}>
-                         {status.replace('_', ' ')}
+                         {status.replace(/_/g, ' ')}
                        </Text>
                     </View>
                  </View>
@@ -129,13 +129,13 @@ export default function OrderTrackingScreen() {
             })}
          </View>
 
-         {currentStatusIndex < statuses.length - 1 && (
+         {currentStatusIndex !== -1 && currentStatusIndex < statuses.length - 1 && (
            <TouchableOpacity
              style={styles.updateBtn}
              onPress={handleUpdateStatus}
            >
              <Text style={styles.updateBtnText}>
-               Update Status to {statuses[currentStatusIndex + 1].replace('_', ' ')}
+               Update Status to {statuses[currentStatusIndex + 1].replace(/_/g, ' ')}
              </Text>
            </TouchableOpacity>
          )}

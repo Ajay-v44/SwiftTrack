@@ -5,6 +5,7 @@ import authReducer from './authSlice';
 import driverReducer from './driverSlice';
 import ordersReducer from './ordersSlice';
 import walletReducer from './walletSlice';
+import { injectStore } from '../api/client';
 
 export const store = configureStore({
   reducer: {
@@ -18,6 +19,8 @@ export const store = configureStore({
       serializableCheck: false, // Sometimes needed for Expo/React Navigation complex states
     }),
 });
+
+injectStore(store);
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
