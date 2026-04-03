@@ -41,7 +41,7 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <View style={styles.userInfo}>
            <Image
-             source={{ uri: 'https://ui-avatars.com/api/?name=' + (user?.name || 'Driver') + '&background=random' }}
+             source={require('../../assets/images/Driver.jpg')}
              style={styles.avatar}
            />
            <View>

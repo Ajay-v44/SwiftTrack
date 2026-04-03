@@ -4,6 +4,8 @@ import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store/store';
 import { logout } from '../store/authSlice';
 import { LogOut, Settings, Bell, CircleHelp, Shield, ChevronRight } from 'lucide-react-native';
+import * as Application from 'expo-application';
+import * as Updates from 'expo-updates';
 
 export default function ProfileScreen() {
   const { user } = useSelector((state: RootState) => state.auth);
@@ -28,7 +30,7 @@ export default function ProfileScreen() {
 
       <View style={styles.profileCard}>
         <Image
-          source={{ uri: 'https://ui-avatars.com/api/?name=' + (user?.name || 'Driver') + '&background=random&size=128' }}
+          source={require('../../assets/images/Driver.jpg')}
           style={styles.avatar}
         />
         <View style={styles.profileInfo}>
@@ -54,6 +56,12 @@ export default function ProfileScreen() {
          <LogOut color="#EF4444" size={20} style={{marginRight: 8}} />
          <Text style={styles.logoutText}>Log Out</Text>
       </TouchableOpacity>
+
+      <View style={styles.versionContainer}>
+        <Text style={styles.versionText}>
+          v{Application.nativeApplicationVersion || '1.0.0'} {Updates.updateId ? `• OTA: ${Updates.updateId.substring(0, 8)}` : ''}
+        </Text>
+      </View>
     </ScrollView>
   );
 }
@@ -159,5 +167,14 @@ const styles = StyleSheet.create({
     color: '#DC2626',
     fontSize: 16,
     fontWeight: '600',
+  },
+  versionContainer: {
+    alignItems: 'center',
+    marginBottom: 40,
+    marginTop: 10,
+  },
+  versionText: {
+    color: '#9CA3AF',
+    fontSize: 12,
   }
 });
