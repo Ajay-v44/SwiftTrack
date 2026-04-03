@@ -1,10 +1,16 @@
 {
   "expo": {
-    "name": "Mobileapp",
-    "slug": "mobileapp",
+    "name": "SwiftTrack",
+    "slug": "swifttrack",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/40e7d2e9-3a84-4287-b355-b9298c0e3919"
+    },
+    "icon": "./assets/images/appicon.png",
     "scheme": "mobileapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -13,10 +19,11 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/images/adaptiveicon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.ajay_44_4.swifttrack"
     },
     "web": {
       "bundler": "metro",
@@ -26,12 +33,32 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
+          "image": "./assets/images/Splashicon.png",
+          "imageWidth": 400,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
+      ],
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow SwiftTrack to use your location for delivery tracking."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/appicon.png",
+          "color": "#ffffff"
+        }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "40e7d2e9-3a84-4287-b355-b9298c0e3919"
+      }
+    },
+    "owner": "ajay_44_4"
   }
 }

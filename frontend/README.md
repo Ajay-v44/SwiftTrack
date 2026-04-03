@@ -7,28 +7,40 @@ Welcome to the **SwiftTrack** frontend workspace. This project is built as a **M
 The workspace is organized as follows:
 
 - **apps/**: Contains the main application entry points.
-  - **web/**: The Next.js dashboard and landing page (`d:\SwiftTrack\frontend\apps\web`).
-  - *(Future)* **mobile/**: The React Native application for drivers/users.
+  - **web/**: The Next.js dashboard and landing page.
+  - **mobileapp/**: The React Native (Expo) application for drivers/users.
 - **libs/**: Contains shared code used across applications.
   - **shared-ui/**: Reusable UI components, hooks, and utilities.
 - **tools/**: Custom scripts and workspace configurations.
 
 ---
 
+## 🚀 Setup & Installation
+
+Since this is a monorepo, you only need to install dependencies once at the root level:
+
+```bash
+# In the root frontend directory:
+npm install
+```
+
 ## 🚀 Running Tasks
 
-We use **Nx** to run tasks efficiently. While you can run `npm run dev` inside specific folders, using `nx` commands from the root provides caching and better orchestration.
+We use **Nx** to run tasks efficiently. While you can run specific commands inside folders, using `nx` commands from the root provides caching and better orchestration.
 
 ### Common Commands
 
 | Task | Command | Description |
 |------|---------|-------------|
-| **Start Dev Server** | `npx nx dev web` | Starts the Next.js web application locally. |
-| **Build** | `npx nx build web` | Builds the web application for production. |
-| **Lint** | `npx nx lint web` | Runs ESLint checks. |
-| **Test** | `npx nx test web` | Runs unit tests (if configured). |
+| **Start Web App** | `npx nx dev web` | Starts the Next.js web application locally. |
+| **Start Mobile App** | `npx nx start mobileapp` | Starts the Expo React Native app. Alternatively: `npx expo start --prefix apps/mobileapp` |
+| **Build Web** | `npx nx build web` | Builds the web application for production. |
+| **Lint** | `npx nx lint web` | Runs ESLint checks for the web app. |
+| **Test** | `npx nx test web` | Runs unit tests for the web app. |
+| **Build Native App** | `cd apps/mobileapp && npx eas build --profile development --platform android` | Triggers a fresh cloud build for the React Native App via Expo EAS. |
+| **Publish OTA Update** | `cd apps/mobileapp && npx eas update --branch production` | Deploys Over-The-Air updates directly to users without app stores. |
 
-> **Note:** Just run `npx nx dev web` from the root `d:\SwiftTrack\frontend` folder!
+> **Note:** Always run commands (like `npx nx dev web` or `npx nx start mobileapp`) from the root `frontend` folder!
 
 ---
 
@@ -90,6 +102,8 @@ npx nx show project web
 
 ## ✅ Summary
 
-1.  **Monorepo is active**: We have the structure ready.
-2.  **Use `npx nx dev web`**: This is the correct way to run the app.
-3.  **Future Mobile App**: We will create `apps/mobile` and reuse logic from `libs/`.
+1.  **Monorepo is active**: We have the Web and Expo Mobile app structure ready.
+2.  **Use `npm install`**: Run this from the root directory to install packages for all apps.
+3.  **Use `npx nx dev web`**: This runs the web dashboard.
+4.  **Use `npx nx start mobileapp`** (or `cd apps/mobileapp && npx expo start`): This runs the Expo mobile app.
+5.  **Shared Logic**: Both apps can reuse logic and UI from `libs/`.

@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../store/store';
 import { login, getDriverDetails, register } from '../store/authSlice';
 import { Mail, Phone, Lock, KeyRound } from 'lucide-react-native';
+import * as Application from 'expo-application';
+import * as Updates from 'expo-updates';
 
 export default function LoginScreen() {
   const [loginMethod, setLoginMethod] = useState<'email' | 'mobile'>('mobile');
@@ -54,6 +56,11 @@ export default function LoginScreen() {
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
+          <Image 
+            source={require('../../assets/images/swifttrack_logo.png')} 
+            style={styles.logo} 
+            resizeMode="contain" 
+          />
           <Text style={styles.title}>SwiftTrack Driver</Text>
           <Text style={styles.subtitle}>
             {isRegistering ? 'Create a new account' : 'Welcome back, please login'}
@@ -170,6 +177,10 @@ export default function LoginScreen() {
              </Text>
           </TouchableOpacity>
         </View>
+
+        <Text style={styles.versionText}>
+          v{Application.nativeApplicationVersion || '1.0.0'} {Updates.updateId ? `• OTA: ${Updates.updateId.substring(0, 8)}` : ''}
+        </Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -193,6 +204,11 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     marginBottom: 48,
+  },
+  logo: {
+    width: 100,
+    height: 100,
+    marginBottom: 16,
   },
   title: {
     fontSize: 28,
@@ -285,5 +301,11 @@ const styles = StyleSheet.create({
   switchModeText: {
     color: '#2563EB',
     fontWeight: '600'
+  },
+  versionText: {
+    textAlign: 'center',
+    color: '#9CA3AF',
+    fontSize: 12,
+    marginTop: 24,
   }
 });
