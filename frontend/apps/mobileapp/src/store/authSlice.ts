@@ -2,25 +2,49 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import apiClient from '../api/client';
 import * as SecureStore from 'expo-secure-store';
 
+/** 
+ * Backend DTOs Reference:
+ * - LoginUser { email, password }
+ * - LoginResponse { tokenType, accessToken }
+ * - GetDriverUserDetails { user: TokenResponse, vehicleType, vehicleNumber, driverLicenseNumber, status }
+ * - TokenResponse { id, tenantId?, providerId?, userType?, name, mobile, roles }
+ */
+
+export interface DriverUser {
+  id: string;
+  name: string;
+  mobile: string;
+  roles: string[];
+  tenantId?: string;
+  providerId?: string;
+  userType?: string;
+}
+
+export interface DriverDetails {
+  user: DriverUser;
+  vehicleType: string | null;
+  vehicleNumber: string | null;
+  driverLicenseNumber: string | null;
+  status: string; // DriverOnlineStatus: OFFLINE | ONLINE | ON_TRIP | SUSPENDED
+}
+
 interface AuthState {
-  user: any | null;
+  driver: DriverDetails | null;
   token: string | null;
   loading: boolean;
   error: string | null;
 }
 
 const initialState: AuthState = {
-  user: null,
+  driver: null,
   token: null,
   loading: false,
   error: null,
 };
 
-// Async thunks
 export const login = createAsyncThunk('auth/login', async (credentials: any, { rejectWithValue }) => {
   try {
     const isEmail = credentials.email !== undefined;
-    // Gateway discovery locator uses lowercase service IDs
     const url = isEmail
       ? '/driverservice/api/driver/auth/v1/loginWithEmailAndPassword'
       : '/driverservice/api/driver/auth/v1/loginWithMobileNumberAndOtp';
@@ -30,8 +54,6 @@ export const login = createAsyncThunk('auth/login', async (credentials: any, { r
       : { mobileNum: credentials.mobileNumber, otp: credentials.otp };
 
     const response = await apiClient.post(url, payload);
-
-    // Backend LoginResponse returns { tokenType, accessToken }
     const { accessToken } = response.data;
 
     if (!accessToken) {
@@ -41,11 +63,23 @@ export const login = createAsyncThunk('auth/login', async (credentials: any, { r
     await SecureStore.setItemAsync('userToken', accessToken);
     return { token: accessToken };
   } catch (error: any) {
+    const data = error.response?.data;
     const message =
-      error.response?.data?.message ||
-      error.response?.data?.error ||
-      (error.response?.status === 404 ? 'Account does not exist' : 'Login failed');
+      data?.message ||
+      data?.error ||
+      (error.response?.status === 404 ? 'Account does not exist' : 'Login failed. Please try again.');
     return rejectWithValue(message);
+  }
+});
+
+export const getDriverDetails = createAsyncThunk('auth/getDriverDetails', async (_, { rejectWithValue }) => {
+  try {
+    // GET /api/driver/v1/getDriverDetails  — requires 'token' header (auto-sent by interceptor)
+    const response = await apiClient.get('/driverservice/api/driver/v1/getDriverDetails');
+    // Response: GetDriverUserDetails { user: TokenResponse, vehicleType, vehicleNumber, driverLicenseNumber, status }
+    return response.data as DriverDetails;
+  } catch (error: any) {
+    return rejectWithValue(error.response?.data?.message || 'Failed to fetch driver details');
   }
 });
 
@@ -63,15 +97,6 @@ export const register = createAsyncThunk('auth/register', async (data: any, { re
   }
 });
 
-export const getDriverDetails = createAsyncThunk('auth/getDriverDetails', async (_, { rejectWithValue }) => {
-  try {
-    const response = await apiClient.get('/driverservice/api/driver/v1/getDriverDetails');
-    return response.data;
-  } catch (error: any) {
-    return rejectWithValue(error.response?.data?.message || 'Failed to fetch details');
-  }
-});
-
 export const logout = createAsyncThunk('auth/logout', async () => {
   await SecureStore.deleteItemAsync('userToken');
   return null;
@@ -86,7 +111,7 @@ const authSlice = createSlice({
     },
     setToken: (state, action) => {
       state.token = action.payload;
-    }
+    },
   },
   extraReducers: (builder) => {
     // Login
@@ -102,6 +127,17 @@ const authSlice = createSlice({
       state.loading = false;
       state.error = action.payload as string;
     });
+    // Get Driver Details
+    builder.addCase(getDriverDetails.pending, (state) => {
+      state.loading = true;
+    });
+    builder.addCase(getDriverDetails.fulfilled, (state, action) => {
+      state.loading = false;
+      state.driver = action.payload;
+    });
+    builder.addCase(getDriverDetails.rejected, (state, action) => {
+      state.loading = false;
+    });
     // Register
     builder.addCase(register.pending, (state) => {
       state.loading = true;
@@ -114,21 +150,9 @@ const authSlice = createSlice({
       state.loading = false;
       state.error = action.payload as string;
     });
-    // Get Details
-    builder.addCase(getDriverDetails.pending, (state) => {
-      state.loading = true;
-    });
-    builder.addCase(getDriverDetails.fulfilled, (state, action) => {
-      state.loading = false;
-      state.user = action.payload;
-    });
-    builder.addCase(getDriverDetails.rejected, (state, action) => {
-      state.loading = false;
-      // Don't set error here, just fail silently or handle globally
-    });
     // Logout
     builder.addCase(logout.fulfilled, (state) => {
-      state.user = null;
+      state.driver = null;
       state.token = null;
     });
   },

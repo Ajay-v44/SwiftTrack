@@ -5,6 +5,7 @@ import { RootState, AppDispatch } from '../store/store';
 import { getDriverDetails, setToken } from '../store/authSlice';
 import * as SecureStore from 'expo-secure-store';
 import { View, ActivityIndicator } from 'react-native';
+import { Colors } from '../theme/colors';
 
 import LoginScreen from '../screens/LoginScreen';
 import TabNavigator from './TabNavigator';
@@ -14,7 +15,7 @@ import DevMapScreen from '../screens/DevMapScreen';
 const Stack = createNativeStackNavigator();
 
 export default function RootNavigator() {
-  const { token, loading, user } = useSelector((state: RootState) => state.auth);
+  const { token, loading, driver } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch<AppDispatch>();
   const [isReady, setIsReady] = useState(false);
 
@@ -24,7 +25,7 @@ export default function RootNavigator() {
         const storedToken = await SecureStore.getItemAsync('userToken');
         if (storedToken) {
            dispatch(setToken(storedToken));
-           // Re-fetch user details to make sure token is valid and data is fresh
+           // Re-fetch driver details to make sure token is valid and data is fresh
            await dispatch(getDriverDetails()).unwrap();
         }
       } catch (e) {
@@ -36,10 +37,10 @@ export default function RootNavigator() {
     loadToken();
   }, [dispatch]);
 
-  if (!isReady || (token && !user && loading)) {
+  if (!isReady || (token && !driver && loading)) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#2563EB" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.bgDark }}>
+        <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
   }

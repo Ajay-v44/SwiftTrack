@@ -1,55 +1,102 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import apiClient from '../api/client';
 
-export interface Order {
+/**
+ * Backend DTOs:
+ * - GetOrdersForDriver { id: UUID, customerReferenceId, orderStatus, city, state, pickupLat, pickupLng, dropoffLat, dropoffLng }
+ * - GET /api/driver/v1/getMyOrders?status=PENDING|ASSIGNED|ACCEPTED|REJECTED|CANCELLED|COMPLETED&page=0&limit=10
+ * - RespondToAssignmentDto { orderId: UUID, accept: boolean, reason: String }
+ * - UpdateOrderStatusrequest { status: TrackingStatus(PICKED_UP|IN_TRANSIT|OUT_FOR_DELIVERY|DELIVERED|FAILED), orderId: UUID }
+ */
+
+export interface DriverOrder {
   id: string;
-  orderNumber: string;
-  status: string;
-  pickupLocation: { address: string; lat: number; lng: number };
-  dropoffLocation: { address: string; lat: number; lng: number };
-  customerDetails: { name: string; phone: string };
-  paymentStatus: string;
-  createdAt: string;
-  eta: string;
-  assignmentId?: string;
+  customerReferenceId: string;
+  orderStatus: string;
+  city: string;
+  state: string;
+  pickupLat: number;
+  pickupLng: number;
+  dropoffLat: number;
+  dropoffLng: number;
 }
 
 interface OrdersState {
-  orders: Order[];
+  pendingOrders: DriverOrder[];
+  acceptedOrders: DriverOrder[];
+  completedOrders: DriverOrder[];
   loading: boolean;
   error: string | null;
 }
 
 const initialState: OrdersState = {
-  orders: [],
+  pendingOrders: [],
+  acceptedOrders: [],
+  completedOrders: [],
   loading: false,
   error: null,
 };
 
-export const getMyOrders = createAsyncThunk('orders/getMyOrders', async (_, { rejectWithValue }) => {
+// Fetch pending/assigned orders
+export const getPendingOrders = createAsyncThunk('orders/getPending', async (_, { rejectWithValue }) => {
   try {
-    const response = await apiClient.get('/driverservice/api/driver/v1/getMyOrders');
-    return response.data;
+    const response = await apiClient.get('/driverservice/api/driver/v1/getMyOrders', {
+      params: { status: 'ASSIGNED', page: 0, limit: 20 },
+    });
+    return response.data as DriverOrder[];
   } catch (error: any) {
-    return rejectWithValue(error.response?.data?.message || 'Failed to fetch orders');
+    return rejectWithValue(error.response?.data?.message || 'Failed to fetch pending orders');
   }
 });
 
+// Fetch accepted/active orders
+export const getAcceptedOrders = createAsyncThunk('orders/getAccepted', async (_, { rejectWithValue }) => {
+  try {
+    const response = await apiClient.get('/driverservice/api/driver/v1/getMyOrders', {
+      params: { status: 'ACCEPTED', page: 0, limit: 20 },
+    });
+    return response.data as DriverOrder[];
+  } catch (error: any) {
+    return rejectWithValue(error.response?.data?.message || 'Failed to fetch active orders');
+  }
+});
+
+// Fetch completed orders
+export const getCompletedOrders = createAsyncThunk('orders/getCompleted', async (_, { rejectWithValue }) => {
+  try {
+    const response = await apiClient.get('/driverservice/api/driver/v1/getMyOrders', {
+      params: { status: 'COMPLETED', page: 0, limit: 20 },
+    });
+    return response.data as DriverOrder[];
+  } catch (error: any) {
+    return rejectWithValue(error.response?.data?.message || 'Failed to fetch completed orders');
+  }
+});
+
+// Respond to order assignment — Backend expects: { orderId: UUID, accept: boolean, reason: String }
 export const respondToAssignment = createAsyncThunk(
   'orders/respondAssignment',
-  async ({ assignmentId, response }: { assignmentId: string; response: 'ACCEPT' | 'REJECT' }, { rejectWithValue }) => {
+  async ({ orderId, accept, reason }: { orderId: string; accept: boolean; reason?: string }, { rejectWithValue }) => {
     try {
-      await apiClient.post('/driverservice/api/driver/v1/respond-assignment', { assignmentId, response });
-      return { assignmentId, response };
+      await apiClient.post('/driverservice/api/driver/v1/respond-assignment', {
+        orderId,
+        accept,
+        reason: reason || null,
+      });
+      return { orderId, accept };
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to respond to assignment');
     }
   }
 );
 
+// Update order tracking status — Backend expects: { status: TrackingStatus, orderId: UUID }
 export const updateOrderStatus = createAsyncThunk(
   'orders/updateStatus',
-  async ({ orderId, status }: { orderId: string; status: string }, { rejectWithValue }) => {
+  async (
+    { orderId, status }: { orderId: string; status: 'PICKED_UP' | 'IN_TRANSIT' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'FAILED' },
+    { rejectWithValue }
+  ) => {
     try {
       await apiClient.post('/driverservice/api/driver/v1/updateOrderStatus', { orderId, status });
       return { orderId, status };
@@ -64,34 +111,40 @@ const ordersSlice = createSlice({
   initialState,
   reducers: {},
   extraReducers: (builder) => {
-    builder.addCase(getMyOrders.pending, (state) => {
+    // Pending
+    builder.addCase(getPendingOrders.pending, (state) => {
       state.loading = true;
       state.error = null;
     });
-    builder.addCase(getMyOrders.fulfilled, (state, action) => {
+    builder.addCase(getPendingOrders.fulfilled, (state, action) => {
       state.loading = false;
-      state.orders = action.payload;
+      state.pendingOrders = action.payload;
     });
-    builder.addCase(getMyOrders.rejected, (state, action) => {
+    builder.addCase(getPendingOrders.rejected, (state, action) => {
       state.loading = false;
       state.error = action.payload as string;
     });
-
+    // Accepted
+    builder.addCase(getAcceptedOrders.fulfilled, (state, action) => {
+      state.acceptedOrders = action.payload;
+    });
+    // Completed
+    builder.addCase(getCompletedOrders.fulfilled, (state, action) => {
+      state.completedOrders = action.payload;
+    });
+    // Respond
     builder.addCase(respondToAssignment.fulfilled, (state, action) => {
-      if (action.payload.response === 'REJECT') {
-        state.orders = state.orders.filter(o => o.assignmentId !== action.payload.assignmentId);
-      } else {
-        const order = state.orders.find(o => o.assignmentId === action.payload.assignmentId);
-        if (order) {
-          order.status = 'ACCEPTED';
-        }
+      const { orderId, accept } = action.payload;
+      state.pendingOrders = state.pendingOrders.filter(o => o.id !== orderId);
+      if (accept) {
+        // Refetch accepted orders after accepting
       }
     });
-
+    // Update status
     builder.addCase(updateOrderStatus.fulfilled, (state, action) => {
-      const order = state.orders.find(o => o.id === action.payload.orderId);
-      if (order) {
-        order.status = action.payload.status;
+      const { orderId, status } = action.payload;
+      if (status === 'DELIVERED') {
+        state.acceptedOrders = state.acceptedOrders.filter(o => o.id !== orderId);
       }
     });
   },
