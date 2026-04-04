@@ -1,151 +1,180 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl,
+} from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store/store';
-import { getMyOrders, respondToAssignment } from '../store/ordersSlice';
-import { MapPin, Box, CheckCircle, XCircle, Package } from 'lucide-react-native';
+import { getPendingOrders, getAcceptedOrders, getCompletedOrders, respondToAssignment, DriverOrder } from '../store/ordersSlice';
+import { MapPin, Box, CheckCircle, XCircle, Package, Filter } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import * as Burnt from 'burnt';
+import { Colors } from '../theme/colors';
+
+type TabKey = 'pending' | 'active' | 'completed';
 
 export default function OrdersScreen() {
   const dispatch = useDispatch<AppDispatch>();
   const navigation = useNavigation<any>();
-  const { orders, loading } = useSelector((state: RootState) => state.orders);
-  const [refreshing, setRefreshing] = React.useState(false);
+  const { pendingOrders, acceptedOrders, completedOrders, loading } = useSelector((state: RootState) => state.orders);
+  const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabKey>('pending');
 
   useEffect(() => {
-    dispatch(getMyOrders());
+    dispatch(getPendingOrders());
+    dispatch(getAcceptedOrders());
+    dispatch(getCompletedOrders());
   }, [dispatch]);
 
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      await dispatch(getMyOrders()).unwrap();
+      await Promise.all([
+        dispatch(getPendingOrders()).unwrap(),
+        dispatch(getAcceptedOrders()).unwrap(),
+        dispatch(getCompletedOrders()).unwrap(),
+      ]);
     } catch {
-      Burnt.toast({ title: 'Failed to refresh orders', preset: 'error' });
+      Burnt.toast({ title: 'Failed to refresh', preset: 'error' });
     }
     setRefreshing(false);
   };
 
-  const handleResponse = async (assignmentId: string, response: 'ACCEPT' | 'REJECT') => {
+  const handleRespond = async (orderId: string, accept: boolean) => {
     try {
-      await dispatch(respondToAssignment({ assignmentId, response })).unwrap();
+      await dispatch(respondToAssignment({ orderId, accept })).unwrap();
       Burnt.toast({
-        title: response === 'ACCEPT' ? 'Order accepted!' : 'Order rejected',
-        preset: response === 'ACCEPT' ? 'done' : 'none',
+        title: accept ? '✅ Order accepted!' : '❌ Order rejected',
+        preset: accept ? 'done' : 'none',
       });
+      dispatch(getPendingOrders());
+      if (accept) dispatch(getAcceptedOrders());
     } catch (err: any) {
-      Burnt.toast({
-        title: typeof err === 'string' ? err : 'Failed to respond to assignment',
-        preset: 'error',
-      });
+      Burnt.toast({ title: typeof err === 'string' ? err : 'Failed', preset: 'error' });
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'PENDING': return { bg: '#FEF3C7', text: '#D97706' };
-      case 'ACCEPTED': return { bg: '#DBEAFE', text: '#2563EB' };
-      case 'PICKED_UP': return { bg: '#E0E7FF', text: '#4F46E5' };
-      case 'IN_TRANSIT': return { bg: '#FEF2F2', text: '#DC2626' };
-      case 'DELIVERED': return { bg: '#D1FAE5', text: '#059669' };
-      default: return { bg: '#F3F4F6', text: '#6B7280' };
+  const getOrders = (): DriverOrder[] => {
+    switch (activeTab) {
+      case 'pending': return pendingOrders;
+      case 'active': return acceptedOrders;
+      case 'completed': return completedOrders;
     }
   };
 
-  const renderItem = ({ item }: { item: any }) => {
-    const isPending = item.status === 'PENDING' && item.assignmentId;
-    const statusColor = getStatusColor(item.status);
+  const tabs: { key: TabKey; label: string; count: number; color: string }[] = [
+    { key: 'pending', label: 'Pending', count: pendingOrders.length, color: Colors.accentOrange },
+    { key: 'active', label: 'Active', count: acceptedOrders.length, color: Colors.accentTeal },
+    { key: 'completed', label: 'Done', count: completedOrders.length, color: Colors.accentGreen },
+  ];
 
+  const renderItem = ({ item }: { item: DriverOrder }) => {
     return (
       <View style={styles.card}>
         <View style={styles.cardHeader}>
-          <View style={styles.cardIcon}>
-            <Box color="#2563EB" size={24} />
+          <View style={[styles.cardIcon, {
+            backgroundColor: activeTab === 'pending' ? Colors.accentOrange + '15' :
+              activeTab === 'active' ? Colors.accentTeal + '15' : Colors.accentGreen + '15'
+          }]}>
+            <Box color={
+              activeTab === 'pending' ? Colors.accentOrange :
+              activeTab === 'active' ? Colors.accentTeal : Colors.accentGreen
+            } size={22} />
           </View>
           <View style={styles.cardInfo}>
-            <Text style={styles.orderId}>{item.orderNumber}</Text>
-            <Text style={styles.customerName}>{item.customerDetails?.name || 'Customer'}</Text>
+            <Text style={styles.orderId}>{item.customerReferenceId || 'Order'}</Text>
+            <Text style={styles.orderCity}>{item.city || 'City'}, {item.state || 'State'}</Text>
           </View>
-          <View style={[styles.statusBadge, { backgroundColor: statusColor.bg }]}>
-            <Text style={[styles.statusBadgeText, { color: statusColor.text }]}>
-              {item.status.replace(/_/g, ' ')}
+          <View style={[styles.statusBadge, {
+            backgroundColor: activeTab === 'pending' ? Colors.accentOrange + '20' :
+              activeTab === 'active' ? Colors.accentTeal + '20' : Colors.accentGreen + '20'
+          }]}>
+            <Text style={[styles.statusBadgeText, {
+              color: activeTab === 'pending' ? Colors.accentOrange :
+                activeTab === 'active' ? Colors.accentTeal : Colors.accentGreen
+            }]}>
+              {item.orderStatus?.replace(/_/g, ' ') || activeTab.toUpperCase()}
             </Text>
           </View>
         </View>
 
-        <View style={styles.routeContainer}>
-           <View style={styles.routePoint}>
-             <MapPin color="#2563EB" size={16} />
-             <Text style={styles.routeText} numberOfLines={1}>{item.pickupLocation?.address || 'Pickup Location'}</Text>
-           </View>
-           <View style={styles.routeLine} />
-           <View style={styles.routePoint}>
-             <MapPin color="#EF4444" size={16} />
-             <Text style={styles.routeText} numberOfLines={1}>{item.dropoffLocation?.address || 'Dropoff Location'}</Text>
-           </View>
-        </View>
-
-        {isPending ? (
+        {activeTab === 'pending' && (
           <View style={styles.actionsContainer}>
             <TouchableOpacity
               style={[styles.actionBtn, styles.rejectBtn]}
-              onPress={() => handleResponse(item.assignmentId, 'REJECT')}
+              onPress={() => handleRespond(item.id, false)}
               activeOpacity={0.7}
             >
-              <XCircle color="#DC2626" size={20} />
-              <Text style={styles.rejectText}>Reject</Text>
+              <XCircle color={Colors.accent} size={18} />
+              <Text style={[styles.actionText, { color: Colors.accent }]}>Reject</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.actionBtn, styles.acceptBtn]}
-              onPress={() => handleResponse(item.assignmentId, 'ACCEPT')}
+              onPress={() => handleRespond(item.id, true)}
               activeOpacity={0.7}
             >
-              <CheckCircle color="#FFFFFF" size={20} />
-              <Text style={styles.acceptText}>Accept</Text>
+              <CheckCircle color="#FFFFFF" size={18} />
+              <Text style={[styles.actionText, { color: '#FFFFFF' }]}>Accept</Text>
             </TouchableOpacity>
           </View>
-        ) : (
+        )}
+
+        {activeTab === 'active' && (
           <TouchableOpacity
             style={styles.viewBtn}
             onPress={() => navigation.navigate('OrderTracking', { orderId: item.id })}
             activeOpacity={0.7}
           >
-            <Text style={styles.viewBtnText}>View Details</Text>
+            <Text style={styles.viewBtnText}>Track Order →</Text>
           </TouchableOpacity>
         )}
       </View>
     );
   };
 
-  if (loading && orders.length === 0) {
-    return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#2563EB" />
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Orders & Assignments</Text>
-        <Text style={styles.headerSubtitle}>{orders.length} total orders</Text>
+        <Text style={styles.title}>Orders</Text>
+        <Text style={styles.headerSub}>Manage your shipments</Text>
       </View>
+
+      {/* Tabs */}
+      <View style={styles.tabsContainer}>
+        {tabs.map(tab => (
+          <TouchableOpacity
+            key={tab.key}
+            style={[styles.tab, activeTab === tab.key && { backgroundColor: tab.color + '20', borderColor: tab.color }]}
+            onPress={() => setActiveTab(tab.key)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.tabText, activeTab === tab.key && { color: tab.color }]}>
+              {tab.label}
+            </Text>
+            {tab.count > 0 && (
+              <View style={[styles.tabBadge, { backgroundColor: activeTab === tab.key ? tab.color : Colors.textMuted }]}>
+                <Text style={styles.tabBadgeText}>{tab.count}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        ))}
+      </View>
+
       <FlatList
-        data={orders}
+        data={getOrders()}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2563EB']} tintColor="#2563EB" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} tintColor={Colors.primary} />
         }
         ListEmptyComponent={
           <View style={styles.emptyState}>
-             <Package color="#D1D5DB" size={48} />
-             <Text style={styles.emptyTitle}>No Orders Yet</Text>
-             <Text style={styles.emptyText}>When orders are assigned to you, they will appear here.</Text>
+            <View style={styles.emptyIcon}>
+              <Package color={Colors.textMuted} size={40} />
+            </View>
+            <Text style={styles.emptyTitle}>No {activeTab} orders</Text>
+            <Text style={styles.emptyText}>Pull down to refresh</Text>
           </View>
         }
       />
@@ -154,165 +183,60 @@ export default function OrdersScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  container: { flex: 1, backgroundColor: Colors.bgDark },
   header: {
-    padding: 20,
-    paddingTop: 60,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16,
+    backgroundColor: Colors.bgCard, borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#111827',
+  title: { fontSize: 28, fontWeight: '800', color: Colors.textPrimary },
+  headerSub: { fontSize: 14, color: Colors.textSecondary, marginTop: 4 },
+  tabsContainer: { flexDirection: 'row', paddingHorizontal: 16, marginTop: 16, gap: 8 },
+  tab: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    paddingVertical: 10, borderRadius: 12, gap: 6,
+    backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.borderLight,
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 4,
+  tabText: { fontWeight: '600', fontSize: 14, color: Colors.textMuted },
+  tabBadge: {
+    minWidth: 20, height: 20, borderRadius: 10, justifyContent: 'center',
+    alignItems: 'center', paddingHorizontal: 6,
   },
-  listContent: {
-    padding: 16,
-    paddingBottom: 40,
-  },
+  tabBadgeText: { color: '#FFFFFF', fontSize: 11, fontWeight: '700' },
+  listContent: { padding: 16, paddingBottom: 40 },
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    backgroundColor: Colors.bgCard, borderRadius: 18, padding: 16, marginBottom: 12,
+    borderWidth: 1, borderColor: Colors.borderLight,
   },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   cardIcon: {
-    width: 48,
-    height: 48,
-    backgroundColor: '#EFF6FF',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
+    width: 44, height: 44, borderRadius: 12, justifyContent: 'center',
+    alignItems: 'center', marginRight: 12,
   },
-  cardInfo: {
-    flex: 1,
-  },
-  orderId: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  customerName: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statusBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  routeContainer: {
-    backgroundColor: '#F9FAFB',
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 16,
-  },
-  routePoint: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  routeLine: {
-    width: 2,
-    height: 16,
-    backgroundColor: '#D1D5DB',
-    marginLeft: 7,
-    marginVertical: 4,
-  },
-  routeText: {
-    marginLeft: 12,
-    fontSize: 14,
-    color: '#4B5563',
-    flex: 1,
-  },
-  actionsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
+  cardInfo: { flex: 1 },
+  orderId: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
+  orderCity: { fontSize: 13, color: Colors.textMuted, marginTop: 2 },
+  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  statusBadgeText: { fontSize: 11, fontWeight: '700' },
+  actionsContainer: { flexDirection: 'row', gap: 10 },
   actionBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    height: 48,
-    borderRadius: 12,
+    flex: 1, flexDirection: 'row', justifyContent: 'center',
+    alignItems: 'center', height: 44, borderRadius: 12, gap: 6,
   },
-  rejectBtn: {
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FCA5A5',
-  },
-  acceptBtn: {
-    backgroundColor: '#2563EB',
-  },
-  rejectText: {
-    color: '#DC2626',
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  acceptText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    marginLeft: 8,
-  },
+  rejectBtn: { backgroundColor: Colors.accent + '15', borderWidth: 1, borderColor: Colors.accent + '30' },
+  acceptBtn: { backgroundColor: Colors.accentGreen },
+  actionText: { fontWeight: '600', fontSize: 14 },
   viewBtn: {
-    height: 48,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
+    height: 44, backgroundColor: Colors.primary + '15', borderRadius: 12,
+    justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: Colors.primary + '30',
   },
-  viewBtnText: {
-    color: '#374151',
-    fontWeight: '600',
+  viewBtnText: { color: Colors.primaryLight, fontWeight: '600' },
+  emptyState: { padding: 60, alignItems: 'center' },
+  emptyIcon: {
+    width: 72, height: 72, borderRadius: 24, backgroundColor: Colors.bgCard,
+    justifyContent: 'center', alignItems: 'center', marginBottom: 16,
+    borderWidth: 1, borderColor: Colors.borderLight,
   },
-  emptyState: {
-    padding: 60,
-    alignItems: 'center',
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#374151',
-    marginTop: 16,
-  },
-  emptyText: {
-    color: '#6B7280',
-    fontSize: 14,
-    marginTop: 8,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
+  emptyTitle: { fontSize: 16, fontWeight: '600', color: Colors.textSecondary, marginTop: 4 },
+  emptyText: { color: Colors.textMuted, fontSize: 14, marginTop: 4 },
 });

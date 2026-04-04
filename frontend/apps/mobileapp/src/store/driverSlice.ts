@@ -1,48 +1,63 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import apiClient from '../api/client';
 
+/**
+ * Backend DTOs:
+ * - UpdateDriverStatusRequest { status: DriverOnlineStatus(OFFLINE|ONLINE|ON_TRIP|SUSPENDED) }
+ * - DriverLocationUpdateDto { latitude: BigDecimal, longitude: BigDecimal }
+ * Both endpoints require @RequestHeader String token (sent automatically by interceptor)
+ */
+
 interface DriverState {
-  isActive: boolean;
-  currentLocation: { lat: number; lng: number } | null;
+  isOnline: boolean;
+  currentLocation: { latitude: number; longitude: number } | null;
   loading: boolean;
   error: string | null;
 }
 
 const initialState: DriverState = {
-  isActive: false,
+  isOnline: false,
   currentLocation: null,
   loading: false,
   error: null,
 };
 
-export const updateStatus = createAsyncThunk('driver/updateStatus', async (status: string, { rejectWithValue }) => {
-  try {
-    await apiClient.post('/driverservice/api/driver/v1/updateStatus', { status });
-    return status;
-  } catch (error: any) {
-    return rejectWithValue(error.response?.data?.message || 'Failed to update status');
+export const updateStatus = createAsyncThunk(
+  'driver/updateStatus',
+  async (status: 'ONLINE' | 'OFFLINE' | 'ON_TRIP' | 'SUSPENDED', { rejectWithValue }) => {
+    try {
+      // POST /api/driver/v1/updateStatus — body: { status: DriverOnlineStatus }
+      await apiClient.post('/driverservice/api/driver/v1/updateStatus', { status });
+      return status;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to update status');
+    }
   }
-});
+);
 
-export const updateLocation = createAsyncThunk('driver/updateLocation', async (location: { lat: number; lng: number }, { rejectWithValue }) => {
-  try {
-    await apiClient.post('/driverservice/api/driver/v1/location', location);
-    return location;
-  } catch (error: any) {
-    return rejectWithValue(error.response?.data?.message || 'Failed to update location');
+export const updateLocation = createAsyncThunk(
+  'driver/updateLocation',
+  async (location: { latitude: number; longitude: number }, { rejectWithValue }) => {
+    try {
+      // POST /api/driver/v1/location — body: { latitude, longitude } (BigDecimal)
+      await apiClient.post('/driverservice/api/driver/v1/location', location);
+      return location;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to update location');
+    }
   }
-});
+);
 
 const driverSlice = createSlice({
   name: 'driver',
   initialState,
   reducers: {
-    setIsActive: (state, action) => {
-      state.isActive = action.payload === 'ACTIVE';
+    setOnlineStatus: (state, action) => {
+      state.isOnline = action.payload === 'ONLINE';
     },
     setCurrentLocation: (state, action) => {
       state.currentLocation = action.payload;
-    }
+    },
   },
   extraReducers: (builder) => {
     builder.addCase(updateStatus.pending, (state) => {
@@ -51,7 +66,7 @@ const driverSlice = createSlice({
     });
     builder.addCase(updateStatus.fulfilled, (state, action) => {
       state.loading = false;
-      state.isActive = action.payload === 'ACTIVE';
+      state.isOnline = action.payload === 'ONLINE';
     });
     builder.addCase(updateStatus.rejected, (state, action) => {
       state.loading = false;
@@ -63,5 +78,5 @@ const driverSlice = createSlice({
   },
 });
 
-export const { setIsActive, setCurrentLocation } = driverSlice.actions;
+export const { setOnlineStatus, setCurrentLocation } = driverSlice.actions;
 export default driverSlice.reducer;

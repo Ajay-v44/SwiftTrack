@@ -4,6 +4,7 @@ import apiClient from '../api/client';
 
 const LOCATION_TASK_NAME = 'background-location-task';
 
+// Backend DriverLocationUpdateDto expects: { latitude: BigDecimal, longitude: BigDecimal }
 TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
   if (error) {
     console.error('Background location task error:', error);
@@ -16,8 +17,8 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
     if (location) {
       try {
         await apiClient.post('/driverservice/api/driver/v1/location', {
-          lat: location.coords.latitude,
-          lng: location.coords.longitude,
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
         });
       } catch (err) {
         console.error('Failed to update background location', err);
@@ -41,7 +42,6 @@ export const startLocationTracking = async () => {
 
   await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
     accuracy: Location.Accuracy.Balanced,
-    // 2 minutes = 120000 milliseconds
     timeInterval: 120000,
     distanceInterval: 10,
     deferredUpdatesInterval: 120000,
