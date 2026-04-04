@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, Linking, Platform } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store/store';
 import { updateOrderStatus } from '../store/ordersSlice';
 import { ArrowLeft, Phone, MessageSquare } from 'lucide-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
+import * as Burnt from 'burnt';
 
 const { width } = Dimensions.get('window');
 
@@ -18,21 +19,53 @@ export default function OrderTrackingScreen() {
   const { orders } = useSelector((state: RootState) => state.orders);
   const order = orders.find(o => o.id === orderId);
 
-  // Status mapping for simple timeline
   const statuses = ['ACCEPTED', 'PICKED_UP', 'IN_TRANSIT', 'DELIVERED'];
   const currentStatusIndex = statuses.indexOf(order?.status || 'ACCEPTED');
 
   const handleUpdateStatus = async () => {
      if (currentStatusIndex < statuses.length - 1 && currentStatusIndex !== -1) {
        const nextStatus = statuses[currentStatusIndex + 1];
-       await dispatch(updateOrderStatus({ orderId, status: nextStatus }));
+       try {
+         await dispatch(updateOrderStatus({ orderId, status: nextStatus })).unwrap();
+         Burnt.toast({
+           title: `Status updated to ${nextStatus.replace(/_/g, ' ')}`,
+           preset: 'done',
+         });
+       } catch (err: any) {
+         Burnt.toast({
+           title: typeof err === 'string' ? err : 'Failed to update status',
+           preset: 'error',
+         });
+       }
      }
+  };
+
+  const handleCall = () => {
+    const phone = order?.customerDetails?.phone;
+    if (phone) {
+      Linking.openURL(`tel:${phone}`);
+    } else {
+      Burnt.toast({ title: 'No phone number available', preset: 'error' });
+    }
+  };
+
+  const handleMessage = () => {
+    const phone = order?.customerDetails?.phone;
+    if (phone) {
+      const url = Platform.OS === 'ios' ? `sms:${phone}` : `sms:${phone}?body=`;
+      Linking.openURL(url);
+    } else {
+      Burnt.toast({ title: 'No phone number available', preset: 'error' });
+    }
   };
 
   if (!order) {
     return (
-       <View style={styles.container}>
-         <Text>Order not found</Text>
+       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+         <Text style={{ color: '#6B7280', fontSize: 16 }}>Order not found</Text>
+         <TouchableOpacity style={{ marginTop: 16 }} onPress={() => navigation.goBack()}>
+           <Text style={{ color: '#2563EB', fontWeight: '600' }}>Go Back</Text>
+         </TouchableOpacity>
        </View>
     );
   }
@@ -43,6 +76,7 @@ export default function OrderTrackingScreen() {
         <TouchableOpacity
           style={styles.backBtn}
           onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
         >
            <ArrowLeft color="#111827" size={24} />
         </TouchableOpacity>
@@ -83,7 +117,7 @@ export default function OrderTrackingScreen() {
         </MapView>
       </View>
 
-      <ScrollView style={styles.detailsContainer} contentContainerStyle={{paddingBottom: 40}}>
+      <ScrollView style={styles.detailsContainer} contentContainerStyle={{paddingBottom: 40}} showsVerticalScrollIndicator={false}>
          <View style={styles.dragIndicator} />
 
          <View style={styles.customerCard}>
@@ -92,15 +126,15 @@ export default function OrderTrackingScreen() {
                   <Text style={styles.avatarText}>{order.customerDetails?.name?.charAt(0) || 'C'}</Text>
                </View>
                <View>
-                 <Text style={styles.customerName}>{order.customerDetails?.name}</Text>
+                 <Text style={styles.customerName}>{order.customerDetails?.name || 'Customer'}</Text>
                  <Text style={styles.customerRole}>Customer</Text>
                </View>
             </View>
             <View style={styles.contactActions}>
-               <TouchableOpacity style={styles.iconBtn}>
+               <TouchableOpacity style={styles.iconBtn} onPress={handleMessage} activeOpacity={0.7}>
                   <MessageSquare color="#2563EB" size={20} />
                </TouchableOpacity>
-               <TouchableOpacity style={[styles.iconBtn, {backgroundColor: '#2563EB'}]}>
+               <TouchableOpacity style={[styles.iconBtn, {backgroundColor: '#2563EB'}]} onPress={handleCall} activeOpacity={0.7}>
                   <Phone color="#FFFFFF" size={20} />
                </TouchableOpacity>
             </View>
@@ -111,18 +145,26 @@ export default function OrderTrackingScreen() {
 
             {statuses.map((status, index) => {
                const isCompleted = index <= currentStatusIndex;
+               const isCurrent = index === currentStatusIndex;
                const isLast = index === statuses.length - 1;
 
                return (
                  <View key={status} style={styles.timelineItem}>
                     <View style={styles.timelineLeft}>
-                       <View style={[styles.timelineDot, isCompleted ? styles.dotCompleted : styles.dotPending]} />
+                       <View style={[
+                         styles.timelineDot,
+                         isCompleted ? styles.dotCompleted : styles.dotPending,
+                         isCurrent && styles.dotCurrent,
+                       ]} />
                        {!isLast && <View style={[styles.timelineLine, isCompleted ? styles.lineCompleted : styles.linePending]} />}
                     </View>
                     <View style={styles.timelineContent}>
                        <Text style={[styles.timelineStatusText, isCompleted ? styles.textCompleted : styles.textPending]}>
                          {status.replace(/_/g, ' ')}
                        </Text>
+                       {isCurrent && (
+                         <Text style={styles.currentLabel}>Current</Text>
+                       )}
                     </View>
                  </View>
                );
@@ -133,11 +175,18 @@ export default function OrderTrackingScreen() {
            <TouchableOpacity
              style={styles.updateBtn}
              onPress={handleUpdateStatus}
+             activeOpacity={0.8}
            >
              <Text style={styles.updateBtnText}>
-               Update Status to {statuses[currentStatusIndex + 1].replace(/_/g, ' ')}
+               Update to {statuses[currentStatusIndex + 1].replace(/_/g, ' ')}
              </Text>
            </TouchableOpacity>
+         )}
+
+         {currentStatusIndex === statuses.length - 1 && (
+           <View style={styles.deliveredBanner}>
+             <Text style={styles.deliveredText}>✅ Order Delivered Successfully</Text>
+           </View>
          )}
       </ScrollView>
     </View>
@@ -209,7 +258,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#EFF6FF',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -217,7 +266,7 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#4B5563',
+    color: '#2563EB',
   },
   customerName: {
     fontSize: 16,
@@ -270,6 +319,14 @@ const styles = StyleSheet.create({
   dotPending: {
     backgroundColor: '#D1D5DB',
   },
+  dotCurrent: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 3,
+    borderColor: '#2563EB',
+    backgroundColor: '#FFFFFF',
+  },
   timelineLine: {
     width: 2,
     height: 40,
@@ -295,15 +352,37 @@ const styles = StyleSheet.create({
   textPending: {
     color: '#9CA3AF',
   },
+  currentLabel: {
+    fontSize: 12,
+    color: '#2563EB',
+    fontWeight: '600',
+    marginTop: 2,
+  },
   updateBtn: {
     backgroundColor: '#2563EB',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   updateBtnText: {
     color: '#FFFFFF',
     fontSize: 16,
+    fontWeight: '700',
+  },
+  deliveredBanner: {
+    backgroundColor: '#D1FAE5',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  deliveredText: {
+    color: '#059669',
+    fontSize: 16,
     fontWeight: '600',
-  }
+  },
 });

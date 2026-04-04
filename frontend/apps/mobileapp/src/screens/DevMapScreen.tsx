@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '../store/store';
 import { updateLocation } from '../store/driverSlice';
 import MapView, { Marker } from 'react-native-maps';
 import { useNavigation } from '@react-navigation/native';
 import { ArrowLeft } from 'lucide-react-native';
+import * as Burnt from 'burnt';
 
 export default function DevMapScreen() {
   const [selectedLocation, setSelectedLocation] = useState<{lat: number, lng: number} | null>(null);
@@ -23,9 +24,12 @@ export default function DevMapScreen() {
     if (selectedLocation) {
       try {
         await dispatch(updateLocation(selectedLocation)).unwrap();
-        Alert.alert('Success', 'Location updated successfully via dev map.');
-      } catch (err) {
-        Alert.alert('Error', 'Failed to update location.');
+        Burnt.toast({ title: 'Location updated successfully', preset: 'done' });
+      } catch (err: any) {
+        Burnt.toast({
+          title: typeof err === 'string' ? err : 'Failed to update location',
+          preset: 'error',
+        });
       }
     }
   };
@@ -35,6 +39,7 @@ export default function DevMapScreen() {
       <TouchableOpacity
           style={styles.backBtn}
           onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
       >
          <ArrowLeft color="#111827" size={24} />
       </TouchableOpacity>
@@ -74,6 +79,7 @@ export default function DevMapScreen() {
            style={[styles.btn, !selectedLocation && styles.btnDisabled]}
            disabled={!selectedLocation}
            onPress={handleUpdateLocation}
+           activeOpacity={0.8}
          >
             <Text style={styles.btnText}>Simulate Location Update</Text>
          </TouchableOpacity>
@@ -157,5 +163,5 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
-  }
+  },
 });

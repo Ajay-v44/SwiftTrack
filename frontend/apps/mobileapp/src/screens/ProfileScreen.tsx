@@ -1,29 +1,44 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Alert } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store/store';
 import { logout } from '../store/authSlice';
 import { LogOut, Settings, Bell, CircleHelp, Shield, ChevronRight } from 'lucide-react-native';
 import * as Application from 'expo-application';
 import * as Updates from 'expo-updates';
+import * as Burnt from 'burnt';
 
 export default function ProfileScreen() {
   const { user } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch<AppDispatch>();
 
   const handleLogout = () => {
-    dispatch(logout());
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: () => {
+            dispatch(logout());
+            Burnt.toast({ title: 'Logged out successfully', preset: 'done' });
+          },
+        },
+      ]
+    );
   };
 
   const menuItems = [
-    { title: 'Personal Information', icon: <Settings color="#4B5563" size={24} /> },
-    { title: 'Notifications', icon: <Bell color="#4B5563" size={24} /> },
-    { title: 'Privacy Policy', icon: <Shield color="#4B5563" size={24} /> },
-    { title: 'Help Center', icon: <CircleHelp color="#4B5563" size={24} /> },
+    { title: 'Personal Information', icon: <Settings color="#4B5563" size={24} />, onPress: () => Burnt.toast({ title: 'Coming soon', preset: 'none' }) },
+    { title: 'Notifications', icon: <Bell color="#4B5563" size={24} />, onPress: () => Burnt.toast({ title: 'Coming soon', preset: 'none' }) },
+    { title: 'Privacy Policy', icon: <Shield color="#4B5563" size={24} />, onPress: () => Burnt.toast({ title: 'Coming soon', preset: 'none' }) },
+    { title: 'Help Center', icon: <CircleHelp color="#4B5563" size={24} />, onPress: () => Burnt.toast({ title: 'Coming soon', preset: 'none' }) },
   ];
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
         <Text style={styles.title}>Profile</Text>
       </View>
@@ -35,14 +50,14 @@ export default function ProfileScreen() {
         />
         <View style={styles.profileInfo}>
            <Text style={styles.name}>{user?.name || 'Driver Name'}</Text>
-           <Text style={styles.contact}>{user?.email || 'driver@example.com'}</Text>
-           <Text style={styles.contact}>{user?.mobileNumber || '+1 234 567 8900'}</Text>
+           <Text style={styles.contact}>{user?.email || 'No email on file'}</Text>
+           <Text style={styles.contact}>{user?.mobileNumber || 'No mobile on file'}</Text>
         </View>
       </View>
 
       <View style={styles.menuContainer}>
          {menuItems.map((item, index) => (
-           <TouchableOpacity key={index} style={styles.menuItem}>
+           <TouchableOpacity key={index} style={styles.menuItem} onPress={item.onPress} activeOpacity={0.7}>
               <View style={styles.menuLeft}>
                  <View style={styles.menuIcon}>{item.icon}</View>
                  <Text style={styles.menuText}>{item.title}</Text>
@@ -52,7 +67,7 @@ export default function ProfileScreen() {
          ))}
       </View>
 
-      <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+      <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.7}>
          <LogOut color="#EF4444" size={20} style={{marginRight: 8}} />
          <Text style={styles.logoutText}>Log Out</Text>
       </TouchableOpacity>
@@ -176,5 +191,5 @@ const styles = StyleSheet.create({
   versionText: {
     color: '#9CA3AF',
     fontSize: 12,
-  }
+  },
 });

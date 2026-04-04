@@ -12,6 +12,7 @@
   "dependencies": {
     "@expo/metro-config": "*",
     "@testing-library/react-native": "*",
+    "burnt": "^0.13.0",
     "expo": "*",
     "expo-application": "*",
     "expo-constants": "*",

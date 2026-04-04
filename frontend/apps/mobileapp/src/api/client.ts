@@ -18,6 +18,7 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 15000, // 15 second timeout for production reliability
 });
 
 let store: any;
@@ -27,11 +28,12 @@ export const injectStore = (_store: any) => {
 };
 
 // Request interceptor to add auth token
+// IMPORTANT: Using 'token' header to match the dashboard/gateway convention
 apiClient.interceptors.request.use(
   async (config) => {
     const token = await SecureStore.getItemAsync('userToken');
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers['token'] = token;
     }
     return config;
   },
@@ -40,18 +42,39 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Response interceptor to handle 401s globally
+// Response interceptor to handle 401s/403s globally
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response && error.response.status === 401) {
+    const status = error.response?.status;
+
+    if (status === 401 || status === 403) {
       // Clear token from secure storage
       await SecureStore.deleteItemAsync('userToken');
       // Clear Redux state to trigger navigation to Login screen
       if (store) {
-         store.dispatch({ type: 'auth/logout/fulfilled' });
+        store.dispatch({ type: 'auth/logout/fulfilled' });
       }
     }
+
+    // Safety net: catch auth failures that downstream services return as 500
+    if (status === 500) {
+      const data = error.response?.data;
+      const message = typeof data?.message === 'string' ? data.message.toLowerCase() : '';
+      if (
+        message.includes('expired token') ||
+        message.includes('invalid token') ||
+        message.includes('missing auth token') ||
+        message.includes('[401]') ||
+        message.includes('unauthorized')
+      ) {
+        await SecureStore.deleteItemAsync('userToken');
+        if (store) {
+          store.dispatch({ type: 'auth/logout/fulfilled' });
+        }
+      }
+    }
+
     return Promise.reject(error);
   }
 );

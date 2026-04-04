@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Switch, ScrollView, TouchableOpacity, Image } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, StyleSheet, Switch, ScrollView, TouchableOpacity, Image, RefreshControl } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store/store';
 import { updateStatus } from '../store/driverSlice';
@@ -7,17 +7,36 @@ import { getMyOrders } from '../store/ordersSlice';
 import { startLocationTracking, stopLocationTracking } from '../utils/locationTracking';
 import { MapPin, Box, ChevronRight, Bell } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
+import * as Burnt from 'burnt';
 
 export default function HomeScreen() {
   const dispatch = useDispatch<AppDispatch>();
   const navigation = useNavigation<any>();
   const { user } = useSelector((state: RootState) => state.auth);
   const { isActive, loading: statusLoading } = useSelector((state: RootState) => state.driver);
-  const { orders } = useSelector((state: RootState) => state.orders);
+  const { orders, loading: ordersLoading } = useSelector((state: RootState) => state.orders);
+  const [refreshing, setRefreshing] = React.useState(false);
 
   useEffect(() => {
     dispatch(getMyOrders());
   }, [dispatch]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await dispatch(getMyOrders()).unwrap();
+    } catch {
+      // Silently fail refresh
+    }
+    setRefreshing(false);
+  };
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  };
 
   const handleStatusToggle = async (value: boolean) => {
     const newStatus = value ? 'ACTIVE' : 'INACTIVE';
@@ -25,11 +44,16 @@ export default function HomeScreen() {
       await dispatch(updateStatus(newStatus)).unwrap();
       if (newStatus === 'ACTIVE') {
         startLocationTracking();
+        Burnt.toast({ title: 'You are now online', preset: 'done' });
       } else {
         stopLocationTracking();
+        Burnt.toast({ title: 'You are now offline', preset: 'done' });
       }
-    } catch (err) {
-      console.error('Failed to change status:', err);
+    } catch (err: any) {
+      Burnt.toast({
+        title: typeof err === 'string' ? err : 'Failed to change status',
+        preset: 'error',
+      });
     }
   };
 
@@ -37,7 +61,13 @@ export default function HomeScreen() {
   const recentOrders = orders.filter(o => o.status === 'DELIVERED').slice(0, 3);
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2563EB']} tintColor="#2563EB" />
+      }
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.header}>
         <View style={styles.userInfo}>
            <Image
@@ -45,11 +75,11 @@ export default function HomeScreen() {
              style={styles.avatar}
            />
            <View>
-             <Text style={styles.greeting}>Good Morning,</Text>
+             <Text style={styles.greeting}>{getGreeting()},</Text>
              <Text style={styles.userName}>{user?.name || 'Driver'}</Text>
            </View>
         </View>
-        <TouchableOpacity style={styles.notificationBtn}>
+        <TouchableOpacity style={styles.notificationBtn} activeOpacity={0.7}>
            <Bell color="#111827" size={24} />
         </TouchableOpacity>
       </View>
@@ -58,7 +88,7 @@ export default function HomeScreen() {
          <View>
            <Text style={styles.statusTitle}>Driver Status</Text>
            <Text style={styles.statusDesc}>
-             {isActive ? 'You are online and visible' : 'You are offline'}
+             {isActive ? '🟢 You are online and visible' : '🔴 You are offline'}
            </Text>
          </View>
          <Switch
@@ -76,6 +106,7 @@ export default function HomeScreen() {
           <TouchableOpacity
             style={styles.shipmentCard}
             onPress={() => navigation.navigate('OrderTracking', { orderId: ongoingOrder.id })}
+            activeOpacity={0.7}
           >
             <View style={styles.shipmentHeader}>
               <View style={styles.shipmentIcon}>
@@ -84,7 +115,7 @@ export default function HomeScreen() {
               <View style={styles.shipmentInfo}>
                 <Text style={styles.shipmentId}>{ongoingOrder.orderNumber}</Text>
                 <View style={styles.statusBadge}>
-                   <Text style={styles.statusBadgeText}>{ongoingOrder.status}</Text>
+                   <Text style={styles.statusBadgeText}>{ongoingOrder.status.replace(/_/g, ' ')}</Text>
                 </View>
               </View>
               <ChevronRight color="#9CA3AF" size={20} />
@@ -92,18 +123,20 @@ export default function HomeScreen() {
             <View style={styles.shipmentRoute}>
                <View style={styles.routePoint}>
                  <MapPin color="#2563EB" size={16} />
-                 <Text style={styles.routeText} numberOfLines={1}>{ongoingOrder.pickupLocation?.address || 'Pickup'}</Text>
+                 <Text style={styles.routeText} numberOfLines={1}>{ongoingOrder.pickupLocation?.address || 'Pickup Location'}</Text>
                </View>
                <View style={styles.routeLine} />
                <View style={styles.routePoint}>
                  <MapPin color="#EF4444" size={16} />
-                 <Text style={styles.routeText} numberOfLines={1}>{ongoingOrder.dropoffLocation?.address || 'Dropoff'}</Text>
+                 <Text style={styles.routeText} numberOfLines={1}>{ongoingOrder.dropoffLocation?.address || 'Dropoff Location'}</Text>
                </View>
             </View>
           </TouchableOpacity>
         ) : (
           <View style={styles.emptyState}>
-             <Text style={styles.emptyStateText}>No ongoing shipments</Text>
+             <Box color="#D1D5DB" size={40} />
+             <Text style={styles.emptyStateTitle}>No Active Shipments</Text>
+             <Text style={styles.emptyStateText}>New orders will appear here when assigned to you</Text>
           </View>
         )}
       </View>
@@ -111,12 +144,12 @@ export default function HomeScreen() {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
            <Text style={styles.sectionTitle}>Recent Shipments</Text>
-           <TouchableOpacity onPress={() => navigation.navigate('Orders')}>
+           <TouchableOpacity onPress={() => navigation.navigate('Orders')} activeOpacity={0.7}>
              <Text style={styles.seeAllBtn}>See All</Text>
            </TouchableOpacity>
         </View>
         {recentOrders.map((order, idx) => (
-           <View key={idx} style={styles.recentItem}>
+           <View key={order.id || idx} style={styles.recentItem}>
              <View style={styles.recentIcon}>
                <Box color="#4B5563" size={20} />
              </View>
@@ -134,14 +167,8 @@ export default function HomeScreen() {
         )}
       </View>
 
-      {/* Dev Only Button */}
-      <TouchableOpacity
-         style={{marginTop: 40, padding: 16, backgroundColor: '#FEF3C7', alignItems: 'center', borderRadius: 8}}
-         onPress={() => navigation.navigate('DevMap')}
-      >
-         <Text style={{color: '#D97706', fontWeight: 'bold'}}>DEV: Open Map Location Simulator</Text>
-      </TouchableOpacity>
-
+      {/* Spacer for bottom tab */}
+      <View style={{ height: 20 }} />
     </ScrollView>
   );
 }
@@ -296,14 +323,23 @@ const styles = StyleSheet.create({
   },
   emptyState: {
     backgroundColor: '#FFFFFF',
-    padding: 24,
+    padding: 32,
     borderRadius: 16,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
+  emptyStateTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginTop: 12,
+  },
   emptyStateText: {
     color: '#6B7280',
+    marginTop: 4,
+    textAlign: 'center',
+    fontSize: 14,
   },
   recentItem: {
     flexDirection: 'row',
@@ -336,5 +372,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#6B7280',
     marginTop: 2,
-  }
+  },
 });
