@@ -6,3 +6,9 @@
 # Firebase and Service Account Secrets
 *firebase-adminsdk*.json
 *service-account*.json
+
+# Firebase mobile config files (contain API keys)
+google-services.json
+**/google-services.json
+GoogleService-Info.plist
+**/GoogleService-Info.plist
