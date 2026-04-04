@@ -1,6 +1,7 @@
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import apiClient from '../api/client';
 
 Notifications.setNotificationHandler({
@@ -36,15 +37,22 @@ export async function registerForPushNotificationsAsync() {
     }
 
     // Project ID should match the EAS project ID or be explicitly configured
+    const projectId =
+      Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+
+    if (!projectId) {
+      console.warn('Project ID not found in app config. Push notifications may fail to register.');
+    }
+
     token = (await Notifications.getExpoPushTokenAsync({
-       projectId: process.env.EXPO_PUBLIC_PROJECT_ID || 'your-project-id'
+       projectId,
     })).data;
     console.log('Expo Push Token:', token);
 
     // Call backend API to register this token for the driver
     // Example endpoint based on standard setup
     try {
-       await apiClient.post('/NotificationService/api/notifications/register-token', { token, deviceType: Platform.OS });
+       await apiClient.post('/notificationservice/api/notifications/register-token', { token, deviceType: Platform.OS });
     } catch(err) {
        console.log("Failed to register push token with backend", err);
     }

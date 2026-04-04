@@ -3,7 +3,7 @@ import apiClient from '../api/client';
 
 export const fetchWalletDetails = createAsyncThunk('wallet/fetchDetails', async (_, { rejectWithValue }) => {
   try {
-    const response = await apiClient.get('/BillingService/api/billing/v1/wallet');
+    const response = await apiClient.get('/billingandsettlementservice/api/billing/v1/wallet');
     return response.data;
   } catch (error: any) {
     return rejectWithValue(error.response?.data?.message || 'Failed to fetch wallet details');
@@ -12,7 +12,7 @@ export const fetchWalletDetails = createAsyncThunk('wallet/fetchDetails', async 
 
 export const fetchTransactions = createAsyncThunk('wallet/fetchTransactions', async (_, { rejectWithValue }) => {
   try {
-    const response = await apiClient.get('/BillingService/api/billing/v1/wallet/transactions');
+    const response = await apiClient.get('/billingandsettlementservice/api/billing/v1/wallet/transactions');
     return response.data;
   } catch (error: any) {
     return rejectWithValue(error.response?.data?.message || 'Failed to fetch transactions');

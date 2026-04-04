@@ -15,7 +15,7 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
 
     if (location) {
       try {
-        await apiClient.post('/DriverService/api/driver/v1/location', {
+        await apiClient.post('/driverservice/api/driver/v1/location', {
           lat: location.coords.latitude,
           lng: location.coords.longitude,
         });

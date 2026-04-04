@@ -1,26 +1,61 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store/store';
 import { getMyOrders, respondToAssignment } from '../store/ordersSlice';
-import { MapPin, Box, CheckCircle, XCircle } from 'lucide-react-native';
+import { MapPin, Box, CheckCircle, XCircle, Package } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
+import * as Burnt from 'burnt';
 
 export default function OrdersScreen() {
   const dispatch = useDispatch<AppDispatch>();
   const navigation = useNavigation<any>();
   const { orders, loading } = useSelector((state: RootState) => state.orders);
+  const [refreshing, setRefreshing] = React.useState(false);
 
   useEffect(() => {
     dispatch(getMyOrders());
   }, [dispatch]);
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await dispatch(getMyOrders()).unwrap();
+    } catch {
+      Burnt.toast({ title: 'Failed to refresh orders', preset: 'error' });
+    }
+    setRefreshing(false);
+  };
+
   const handleResponse = async (assignmentId: string, response: 'ACCEPT' | 'REJECT') => {
-    await dispatch(respondToAssignment({ assignmentId, response }));
+    try {
+      await dispatch(respondToAssignment({ assignmentId, response })).unwrap();
+      Burnt.toast({
+        title: response === 'ACCEPT' ? 'Order accepted!' : 'Order rejected',
+        preset: response === 'ACCEPT' ? 'done' : 'none',
+      });
+    } catch (err: any) {
+      Burnt.toast({
+        title: typeof err === 'string' ? err : 'Failed to respond to assignment',
+        preset: 'error',
+      });
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'PENDING': return { bg: '#FEF3C7', text: '#D97706' };
+      case 'ACCEPTED': return { bg: '#DBEAFE', text: '#2563EB' };
+      case 'PICKED_UP': return { bg: '#E0E7FF', text: '#4F46E5' };
+      case 'IN_TRANSIT': return { bg: '#FEF2F2', text: '#DC2626' };
+      case 'DELIVERED': return { bg: '#D1FAE5', text: '#059669' };
+      default: return { bg: '#F3F4F6', text: '#6B7280' };
+    }
   };
 
   const renderItem = ({ item }: { item: any }) => {
     const isPending = item.status === 'PENDING' && item.assignmentId;
+    const statusColor = getStatusColor(item.status);
 
     return (
       <View style={styles.card}>
@@ -30,11 +65,11 @@ export default function OrdersScreen() {
           </View>
           <View style={styles.cardInfo}>
             <Text style={styles.orderId}>{item.orderNumber}</Text>
-            <Text style={styles.customerName}>{item.customerDetails?.name}</Text>
+            <Text style={styles.customerName}>{item.customerDetails?.name || 'Customer'}</Text>
           </View>
-          <View style={[styles.statusBadge, { backgroundColor: isPending ? '#FEF2F2' : '#EFF6FF' }]}>
-            <Text style={[styles.statusBadgeText, { color: isPending ? '#DC2626' : '#2563EB' }]}>
-              {item.status}
+          <View style={[styles.statusBadge, { backgroundColor: statusColor.bg }]}>
+            <Text style={[styles.statusBadgeText, { color: statusColor.text }]}>
+              {item.status.replace(/_/g, ' ')}
             </Text>
           </View>
         </View>
@@ -42,12 +77,12 @@ export default function OrdersScreen() {
         <View style={styles.routeContainer}>
            <View style={styles.routePoint}>
              <MapPin color="#2563EB" size={16} />
-             <Text style={styles.routeText} numberOfLines={1}>{item.pickupLocation?.address}</Text>
+             <Text style={styles.routeText} numberOfLines={1}>{item.pickupLocation?.address || 'Pickup Location'}</Text>
            </View>
            <View style={styles.routeLine} />
            <View style={styles.routePoint}>
              <MapPin color="#EF4444" size={16} />
-             <Text style={styles.routeText} numberOfLines={1}>{item.dropoffLocation?.address}</Text>
+             <Text style={styles.routeText} numberOfLines={1}>{item.dropoffLocation?.address || 'Dropoff Location'}</Text>
            </View>
         </View>
 
@@ -56,6 +91,7 @@ export default function OrdersScreen() {
             <TouchableOpacity
               style={[styles.actionBtn, styles.rejectBtn]}
               onPress={() => handleResponse(item.assignmentId, 'REJECT')}
+              activeOpacity={0.7}
             >
               <XCircle color="#DC2626" size={20} />
               <Text style={styles.rejectText}>Reject</Text>
@@ -63,6 +99,7 @@ export default function OrdersScreen() {
             <TouchableOpacity
               style={[styles.actionBtn, styles.acceptBtn]}
               onPress={() => handleResponse(item.assignmentId, 'ACCEPT')}
+              activeOpacity={0.7}
             >
               <CheckCircle color="#FFFFFF" size={20} />
               <Text style={styles.acceptText}>Accept</Text>
@@ -72,6 +109,7 @@ export default function OrdersScreen() {
           <TouchableOpacity
             style={styles.viewBtn}
             onPress={() => navigation.navigate('OrderTracking', { orderId: item.id })}
+            activeOpacity={0.7}
           >
             <Text style={styles.viewBtnText}>View Details</Text>
           </TouchableOpacity>
@@ -92,6 +130,7 @@ export default function OrdersScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Orders & Assignments</Text>
+        <Text style={styles.headerSubtitle}>{orders.length} total orders</Text>
       </View>
       <FlatList
         data={orders}
@@ -99,9 +138,14 @@ export default function OrdersScreen() {
         renderItem={renderItem}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2563EB']} tintColor="#2563EB" />
+        }
         ListEmptyComponent={
           <View style={styles.emptyState}>
-             <Text style={styles.emptyText}>No orders assigned yet.</Text>
+             <Package color="#D1D5DB" size={48} />
+             <Text style={styles.emptyTitle}>No Orders Yet</Text>
+             <Text style={styles.emptyText}>When orders are assigned to you, they will appear here.</Text>
           </View>
         }
       />
@@ -131,8 +175,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#111827',
   },
+  headerSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 4,
+  },
   listContent: {
     padding: 16,
+    paddingBottom: 40,
   },
   card: {
     backgroundColor: '#FFFFFF',
@@ -249,11 +299,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   emptyState: {
-    padding: 40,
+    padding: 60,
     alignItems: 'center',
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#374151',
+    marginTop: 16,
   },
   emptyText: {
     color: '#6B7280',
-    fontSize: 16,
-  }
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
 });

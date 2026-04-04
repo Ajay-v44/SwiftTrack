@@ -20,24 +20,43 @@ const initialState: AuthState = {
 export const login = createAsyncThunk('auth/login', async (credentials: any, { rejectWithValue }) => {
   try {
     const isEmail = credentials.email !== undefined;
+    // Gateway discovery locator uses lowercase service IDs
     const url = isEmail
-      ? '/DriverAuthService/api/driver/auth/v1/loginWithEmailAndPassword'
-      : '/DriverAuthService/api/driver/auth/v1/loginWithMobileNumberAndOtp';
+      ? '/driverservice/api/driver/auth/v1/loginWithEmailAndPassword'
+      : '/driverservice/api/driver/auth/v1/loginWithMobileNumberAndOtp';
 
-    // Using correct mapping based on common microservice structure
-    const response = await apiClient.post(url, credentials);
-    const { token, driver } = response.data; // Adjust based on actual API response
+    const payload = isEmail
+      ? { email: credentials.email.trim(), password: credentials.password }
+      : { mobileNum: credentials.mobileNumber, otp: credentials.otp };
 
-    await SecureStore.setItemAsync('userToken', token);
-    return { token, user: driver };
+    const response = await apiClient.post(url, payload);
+
+    // Backend LoginResponse returns { tokenType, accessToken }
+    const { accessToken } = response.data;
+
+    if (!accessToken) {
+      return rejectWithValue('No access token received from server');
+    }
+
+    await SecureStore.setItemAsync('userToken', accessToken);
+    return { token: accessToken };
   } catch (error: any) {
-    return rejectWithValue(error.response?.data?.message || 'Login failed');
+    const message =
+      error.response?.data?.message ||
+      error.response?.data?.error ||
+      (error.response?.status === 404 ? 'Account does not exist' : 'Login failed');
+    return rejectWithValue(message);
   }
 });
 
 export const register = createAsyncThunk('auth/register', async (data: any, { rejectWithValue }) => {
   try {
-    const response = await apiClient.post('/DriverService/api/driver/v1/register', data);
+    const response = await apiClient.post('/driverservice/api/driver/v1/register', {
+      name: data.name,
+      email: data.email.trim(),
+      mobileNumber: data.mobileNumber,
+      password: data.password,
+    });
     return response.data;
   } catch (error: any) {
     return rejectWithValue(error.response?.data?.message || 'Registration failed');
@@ -46,7 +65,7 @@ export const register = createAsyncThunk('auth/register', async (data: any, { re
 
 export const getDriverDetails = createAsyncThunk('auth/getDriverDetails', async (_, { rejectWithValue }) => {
   try {
-    const response = await apiClient.get('/DriverService/api/driver/v1/getDriverDetails');
+    const response = await apiClient.get('/driverservice/api/driver/v1/getDriverDetails');
     return response.data;
   } catch (error: any) {
     return rejectWithValue(error.response?.data?.message || 'Failed to fetch details');
@@ -78,7 +97,6 @@ const authSlice = createSlice({
     builder.addCase(login.fulfilled, (state, action) => {
       state.loading = false;
       state.token = action.payload.token;
-      state.user = action.payload.user;
     });
     builder.addCase(login.rejected, (state, action) => {
       state.loading = false;
