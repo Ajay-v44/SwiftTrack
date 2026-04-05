@@ -1,18 +1,20 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, Switch, ScrollView, TouchableOpacity, Image,
-  RefreshControl, Dimensions,
+  RefreshControl, Dimensions, Platform,
 } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store/store';
-import { updateStatus } from '../store/driverSlice';
+import { updateStatus, setCurrentLocation } from '../store/driverSlice';
 import { getPendingOrders, getAcceptedOrders } from '../store/ordersSlice';
 import { getDriverDetails } from '../store/authSlice';
 import { startLocationTracking, stopLocationTracking } from '../utils/locationTracking';
-import { MapPin, Box, ChevronRight, Bell, Zap, TrendingUp, Navigation } from 'lucide-react-native';
+import { MapPin, Box, ChevronRight, Bell, Zap, TrendingUp, Navigation, Map as MapIcon } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
+import * as Location from 'expo-location';
 import * as Burnt from 'burnt';
 import { Colors } from '../theme/colors';
+import DiceBearAvatar from '../components/DiceBearAvatar';
 
 const { width } = Dimensions.get('window');
 
@@ -20,14 +22,36 @@ export default function HomeScreen() {
   const dispatch = useDispatch<AppDispatch>();
   const navigation = useNavigation<any>();
   const { driver } = useSelector((state: RootState) => state.auth);
-  const { isOnline, loading: statusLoading } = useSelector((state: RootState) => state.driver);
+  const { isOnline, loading: statusLoading, currentLocation } = useSelector((state: RootState) => state.driver);
   const { pendingOrders, acceptedOrders } = useSelector((state: RootState) => state.orders);
-  const [refreshing, setRefreshing] = React.useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [locationAddress, setLocationAddress] = useState<string | null>(null);
 
   useEffect(() => {
     dispatch(getDriverDetails());
     dispatch(getPendingOrders());
     dispatch(getAcceptedOrders());
+    fetchCurrentLocation();
+  }, [dispatch]);
+
+  const fetchCurrentLocation = useCallback(async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') return;
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
+      dispatch(setCurrentLocation(coords));
+
+      // Reverse geocode
+      const addresses = await Location.reverseGeocodeAsync(coords);
+      if (addresses.length > 0) {
+        const a = addresses[0];
+        const parts = [a.name, a.street, a.city, a.region].filter(Boolean);
+        setLocationAddress(parts.join(', '));
+      }
+    } catch (err) {
+      console.log('Location error:', err);
+    }
   }, [dispatch]);
 
   const onRefresh = async () => {
@@ -38,6 +62,7 @@ export default function HomeScreen() {
         dispatch(getPendingOrders()).unwrap(),
         dispatch(getAcceptedOrders()).unwrap(),
       ]);
+      fetchCurrentLocation();
     } catch {}
     setRefreshing(false);
   };
@@ -74,26 +99,57 @@ export default function HomeScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} tintColor={Colors.primary} />}
       showsVerticalScrollIndicator={false}
     >
-      {/* Header with gradient-like decorative circles */}
+      {/* Header */}
       <View style={styles.headerBg}>
         <View style={styles.decorCircle1} />
         <View style={styles.decorCircle2} />
 
+        {/* Brand Row */}
+        <View style={styles.brandRow}>
+          <View style={styles.brandContainer}>
+            <Image
+              source={require('../../assets/images/swifttrack_logo.png')}
+              style={styles.brandLogo}
+              resizeMode="contain"
+            />
+            <Text style={styles.brandName}>SwiftTrack</Text>
+          </View>
+          <TouchableOpacity style={styles.devMapBtn} onPress={() => navigation.navigate('DevMap')} activeOpacity={0.7}>
+            <MapIcon color={Colors.accentTeal} size={18} />
+          </TouchableOpacity>
+        </View>
+
+        {/* User Row */}
         <View style={styles.headerRow}>
-          <View style={styles.userInfo}>
-            <View style={styles.avatarContainer}>
-              <Text style={styles.avatarText}>{driverName.charAt(0).toUpperCase()}</Text>
-            </View>
+          <TouchableOpacity
+            style={styles.userInfo}
+            onPress={() => navigation.navigate('Profile')}
+            activeOpacity={0.7}
+          >
+            <DiceBearAvatar
+              seed={driverName}
+              size={50}
+              radius={16}
+              style={styles.avatarContainer}
+            />
             <View>
               <Text style={styles.greeting}>{getGreeting()} 👋</Text>
               <Text style={styles.userName}>{driverName}</Text>
             </View>
-          </View>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.notificationBtn} activeOpacity={0.7}>
             <Bell color={Colors.textPrimary} size={22} />
-            <View style={styles.notifDot} />
+            {pendingOrders.length > 0 && <View style={styles.notifDot} />}
           </TouchableOpacity>
         </View>
+
+        {/* Location Row */}
+        {locationAddress && (
+          <View style={styles.locationRow}>
+            <MapPin color={Colors.accentTeal} size={14} />
+            <Text style={styles.locationText} numberOfLines={1}>{locationAddress}</Text>
+          </View>
+        )}
 
         {/* Status Card */}
         <View style={styles.statusCard}>
@@ -116,27 +172,39 @@ export default function HomeScreen() {
 
       {/* Quick Stats */}
       <View style={styles.statsRow}>
-        <View style={[styles.statCard, { backgroundColor: Colors.bgCard }]}>
-          <View style={[styles.statIcon, { backgroundColor: Colors.primary + '20' }]}>
-            <Zap color={Colors.primary} size={20} />
+        <TouchableOpacity
+          style={[styles.statCard, { backgroundColor: Colors.bgCard }]}
+          onPress={() => navigation.navigate('Orders')}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.statIcon, { backgroundColor: Colors.accentOrange + '20' }]}>
+            <Zap color={Colors.accentOrange} size={20} />
           </View>
           <Text style={styles.statValue}>{pendingOrders.length}</Text>
           <Text style={styles.statLabel}>Pending</Text>
-        </View>
-        <View style={[styles.statCard, { backgroundColor: Colors.bgCard }]}>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.statCard, { backgroundColor: Colors.bgCard }]}
+          onPress={() => navigation.navigate('Orders')}
+          activeOpacity={0.7}
+        >
           <View style={[styles.statIcon, { backgroundColor: Colors.accentTeal + '20' }]}>
             <Navigation color={Colors.accentTeal} size={20} />
           </View>
           <Text style={styles.statValue}>{acceptedOrders.length}</Text>
           <Text style={styles.statLabel}>Active</Text>
-        </View>
-        <View style={[styles.statCard, { backgroundColor: Colors.bgCard }]}>
-          <View style={[styles.statIcon, { backgroundColor: Colors.accentOrange + '20' }]}>
-            <TrendingUp color={Colors.accentOrange} size={20} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.statCard, { backgroundColor: Colors.bgCard }]}
+          onPress={() => navigation.navigate('Wallet')}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.statIcon, { backgroundColor: Colors.primary + '20' }]}>
+            <TrendingUp color={Colors.primaryLight} size={20} />
           </View>
-          <Text style={styles.statValue}>--</Text>
+          <Text style={styles.statValue}>₹--</Text>
           <Text style={styles.statLabel}>Earnings</Text>
-        </View>
+        </TouchableOpacity>
       </View>
 
       {/* Active Order */}
@@ -176,9 +244,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
         ) : (
           <View style={styles.emptyState}>
-            <View style={styles.emptyIcon}>
-              <Box color={Colors.textMuted} size={36} />
-            </View>
+            <View style={styles.emptyIcon}><Box color={Colors.textMuted} size={36} /></View>
             <Text style={styles.emptyTitle}>No Active Shipments</Text>
             <Text style={styles.emptyText}>New orders will appear here when assigned</Text>
           </View>
@@ -195,7 +261,12 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
           {pendingOrders.slice(0, 3).map((order, idx) => (
-            <View key={order.id || idx} style={styles.pendingItem}>
+            <TouchableOpacity
+              key={order.id || idx}
+              style={styles.pendingItem}
+              onPress={() => navigation.navigate('Orders')}
+              activeOpacity={0.7}
+            >
               <View style={styles.pendingDot} />
               <View style={styles.pendingInfo}>
                 <Text style={styles.pendingTitle}>{order.customerReferenceId || 'New Order'}</Text>
@@ -204,7 +275,7 @@ export default function HomeScreen() {
               <View style={[styles.statusBadge, { backgroundColor: Colors.accentOrange + '20' }]}>
                 <Text style={[styles.statusBadgeText, { color: Colors.accentOrange }]}>Assigned</Text>
               </View>
-            </View>
+            </TouchableOpacity>
           ))}
         </View>
       )}
@@ -217,7 +288,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgDark },
   headerBg: {
-    backgroundColor: Colors.bgCard, paddingTop: 60, paddingHorizontal: 20,
+    backgroundColor: Colors.bgCard, paddingTop: 52, paddingHorizontal: 20,
     paddingBottom: 24, borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
     overflow: 'hidden',
   },
@@ -229,15 +300,23 @@ const styles = StyleSheet.create({
     position: 'absolute', bottom: -20, left: -30, width: 100, height: 100,
     borderRadius: 50, backgroundColor: Colors.accentTeal, opacity: 0.08,
   },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  brandRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16,
+  },
+  brandContainer: { flexDirection: 'row', alignItems: 'center' },
+  brandLogo: { width: 32, height: 32, borderRadius: 8, marginRight: 8 },
+  brandName: { fontSize: 18, fontWeight: '800', color: Colors.primaryLight, letterSpacing: -0.3 },
+  devMapBtn: {
+    padding: 10, backgroundColor: Colors.bgGlass, borderRadius: 12,
+    borderWidth: 1, borderColor: Colors.borderLight,
+  },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   userInfo: { flexDirection: 'row', alignItems: 'center' },
   avatarContainer: {
-    width: 48, height: 48, borderRadius: 16, backgroundColor: Colors.primary,
-    justifyContent: 'center', alignItems: 'center', marginRight: 12,
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
+    marginRight: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2, shadowRadius: 8, elevation: 6,
   },
-  avatarText: { fontSize: 20, fontWeight: '700', color: '#FFFFFF' },
   greeting: { fontSize: 14, color: Colors.textSecondary },
   userName: { fontSize: 20, fontWeight: '700', color: Colors.textPrimary },
   notificationBtn: {
@@ -248,12 +327,18 @@ const styles = StyleSheet.create({
     position: 'absolute', top: 8, right: 8, width: 8, height: 8,
     borderRadius: 4, backgroundColor: Colors.accent,
   },
+  locationRow: {
+    flexDirection: 'row', alignItems: 'center', marginBottom: 14, gap: 6,
+    backgroundColor: Colors.bgGlass, paddingHorizontal: 12, paddingVertical: 8,
+    borderRadius: 10, borderWidth: 1, borderColor: Colors.borderLight,
+  },
+  locationText: { fontSize: 13, color: Colors.textSecondary, flex: 1 },
   statusCard: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     backgroundColor: Colors.bgGlass, padding: 16, borderRadius: 16,
     borderWidth: 1, borderColor: Colors.borderLight,
   },
-  statusLeft: { flexDirection: 'row', alignItems: 'center' },
+  statusLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   statusDot: { width: 12, height: 12, borderRadius: 6, marginRight: 12 },
   statusTitle: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary },
   statusSub: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },

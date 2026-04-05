@@ -10,8 +10,11 @@
     "eas-build-post-install": "cd ../../ && node tools/scripts/eas-build-post-install.mjs . apps/mobileapp"
   },
   "dependencies": {
+    "@dicebear/collection": "^9.4.2",
+    "@dicebear/core": "^9.4.2",
     "@expo/metro-config": "*",
     "@testing-library/react-native": "*",
+    "buffer": "^6.0.3",
     "burnt": "^0.13.0",
     "expo": "*",
     "expo-application": "*",
@@ -31,11 +34,13 @@
     "metro-resolver": "*",
     "react": "*",
     "react-native": "*",
+    "react-native-get-random-values": "^2.0.0",
     "react-native-maps": "*",
     "react-native-safe-area-context": "*",
     "react-native-screens": "*",
-    "react-native-svg": "*",
+    "react-native-svg": "^15.15.4",
     "react-native-svg-transformer": "*",
+    "react-native-url-polyfill": "^3.0.0",
     "react-native-web": "*"
   }
 }

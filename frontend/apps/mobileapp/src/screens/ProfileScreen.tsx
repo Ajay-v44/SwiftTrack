@@ -3,14 +3,20 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'rea
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store/store';
 import { logout } from '../store/authSlice';
-import { LogOut, Settings, Bell, CircleHelp, Shield, ChevronRight, Truck, Star } from 'lucide-react-native';
+import { LogOut, Settings, Bell, CircleHelp, Shield, ChevronRight, Truck, Star, MapPin } from 'lucide-react-native';
+import { useNavigation } from '@react-navigation/native';
 import * as Application from 'expo-application';
 import * as Burnt from 'burnt';
 import { Colors } from '../theme/colors';
+import DiceBearAvatar from '../components/DiceBearAvatar';
+
+
 
 export default function ProfileScreen() {
   const { driver } = useSelector((state: RootState) => state.auth);
+  const { currentLocation, isOnline } = useSelector((state: RootState) => state.driver);
   const dispatch = useDispatch<AppDispatch>();
+  const navigation = useNavigation<any>();
 
   const handleLogout = () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
@@ -27,13 +33,13 @@ export default function ProfileScreen() {
   const vehicleType = driver?.vehicleType || '—';
   const vehicleNumber = driver?.vehicleNumber || '—';
   const licenseNumber = driver?.driverLicenseNumber || '—';
-  const driverStatus = driver?.status || 'OFFLINE';
+  const driverStatus = isOnline ? 'ONLINE' : (driver?.status || 'OFFLINE');
 
   const menuItems = [
-    { title: 'Personal Information', icon: <Settings color={Colors.primaryLight} size={22} />, color: Colors.primary + '15' },
-    { title: 'Notifications', icon: <Bell color={Colors.accentOrange} size={22} />, color: Colors.accentOrange + '15' },
-    { title: 'Privacy Policy', icon: <Shield color={Colors.accentTeal} size={22} />, color: Colors.accentTeal + '15' },
-    { title: 'Help Center', icon: <CircleHelp color={Colors.accentPink} size={22} />, color: Colors.accentPink + '15' },
+    { title: 'Personal Information', icon: <Settings color={Colors.primaryLight} size={22} />, color: Colors.primary + '15', action: () => Burnt.toast({ title: 'Coming soon', preset: 'none' }) },
+    { title: 'Notifications', icon: <Bell color={Colors.accentOrange} size={22} />, color: Colors.accentOrange + '15', action: () => Burnt.toast({ title: 'Coming soon', preset: 'none' }) },
+    { title: 'Privacy Policy', icon: <Shield color={Colors.accentTeal} size={22} />, color: Colors.accentTeal + '15', action: () => navigation.navigate('PrivacyPolicy') },
+    { title: 'Help Center', icon: <CircleHelp color={Colors.accentPink} size={22} />, color: Colors.accentPink + '15', action: () => navigation.navigate('HelpCenter') },
   ];
 
   return (
@@ -44,9 +50,12 @@ export default function ProfileScreen() {
         <Text style={styles.headerTitle}>Profile</Text>
 
         <View style={styles.profileCard}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{driverName.charAt(0).toUpperCase()}</Text>
-          </View>
+          <DiceBearAvatar
+            seed={driverName}
+            size={80}
+            radius={24}
+            style={styles.avatar}
+          />
           <Text style={styles.name}>{driverName}</Text>
           <Text style={styles.mobile}>{driverMobile}</Text>
           <View style={[styles.statusPill, {
@@ -61,6 +70,21 @@ export default function ProfileScreen() {
           </View>
         </View>
       </View>
+
+      {/* Current Location */}
+      {currentLocation && (
+        <View style={styles.locationSection}>
+          <View style={styles.locationCard}>
+            <MapPin color={Colors.accentTeal} size={18} />
+            <View style={styles.locationTextContainer}>
+              <Text style={styles.locationLabel}>Current Location</Text>
+              <Text style={styles.locationCoords}>
+                {currentLocation.latitude.toFixed(5)}, {currentLocation.longitude.toFixed(5)}
+              </Text>
+            </View>
+          </View>
+        </View>
+      )}
 
       {/* Vehicle Info */}
       <View style={styles.infoSection}>
@@ -97,7 +121,7 @@ export default function ProfileScreen() {
         {menuItems.map((item, index) => (
           <TouchableOpacity
             key={index} style={styles.menuItem}
-            onPress={() => Burnt.toast({ title: 'Coming soon', preset: 'none' })}
+            onPress={item.action}
             activeOpacity={0.7}
           >
             <View style={[styles.menuIcon, { backgroundColor: item.color }]}>{item.icon}</View>
@@ -132,12 +156,11 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 20, fontWeight: '700', color: Colors.textPrimary, marginBottom: 20 },
   profileCard: { alignItems: 'center' },
   avatar: {
-    width: 80, height: 80, borderRadius: 24, backgroundColor: Colors.primary,
+    width: 80, height: 80, borderRadius: 24,
     justifyContent: 'center', alignItems: 'center', marginBottom: 12,
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4, shadowRadius: 12, elevation: 8,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3, shadowRadius: 12, elevation: 8,
   },
-  avatarText: { fontSize: 32, fontWeight: '800', color: '#FFFFFF' },
   name: { fontSize: 22, fontWeight: '700', color: Colors.textPrimary },
   mobile: { fontSize: 14, color: Colors.textSecondary, marginTop: 4 },
   statusPill: {
@@ -146,7 +169,16 @@ const styles = StyleSheet.create({
   },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
   statusPillText: { fontSize: 13, fontWeight: '600' },
-  infoSection: { paddingHorizontal: 20, marginTop: 24 },
+  locationSection: { paddingHorizontal: 20, marginTop: 16 },
+  locationCard: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bgCard,
+    padding: 14, borderRadius: 14, gap: 12,
+    borderWidth: 1, borderColor: Colors.borderLight,
+  },
+  locationTextContainer: { flex: 1 },
+  locationLabel: { fontSize: 13, color: Colors.textMuted },
+  locationCoords: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary, marginTop: 2 },
+  infoSection: { paddingHorizontal: 20, marginTop: 20 },
   infoSectionTitle: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary, marginBottom: 12 },
   infoCard: {
     backgroundColor: Colors.bgCard, borderRadius: 18, padding: 16,

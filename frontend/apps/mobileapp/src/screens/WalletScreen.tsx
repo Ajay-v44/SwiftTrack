@@ -6,9 +6,14 @@ import { fetchWalletDetails, fetchTransactions } from '../store/walletSlice';
 import { ArrowUpRight, ArrowDownLeft, Wallet as WalletIcon, TrendingUp } from 'lucide-react-native';
 import { Colors } from '../theme/colors';
 
+/**
+ * Backend LedgerTransaction fields:
+ * { id, accountId, transactionType: CREDIT|DEBIT, amount, referenceType, referenceId, orderId, description, createdAt }
+ */
+
 export default function WalletScreen() {
   const dispatch = useDispatch<AppDispatch>();
-  const { balance, transactions, loading } = useSelector((state: RootState) => state.wallet);
+  const { balance, currency, transactions, loading } = useSelector((state: RootState) => state.wallet);
   const [refreshing, setRefreshing] = React.useState(false);
 
   useEffect(() => {
@@ -28,7 +33,10 @@ export default function WalletScreen() {
   };
 
   const renderTransaction = ({ item }: { item: any }) => {
-    const isCredit = item.type === 'CREDIT';
+    // Backend uses transactionType: CREDIT|DEBIT (LedgerTransaction model)
+    const isCredit = item.transactionType === 'CREDIT';
+    const amount = parseFloat(item.amount) || 0;
+
     return (
       <View style={styles.transactionCard}>
         <View style={styles.transactionLeft}>
@@ -41,13 +49,19 @@ export default function WalletScreen() {
               <ArrowUpRight color={Colors.accent} size={20} />
             )}
           </View>
-          <View>
-            <Text style={styles.transactionTitle}>{item.description || (isCredit ? 'Earnings' : 'Withdrawal')}</Text>
-            <Text style={styles.transactionDate}>{new Date(item.createdAt || Date.now()).toLocaleDateString()}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.transactionTitle} numberOfLines={1}>
+              {item.description || (isCredit ? 'Earnings' : 'Debit')}
+            </Text>
+            <Text style={styles.transactionDate}>
+              {item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-IN', {
+                day: 'numeric', month: 'short', year: 'numeric'
+              }) : '—'}
+            </Text>
           </View>
         </View>
         <Text style={[styles.transactionAmount, { color: isCredit ? Colors.accentGreen : Colors.accent }]}>
-          {isCredit ? '+' : '-'}₹{Math.abs(item.amount || 0).toFixed(2)}
+          {isCredit ? '+' : '-'}{currency === 'INR' ? '₹' : currency}{Math.abs(amount).toFixed(2)}
         </Text>
       </View>
     );
@@ -66,7 +80,9 @@ export default function WalletScreen() {
             <Text style={styles.balanceLabel}>Total Balance</Text>
             <WalletIcon color={Colors.accentYellow} size={24} />
           </View>
-          <Text style={styles.balanceValue}>₹{(balance || 0).toFixed(2)}</Text>
+          <Text style={styles.balanceValue}>
+            {currency === 'INR' ? '₹' : currency}{balance.toFixed(2)}
+          </Text>
           <View style={styles.balanceActions}>
             <TouchableOpacity style={styles.withdrawBtn}>
               <Text style={styles.withdrawBtnText}>Withdraw Funds</Text>
@@ -83,7 +99,7 @@ export default function WalletScreen() {
         ) : (
           <FlatList
             data={transactions}
-            keyExtractor={(item: any, index) => item.id || index.toString()}
+            keyExtractor={(item: any, index) => item.id?.toString() || index.toString()}
             renderItem={renderTransaction}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
@@ -94,6 +110,7 @@ export default function WalletScreen() {
               <View style={styles.emptyState}>
                 <TrendingUp color={Colors.textMuted} size={40} />
                 <Text style={styles.emptyText}>No transactions yet</Text>
+                <Text style={styles.emptySubText}>Your earnings will show up here</Text>
               </View>
             }
           />
@@ -141,11 +158,12 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgCard, padding: 14, borderRadius: 14, marginBottom: 8,
     borderWidth: 1, borderColor: Colors.borderLight,
   },
-  transactionLeft: { flexDirection: 'row', alignItems: 'center' },
+  transactionLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   iconContainer: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 14 },
   transactionTitle: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary, marginBottom: 2 },
   transactionDate: { fontSize: 13, color: Colors.textMuted },
-  transactionAmount: { fontSize: 16, fontWeight: '700' },
+  transactionAmount: { fontSize: 16, fontWeight: '700', marginLeft: 8 },
   emptyState: { padding: 50, alignItems: 'center' },
-  emptyText: { color: Colors.textMuted, fontSize: 16, marginTop: 12 },
+  emptyText: { color: Colors.textSecondary, fontSize: 16, marginTop: 12, fontWeight: '600' },
+  emptySubText: { color: Colors.textMuted, fontSize: 14, marginTop: 4 },
 });

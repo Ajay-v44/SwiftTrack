@@ -8,19 +8,27 @@ Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
     shouldPlaySound: true,
-    shouldSetBadge: false,
+    shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
   }),
 });
 
-export async function registerForPushNotificationsAsync() {
-  let token;
+/**
+ * Backend NotificationController: POST /api/notifications/token
+ * DeviceToken DTO: { userId: string, tenantId: string?, token: string }
+ * Service name in Eureka: NotificationService → gateway path: /notificationservice/
+ */
+export async function registerForPushNotificationsAsync(userId?: string) {
+  let token: string | undefined;
 
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {
-      name: 'default',
+      name: 'Default',
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#FF231F7C',
+      lightColor: '#6C63FF',
+      sound: 'default',
     });
   }
 
@@ -32,33 +40,51 @@ export async function registerForPushNotificationsAsync() {
       finalStatus = status;
     }
     if (finalStatus !== 'granted') {
-      console.log('Failed to get push token for push notification!');
+      console.log('Push notification permission denied');
       return;
     }
 
-    // Project ID should match the EAS project ID or be explicitly configured
     const projectId =
       Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
 
     if (!projectId) {
-      console.warn('Project ID not found in app config. Push notifications may fail to register.');
+      console.warn('EAS project ID not found, push token registration may fail');
     }
 
-    token = (await Notifications.getExpoPushTokenAsync({
-       projectId,
-    })).data;
+    token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
     console.log('Expo Push Token:', token);
 
-    // Call backend API to register this token for the driver
-    // Example endpoint based on standard setup
+    // Register with backend — matching DeviceToken { userId, tenantId?, token }
     try {
-       await apiClient.post('/notificationservice/api/notifications/register-token', { token, deviceType: Platform.OS });
-    } catch(err) {
-       console.log("Failed to register push token with backend", err);
+      await apiClient.post('/notificationservice/api/notifications/token', {
+        userId: userId || '',
+        token: token,
+      });
+      console.log('Push token registered with backend');
+    } catch (err) {
+      console.log('Failed to register push token with backend', err);
     }
   } else {
     console.log('Must use physical device for Push Notifications');
   }
 
   return token;
+}
+
+/**
+ * Add a notification received listener
+ */
+export function addNotificationReceivedListener(
+  callback: (notification: Notifications.Notification) => void
+) {
+  return Notifications.addNotificationReceivedListener(callback);
+}
+
+/**
+ * Add a notification response (tap) listener
+ */
+export function addNotificationResponseReceivedListener(
+  callback: (response: Notifications.NotificationResponse) => void
+) {
+  return Notifications.addNotificationResponseReceivedListener(callback);
 }
