@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import apiClient from '../api/client';
+import { getDriverDetails } from './authSlice';
 
 /**
  * Backend DTOs:
@@ -60,6 +61,9 @@ const driverSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
+    builder.addCase(getDriverDetails.fulfilled, (state, action) => {
+      state.isOnline = action.payload.status === 'ONLINE' || action.payload.status === 'ON_TRIP';
+    });
     builder.addCase(updateStatus.pending, (state) => {
       state.loading = true;
       state.error = null;

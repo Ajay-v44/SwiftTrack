@@ -4,13 +4,15 @@ import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store/store';
 import { getDriverDetails, setToken } from '../store/authSlice';
 import * as SecureStore from 'expo-secure-store';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, Image, Text, StyleSheet } from 'react-native';
 import { Colors } from '../theme/colors';
 
 import LoginScreen from '../screens/LoginScreen';
 import TabNavigator from './TabNavigator';
 import OrderTrackingScreen from '../screens/OrderTrackingScreen';
 import DevMapScreen from '../screens/DevMapScreen';
+import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
+import HelpCenterScreen from '../screens/HelpCenterScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -24,9 +26,8 @@ export default function RootNavigator() {
       try {
         const storedToken = await SecureStore.getItemAsync('userToken');
         if (storedToken) {
-           dispatch(setToken(storedToken));
-           // Re-fetch driver details to make sure token is valid and data is fresh
-           await dispatch(getDriverDetails()).unwrap();
+          dispatch(setToken(storedToken));
+          await dispatch(getDriverDetails()).unwrap();
         }
       } catch (e) {
         console.error("Failed to load token", e);
@@ -39,8 +40,15 @@ export default function RootNavigator() {
 
   if (!isReady || (token && !driver && loading)) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.bgDark }}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+      <View style={splashStyles.container}>
+        <Image
+          source={require('../../assets/images/swifttrack_logo.png')}
+          style={splashStyles.logo}
+          resizeMode="contain"
+        />
+        <Text style={splashStyles.brand}>SwiftTrack</Text>
+        <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 20 }} />
+        <Text style={splashStyles.tagline}>Delivering the future</Text>
       </View>
     );
   }
@@ -48,16 +56,25 @@ export default function RootNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {token ? (
-        // Authorized Stack
         <>
           <Stack.Screen name="MainTabs" component={TabNavigator} />
           <Stack.Screen name="OrderTracking" component={OrderTrackingScreen} />
           <Stack.Screen name="DevMap" component={DevMapScreen} />
+          <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+          <Stack.Screen name="HelpCenter" component={HelpCenterScreen} />
         </>
       ) : (
-        // Unauthorized Stack
         <Stack.Screen name="Login" component={LoginScreen} />
       )}
     </Stack.Navigator>
   );
 }
+
+const splashStyles = StyleSheet.create({
+  container: {
+    flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.bgDark,
+  },
+  logo: { width: 80, height: 80, borderRadius: 20, marginBottom: 12 },
+  brand: { fontSize: 28, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.5 },
+  tagline: { fontSize: 14, color: Colors.textMuted, marginTop: 12 },
+});

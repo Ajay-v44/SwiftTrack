@@ -1,5 +1,10 @@
-import { registerRootComponent } from 'expo';
+import 'react-native-get-random-values';
+import { Buffer } from 'buffer';
+import 'react-native-url-polyfill/auto';
 
+global.Buffer = global.Buffer || Buffer;
+
+import { registerRootComponent } from 'expo';
 import App from './src/app/App';
 
 // registerRootComponent calls AppRegistry.registerComponent('main', () => App);
