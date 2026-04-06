@@ -220,8 +220,10 @@ public class AccountService {
                 invoiceCount);
     }
 
-    public PaginatedLedgerTransactionsResponse getTransactions(String token, int page, int size) {
-        Account account = resolveAccessibleAccount(token, null);
+    public PaginatedLedgerTransactionsResponse getTransactions(String token, UUID accountId, int page, int size) {
+        Account account = accountId != null
+                ? resolveAccessibleAccountByAccountId(token, accountId)
+                : resolveAccessibleAccount(token, null);
         Pageable pageable = PageRequest.of(page, size);
         Page<LedgerTransaction> transactionsPage = ledgerTransactionRepository.findByAccountIdOrderByCreatedAtDesc(
                 account.getId(),
@@ -280,7 +282,7 @@ public class AccountService {
         TokenResponse tokenResponse = resolveTokenResponse(token);
         UUID resolvedUserId = requestedUserId;
 
-        if (tokenResponse.tenantId().isPresent()) {
+        if (resolvedUserId == null && tokenResponse.tenantId().isPresent()) {
             resolvedUserId = tokenResponse.tenantId().get();
         } else if (resolvedUserId == null) {
             resolvedUserId = tokenResponse.id();
@@ -292,6 +294,13 @@ public class AccountService {
         if (account == null) {
             throw new CustomException(HttpStatus.NOT_FOUND, "Account not found");
         }
+        return account;
+    }
+
+    private Account resolveAccessibleAccountByAccountId(String token, UUID accountId) {
+        Account account = accountRepository.findById(accountId)
+                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "Account not found"));
+        verifyPrivilege(token, account.getUserId());
         return account;
     }
 

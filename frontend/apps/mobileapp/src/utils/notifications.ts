@@ -1,7 +1,6 @@
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import Constants from 'expo-constants';
 import apiClient from '../api/client';
 
 Notifications.setNotificationHandler({
@@ -14,13 +13,18 @@ Notifications.setNotificationHandler({
   }),
 });
 
-/**
- * Backend NotificationController: POST /api/notifications/token
- * DeviceToken DTO: { userId: string, tenantId: string?, token: string }
- * Service name in Eureka: NotificationService → gateway path: /notificationservice/
- */
-export async function registerForPushNotificationsAsync(userId?: string) {
-  let token: string | undefined;
+type PushRegistrationParams = {
+  userId: string;
+  tenantId?: string;
+};
+
+export async function registerForPushNotificationsAsync({
+  userId,
+  tenantId,
+}: PushRegistrationParams) {
+  if (!userId) {
+    return;
+  }
 
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {
@@ -32,57 +36,64 @@ export async function registerForPushNotificationsAsync(userId?: string) {
     });
   }
 
-  if (Device.isDevice) {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
-    if (finalStatus !== 'granted') {
-      console.log('Push notification permission denied');
-      return;
-    }
-
-    const projectId =
-      Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
-
-    if (!projectId) {
-      console.warn('EAS project ID not found, push token registration may fail');
-    }
-
-    token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-    console.log('Expo Push Token:', token);
-
-    // Register with backend — matching DeviceToken { userId, tenantId?, token }
-    try {
-      await apiClient.post('/notificationservice/api/notifications/token', {
-        userId: userId || '',
-        token: token,
-      });
-      console.log('Push token registered with backend');
-    } catch (err) {
-      console.log('Failed to register push token with backend', err);
-    }
-  } else {
-    console.log('Must use physical device for Push Notifications');
+  if (!Device.isDevice) {
+    console.log('Must use physical device for push notifications');
+    return;
   }
 
-  return token;
+  const { status: existingStatus } = await Notifications.getPermissionsAsync();
+  let finalStatus = existingStatus;
+  if (existingStatus !== 'granted') {
+    const { status } = await Notifications.requestPermissionsAsync();
+    finalStatus = status;
+  }
+
+  if (finalStatus !== 'granted') {
+    console.log('Push notification permission denied');
+    return;
+  }
+
+  let nativePushToken: string | undefined;
+
+  try {
+    const devicePushToken = await Notifications.getDevicePushTokenAsync();
+    nativePushToken =
+      typeof devicePushToken.data === 'string'
+        ? devicePushToken.data
+        : devicePushToken.data
+          ? JSON.stringify(devicePushToken.data)
+          : undefined;
+  } catch (error) {
+    console.log('Failed to fetch native push token', error);
+    return;
+  }
+
+  if (!nativePushToken) {
+    console.log('Native push token unavailable');
+    return;
+  }
+
+  try {
+    await apiClient.post('/notificationservice/api/notifications/token', {
+      userId,
+      tenantId,
+      token: nativePushToken,
+    });
+    console.log('Push token registered with backend');
+  } catch (err) {
+    console.log('Failed to register push token with backend', err);
+    throw err;
+  }
+
+  return nativePushToken;
 }
 
-/**
- * Add a notification received listener
- */
 export function addNotificationReceivedListener(
   callback: (notification: Notifications.Notification) => void
 ) {
   return Notifications.addNotificationReceivedListener(callback);
 }
 
-/**
- * Add a notification response (tap) listener
- */
 export function addNotificationResponseReceivedListener(
   callback: (response: Notifications.NotificationResponse) => void
 ) {

@@ -21,7 +21,7 @@ export interface DriverOrder {
   dropoffLng: number;
 }
 
-interface OrdersState {
+export interface OrdersState {
   pendingOrders: DriverOrder[];
   acceptedOrders: DriverOrder[];
   completedOrders: DriverOrder[];

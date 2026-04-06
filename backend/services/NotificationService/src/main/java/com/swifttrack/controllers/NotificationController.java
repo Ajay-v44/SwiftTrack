@@ -21,22 +21,19 @@ public class NotificationController {
     @PostMapping("/token")
     @Operation(summary = "Register Device Token", description = "Registers an FCM device token in Firestore for targeted push notifications")
     public ResponseEntity<String> registerToken(@RequestBody DeviceToken deviceToken) {
+        if (deviceToken == null
+                || deviceToken.getUserId() == null
+                || deviceToken.getUserId().trim().isEmpty()
+                || deviceToken.getToken() == null
+                || deviceToken.getToken().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("userId and token are required");
+        }
+
         try {
             firebaseService.registerToken(deviceToken);
-            String topic = getTenantTopic(deviceToken);
-            if (topic != null) {
-                firebaseService.subscribeToTopic(topic, deviceToken.getToken());
-            }
             return ResponseEntity.ok("Token registered successfully");
         } catch (Exception e) {
             return ResponseEntity.status(500).body("Error registering token: " + e.getMessage());
         }
-    }
-
-    private String getTenantTopic(DeviceToken token) {
-        if (token.getTenantId() != null && !token.getTenantId().trim().isEmpty()) {
-            return "tenant_" + token.getTenantId();
-        }
-        return null;
     }
 }

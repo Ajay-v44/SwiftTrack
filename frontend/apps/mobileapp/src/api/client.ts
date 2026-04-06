@@ -57,24 +57,6 @@ apiClient.interceptors.response.use(
       }
     }
 
-    // Safety net: catch auth failures that downstream services return as 500
-    if (status === 500) {
-      const data = error.response?.data;
-      const message = typeof data?.message === 'string' ? data.message.toLowerCase() : '';
-      if (
-        message.includes('expired token') ||
-        message.includes('invalid token') ||
-        message.includes('missing auth token') ||
-        message.includes('[401]') ||
-        message.includes('unauthorized')
-      ) {
-        await SecureStore.deleteItemAsync('userToken');
-        if (store) {
-          store.dispatch({ type: 'auth/logout/fulfilled' });
-        }
-      }
-    }
-
     return Promise.reject(error);
   }
 );

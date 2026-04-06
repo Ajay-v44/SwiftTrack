@@ -54,9 +54,10 @@ public class AccountController {
     @GetMapping("/v1/getTransactions")
     public ResponseEntity<PaginatedLedgerTransactionsResponse> getTransactions(
             @RequestHeader("token") String token,
+            @RequestParam(required = false) UUID accountId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "5") int size) {
-        return ResponseEntity.ok(accountService.getTransactions(token, page, size));
+        return ResponseEntity.ok(accountService.getTransactions(token, accountId, page, size));
     }
 
     @GetMapping("/v1/dashboard/recent-expenses/today")

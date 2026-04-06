@@ -4,8 +4,8 @@ import {
 } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store/store';
-import { getPendingOrders, getAcceptedOrders, getCompletedOrders, respondToAssignment, DriverOrder } from '../store/ordersSlice';
-import { MapPin, Box, CheckCircle, XCircle, Package, Filter } from 'lucide-react-native';
+import { getPendingOrders, getAcceptedOrders, getCompletedOrders, DriverOrder } from '../store/ordersSlice';
+import { Box, Package } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import * as Burnt from 'burnt';
 import { Colors } from '../theme/colors';
@@ -37,20 +37,6 @@ export default function OrdersScreen() {
       Burnt.toast({ title: 'Failed to refresh', preset: 'error' });
     }
     setRefreshing(false);
-  };
-
-  const handleRespond = async (orderId: string, accept: boolean) => {
-    try {
-      await dispatch(respondToAssignment({ orderId, accept })).unwrap();
-      Burnt.toast({
-        title: accept ? '✅ Order accepted!' : '❌ Order rejected',
-        preset: accept ? 'done' : 'none',
-      });
-      dispatch(getPendingOrders());
-      if (accept) dispatch(getAcceptedOrders());
-    } catch (err: any) {
-      Burnt.toast({ title: typeof err === 'string' ? err : 'Failed', preset: 'error' });
-    }
   };
 
   const getOrders = (): DriverOrder[] => {
@@ -98,24 +84,13 @@ export default function OrdersScreen() {
         </View>
 
         {activeTab === 'pending' && (
-          <View style={styles.actionsContainer}>
             <TouchableOpacity
-              style={[styles.actionBtn, styles.rejectBtn]}
-              onPress={() => handleRespond(item.id, false)}
+              style={styles.viewBtn}
+              onPress={() => navigation.navigate('OrderTracking', { orderId: item.id })}
               activeOpacity={0.7}
             >
-              <XCircle color={Colors.accent} size={18} />
-              <Text style={[styles.actionText, { color: Colors.accent }]}>Reject</Text>
+              <Text style={styles.viewBtnText}>View Details →</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionBtn, styles.acceptBtn]}
-              onPress={() => handleRespond(item.id, true)}
-              activeOpacity={0.7}
-            >
-              <CheckCircle color="#FFFFFF" size={18} />
-              <Text style={[styles.actionText, { color: '#FFFFFF' }]}>Accept</Text>
-            </TouchableOpacity>
-          </View>
         )}
 
         {activeTab === 'active' && (

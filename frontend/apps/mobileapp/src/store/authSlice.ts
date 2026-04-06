@@ -28,7 +28,7 @@ export interface DriverDetails {
   status: string; // DriverOnlineStatus: OFFLINE | ONLINE | ON_TRIP | SUSPENDED
 }
 
-interface AuthState {
+export interface AuthState {
   driver: DriverDetails | null;
   token: string | null;
   loading: boolean;
