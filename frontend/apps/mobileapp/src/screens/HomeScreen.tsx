@@ -8,6 +8,7 @@ import { RootState, AppDispatch } from '../store/store';
 import { updateStatus, setCurrentLocation } from '../store/driverSlice';
 import { getPendingOrders, getAcceptedOrders } from '../store/ordersSlice';
 import { getDriverDetails } from '../store/authSlice';
+import { fetchWalletDetails } from '../store/walletSlice';
 import { startLocationTracking, stopLocationTracking } from '../utils/locationTracking';
 import { MapPin, Box, ChevronRight, Bell, Zap, TrendingUp, Navigation, Map as MapIcon } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -24,6 +25,7 @@ export default function HomeScreen() {
   const { driver } = useSelector((state: RootState) => state.auth);
   const { isOnline, loading: statusLoading, currentLocation } = useSelector((state: RootState) => state.driver);
   const { pendingOrders, acceptedOrders } = useSelector((state: RootState) => state.orders);
+  const { balance: walletBalance, currency: walletCurrency } = useSelector((state: RootState) => state.wallet);
   const [refreshing, setRefreshing] = useState(false);
   const [locationAddress, setLocationAddress] = useState<string | null>(null);
 
@@ -31,8 +33,18 @@ export default function HomeScreen() {
     dispatch(getDriverDetails());
     dispatch(getPendingOrders());
     dispatch(getAcceptedOrders());
+    dispatch(fetchWalletDetails());
     fetchCurrentLocation();
   }, [dispatch]);
+
+  useEffect(() => {
+    if (isOnline) {
+      void startLocationTracking();
+      return;
+    }
+
+    void stopLocationTracking();
+  }, [isOnline]);
 
   const fetchCurrentLocation = useCallback(async () => {
     try {
@@ -61,6 +73,7 @@ export default function HomeScreen() {
         dispatch(getDriverDetails()).unwrap(),
         dispatch(getPendingOrders()).unwrap(),
         dispatch(getAcceptedOrders()).unwrap(),
+        dispatch(fetchWalletDetails()).unwrap(),
       ]);
       fetchCurrentLocation();
     } catch {}
@@ -79,10 +92,10 @@ export default function HomeScreen() {
     try {
       await dispatch(updateStatus(newStatus)).unwrap();
       if (newStatus === 'ONLINE') {
-        startLocationTracking();
+        await startLocationTracking();
         Burnt.toast({ title: '🟢 You are now online!', preset: 'done' });
       } else {
-        stopLocationTracking();
+        await stopLocationTracking();
         Burnt.toast({ title: '🔴 You are now offline', preset: 'done' });
       }
     } catch (err: any) {
@@ -202,7 +215,9 @@ export default function HomeScreen() {
           <View style={[styles.statIcon, { backgroundColor: Colors.primary + '20' }]}>
             <TrendingUp color={Colors.primaryLight} size={20} />
           </View>
-          <Text style={styles.statValue}>₹--</Text>
+          <Text style={styles.statValue}>
+            {walletCurrency === 'INR' ? '₹' : walletCurrency}{walletBalance.toFixed(0)}
+          </Text>
           <Text style={styles.statLabel}>Earnings</Text>
         </TouchableOpacity>
       </View>

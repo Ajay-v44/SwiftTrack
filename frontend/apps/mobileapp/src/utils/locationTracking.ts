@@ -3,6 +3,7 @@ import * as TaskManager from 'expo-task-manager';
 import apiClient from '../api/client';
 
 const LOCATION_TASK_NAME = 'background-location-task';
+const LOCATION_UPDATE_INTERVAL_MS = 60_000;
 
 // Backend DriverLocationUpdateDto expects: { latitude: BigDecimal, longitude: BigDecimal }
 TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
@@ -28,6 +29,11 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
 });
 
 export const startLocationTracking = async () => {
+  const isAlreadyRegistered = await TaskManager.isTaskRegisteredAsync(LOCATION_TASK_NAME);
+  if (isAlreadyRegistered) {
+    return;
+  }
+
   const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
   if (foregroundStatus !== 'granted') {
     console.log('Permission to access foreground location was denied');
@@ -42,9 +48,9 @@ export const startLocationTracking = async () => {
 
   await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
     accuracy: Location.Accuracy.Balanced,
-    timeInterval: 120000,
-    distanceInterval: 10,
-    deferredUpdatesInterval: 120000,
+    timeInterval: LOCATION_UPDATE_INTERVAL_MS,
+    distanceInterval: 0,
+    deferredUpdatesInterval: LOCATION_UPDATE_INTERVAL_MS,
     foregroundService: {
       notificationTitle: "SwiftTrack is tracking your location",
       notificationBody: "Your location is being updated in the background to ensure you get nearby orders.",

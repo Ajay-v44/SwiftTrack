@@ -6,6 +6,7 @@ import { getDriverDetails, setToken } from '../store/authSlice';
 import * as SecureStore from 'expo-secure-store';
 import { View, ActivityIndicator, Image, Text, StyleSheet } from 'react-native';
 import { Colors } from '../theme/colors';
+import { registerForPushNotificationsAsync } from '../utils/notifications';
 
 import LoginScreen from '../screens/LoginScreen';
 import TabNavigator from './TabNavigator';
@@ -20,6 +21,7 @@ export default function RootNavigator() {
   const { token, loading, driver } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch<AppDispatch>();
   const [isReady, setIsReady] = useState(false);
+  const [registeredPushUserId, setRegisteredPushUserId] = useState<string | null>(null);
 
   useEffect(() => {
     const loadToken = async () => {
@@ -37,6 +39,30 @@ export default function RootNavigator() {
     };
     loadToken();
   }, [dispatch]);
+
+  useEffect(() => {
+    if (!token) {
+      setRegisteredPushUserId(null);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    const userId = driver?.user?.id;
+    if (!token || !userId || registeredPushUserId === userId) {
+      return;
+    }
+
+    registerForPushNotificationsAsync({
+      userId,
+      tenantId: driver?.user?.tenantId,
+    })
+      .then(() => {
+        setRegisteredPushUserId(userId);
+      })
+      .catch((error) => {
+        console.error('Failed to register notifications:', error);
+      });
+  }, [driver?.user?.id, driver?.user?.tenantId, registeredPushUserId, token]);
 
   if (!isReady || (token && !driver && loading)) {
     return (

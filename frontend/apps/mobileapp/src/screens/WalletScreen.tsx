@@ -1,10 +1,11 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store/store';
 import { fetchWalletDetails, fetchTransactions } from '../store/walletSlice';
 import { ArrowUpRight, ArrowDownLeft, Wallet as WalletIcon, TrendingUp } from 'lucide-react-native';
 import { Colors } from '../theme/colors';
+import { useFocusEffect } from '@react-navigation/native';
 
 /**
  * Backend LedgerTransaction fields:
@@ -13,21 +14,26 @@ import { Colors } from '../theme/colors';
 
 export default function WalletScreen() {
   const dispatch = useDispatch<AppDispatch>();
-  const { balance, currency, transactions, loading } = useSelector((state: RootState) => state.wallet);
+  const { balance, currency, transactions, loading, error } = useSelector((state: RootState) => state.wallet);
   const [refreshing, setRefreshing] = React.useState(false);
 
-  useEffect(() => {
-    dispatch(fetchWalletDetails());
-    dispatch(fetchTransactions());
+  const loadWallet = React.useCallback(async () => {
+    await Promise.all([
+      dispatch(fetchWalletDetails()).unwrap(),
+      dispatch(fetchTransactions()).unwrap(),
+    ]);
   }, [dispatch]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      void loadWallet();
+    }, [loadWallet])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      await Promise.all([
-        dispatch(fetchWalletDetails()).unwrap(),
-        dispatch(fetchTransactions()).unwrap(),
-      ]);
+      await loadWallet();
     } catch {}
     setRefreshing(false);
   };
@@ -93,6 +99,7 @@ export default function WalletScreen() {
 
       <View style={styles.transactionsSection}>
         <Text style={styles.sectionTitle}>Recent Transactions</Text>
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         {loading && transactions.length === 0 ? (
           <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 40 }} />
@@ -166,4 +173,5 @@ const styles = StyleSheet.create({
   emptyState: { padding: 50, alignItems: 'center' },
   emptyText: { color: Colors.textSecondary, fontSize: 16, marginTop: 12, fontWeight: '600' },
   emptySubText: { color: Colors.textMuted, fontSize: 14, marginTop: 4 },
+  errorText: { color: Colors.accent, fontSize: 13, marginBottom: 10 },
 });

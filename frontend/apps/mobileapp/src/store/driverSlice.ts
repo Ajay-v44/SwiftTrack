@@ -9,7 +9,7 @@ import { getDriverDetails } from './authSlice';
  * Both endpoints require @RequestHeader String token (sent automatically by interceptor)
  */
 
-interface DriverState {
+export interface DriverState {
   isOnline: boolean;
   currentLocation: { latitude: number; longitude: number } | null;
   loading: boolean;
