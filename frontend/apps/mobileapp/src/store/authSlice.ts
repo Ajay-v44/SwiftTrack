@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import apiClient from '../api/client';
 import * as SecureStore from 'expo-secure-store';
+import { isAuthFailureError } from '../api/client';
 
 /** 
  * Backend DTOs Reference:
@@ -72,13 +73,18 @@ export const login = createAsyncThunk('auth/login', async (credentials: any, { r
   }
 });
 
-export const getDriverDetails = createAsyncThunk('auth/getDriverDetails', async (_, { rejectWithValue }) => {
+export const getDriverDetails = createAsyncThunk('auth/getDriverDetails', async (_, { rejectWithValue, dispatch }) => {
   try {
     // GET /api/driver/v1/getDriverDetails  — requires 'token' header (auto-sent by interceptor)
     const response = await apiClient.get('/driverservice/api/driver/v1/getDriverDetails');
     // Response: GetDriverUserDetails { user: TokenResponse, vehicleType, vehicleNumber, driverLicenseNumber, status }
     return response.data as DriverDetails;
   } catch (error: any) {
+    if (isAuthFailureError(error)) {
+      await dispatch(logout());
+      return rejectWithValue('Session expired. Please login again.');
+    }
+
     return rejectWithValue(error.response?.data?.message || 'Failed to fetch driver details');
   }
 });
@@ -130,6 +136,7 @@ const authSlice = createSlice({
     // Get Driver Details
     builder.addCase(getDriverDetails.pending, (state) => {
       state.loading = true;
+      state.error = null;
     });
     builder.addCase(getDriverDetails.fulfilled, (state, action) => {
       state.loading = false;
@@ -137,6 +144,8 @@ const authSlice = createSlice({
     });
     builder.addCase(getDriverDetails.rejected, (state, action) => {
       state.loading = false;
+      state.driver = null;
+      state.error = action.payload as string;
     });
     // Register
     builder.addCase(register.pending, (state) => {
@@ -154,6 +163,8 @@ const authSlice = createSlice({
     builder.addCase(logout.fulfilled, (state) => {
       state.driver = null;
       state.token = null;
+      state.loading = false;
+      state.error = null;
     });
   },
 });

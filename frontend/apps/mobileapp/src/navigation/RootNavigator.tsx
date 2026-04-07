@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store/store';
-import { getDriverDetails, setToken } from '../store/authSlice';
+import { getDriverDetails, logout, setToken } from '../store/authSlice';
 import * as SecureStore from 'expo-secure-store';
 import { View, ActivityIndicator, Image, Text, StyleSheet } from 'react-native';
 import { Colors } from '../theme/colors';
@@ -32,7 +32,8 @@ export default function RootNavigator() {
           await dispatch(getDriverDetails()).unwrap();
         }
       } catch (e) {
-        console.error("Failed to load token", e);
+        console.error('Failed to load token', e);
+        await dispatch(logout());
       } finally {
         setIsReady(true);
       }

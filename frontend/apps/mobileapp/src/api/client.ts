@@ -23,8 +23,36 @@ const apiClient = axios.create({
 
 let store: any;
 
+const isAuthFailureMessage = (message?: string) => {
+  const normalizedMessage = message?.toLowerCase() ?? '';
+  return (
+    normalizedMessage.includes('expired token') ||
+    normalizedMessage.includes('invalid token') ||
+    normalizedMessage.includes('invalid or expired token') ||
+    normalizedMessage.includes('missing auth token') ||
+    normalizedMessage.includes('unauthorized') ||
+    normalizedMessage.includes('[401]') ||
+    normalizedMessage.includes('getuserdetails')
+  );
+};
+
 export const injectStore = (_store: any) => {
   store = _store;
+};
+
+export const isAuthFailureError = (error: any) => {
+  const status = error?.response?.status;
+  const data = error?.response?.data;
+  const message =
+    typeof data?.message === 'string'
+      ? data.message
+      : typeof data?.error === 'string'
+        ? data.error
+        : typeof error?.message === 'string'
+          ? error.message
+          : '';
+
+  return status === 401 || status === 403 || (status === 500 && isAuthFailureMessage(message));
 };
 
 // Request interceptor to add auth token
@@ -46,9 +74,7 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const status = error.response?.status;
-
-    if (status === 401 || status === 403) {
+    if (isAuthFailureError(error)) {
       // Clear token from secure storage
       await SecureStore.deleteItemAsync('userToken');
       // Clear Redux state to trigger navigation to Login screen

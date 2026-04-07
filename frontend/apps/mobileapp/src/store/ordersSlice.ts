@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import apiClient from '../api/client';
+import { logout } from './authSlice';
 
 /**
  * Backend DTOs:
@@ -135,9 +136,13 @@ const ordersSlice = createSlice({
     // Respond
     builder.addCase(respondToAssignment.fulfilled, (state, action) => {
       const { orderId, accept } = action.payload;
+      const pendingOrder = state.pendingOrders.find(o => o.id === orderId) || null;
       state.pendingOrders = state.pendingOrders.filter(o => o.id !== orderId);
-      if (accept) {
-        // Refetch accepted orders after accepting
+      if (accept && pendingOrder && !state.acceptedOrders.some(o => o.id === orderId)) {
+        state.acceptedOrders = [pendingOrder, ...state.acceptedOrders];
+      }
+      if (!accept) {
+        state.acceptedOrders = state.acceptedOrders.filter(o => o.id !== orderId);
       }
     });
     // Update status
@@ -147,6 +152,7 @@ const ordersSlice = createSlice({
         state.acceptedOrders = state.acceptedOrders.filter(o => o.id !== orderId);
       }
     });
+    builder.addCase(logout.fulfilled, () => initialState);
   },
 });
 

@@ -157,6 +157,10 @@ public class AccountService {
             return;
         }
 
+        if (isTenantScopedAccess(tokenResponse, targetUserId)) {
+            return;
+        }
+
         boolean hasPrivilege = false;
         if (tokenResponse.userType().isPresent()) {
             UserType type = tokenResponse.userType().get();
@@ -179,12 +183,12 @@ public class AccountService {
         verifyPrivilege(token, account.getUserId());
     }
 
-    public Account getAccountsByUserId(String token, UUID userId) {
-        return resolveAccessibleAccount(token, userId);
+    public Account getAccountsByUserId(String token, UUID userId, AccountType accountType) {
+        return resolveAccessibleAccount(token, userId, accountType);
     }
 
     public BigDecimal getTodayExpenses(String token) {
-        Account account = resolveAccessibleAccount(token, null);
+        Account account = resolveAccessibleAccount(token, null, null);
 
         return ledgerTransactionRepository.sumAmountByAccountIdAndTransactionTypeSince(
                 account.getId(),
@@ -193,7 +197,7 @@ public class AccountService {
     }
 
     public FinanceSummaryResponse getFinanceSummary(String token) {
-        Account account = resolveAccessibleAccount(token, null);
+        Account account = resolveAccessibleAccount(token, null, null);
         BigDecimal weeklySpend = ledgerTransactionRepository
                 .sumAmountByAccountIdAndTransactionTypeAndReferenceTypeSince(
                         account.getId(),
@@ -223,7 +227,7 @@ public class AccountService {
     public PaginatedLedgerTransactionsResponse getTransactions(String token, UUID accountId, int page, int size) {
         Account account = accountId != null
                 ? resolveAccessibleAccountByAccountId(token, accountId)
-                : resolveAccessibleAccount(token, null);
+                : resolveAccessibleAccount(token, null, null);
         Pageable pageable = PageRequest.of(page, size);
         Page<LedgerTransaction> transactionsPage = ledgerTransactionRepository.findByAccountIdOrderByCreatedAtDesc(
                 account.getId(),
@@ -278,11 +282,13 @@ public class AccountService {
                 transaction.getOrderId());
     }
 
-    private Account resolveAccessibleAccount(String token, UUID requestedUserId) {
+    private Account resolveAccessibleAccount(String token, UUID requestedUserId, AccountType requestedAccountType) {
         TokenResponse tokenResponse = resolveTokenResponse(token);
         UUID resolvedUserId = requestedUserId;
 
-        if (resolvedUserId == null && tokenResponse.tenantId().isPresent()) {
+        if (resolvedUserId == null && requestedAccountType != null && requestedAccountType != AccountType.TENANT) {
+            resolvedUserId = tokenResponse.id();
+        } else if (resolvedUserId == null && tokenResponse.tenantId().isPresent()) {
             resolvedUserId = tokenResponse.tenantId().get();
         } else if (resolvedUserId == null) {
             resolvedUserId = tokenResponse.id();
@@ -290,11 +296,49 @@ public class AccountService {
 
         verifyPrivilege(token, resolvedUserId);
 
-        Account account = accountRepository.findByUserId(resolvedUserId);
+        Account account = resolveAccountByType(resolvedUserId, requestedAccountType);
         if (account == null) {
             throw new CustomException(HttpStatus.NOT_FOUND, "Account not found");
         }
         return account;
+    }
+
+    private Account resolveAccountByType(UUID userId, AccountType requestedAccountType) {
+        if (requestedAccountType == null) {
+            return accountRepository.findByUserId(userId);
+        }
+
+        Account account = accountRepository.findByUserIdAndAccountType(userId, requestedAccountType).orElse(null);
+        if (account != null) {
+            return account;
+        }
+
+        if (requestedAccountType == AccountType.TENANT_DRIVER) {
+            return accountRepository.findByUserIdAndAccountType(userId, AccountType.DRIVER).orElse(null);
+        }
+
+        if (requestedAccountType == AccountType.DRIVER) {
+            return accountRepository.findByUserIdAndAccountType(userId, AccountType.TENANT_DRIVER).orElse(null);
+        }
+
+        return null;
+    }
+
+    private boolean isTenantScopedAccess(TokenResponse tokenResponse, UUID targetUserId) {
+        if (tokenResponse == null || targetUserId == null || tokenResponse.userType().isEmpty()) {
+            return false;
+        }
+
+        UserType userType = tokenResponse.userType().get();
+        boolean tenantScopedUser = userType == UserType.TENANT_ADMIN
+                || userType == UserType.TENANT_USER
+                || userType == UserType.TENANT_MANAGER
+                || userType == UserType.TENANT_STAFF
+                || userType == UserType.TENANT_DRIVER;
+
+        return tenantScopedUser
+                && tokenResponse.tenantId().isPresent()
+                && tokenResponse.tenantId().get().equals(targetUserId);
     }
 
     private Account resolveAccessibleAccountByAccountId(String token, UUID accountId) {
