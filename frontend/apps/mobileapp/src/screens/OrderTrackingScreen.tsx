@@ -74,6 +74,8 @@ export default function OrderTrackingScreen() {
     () => [...pendingOrders, ...acceptedOrders].find((item) => item.id === orderId),
     [acceptedOrders, orderId, pendingOrders]
   );
+  const isPendingAssignment = pendingOrders.some((item) => item.id === orderId);
+  const isAcceptedAssignment = acceptedOrders.some((item) => item.id === orderId);
 
   const [orderDetails, setOrderDetails] = useState<OrderDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -151,12 +153,13 @@ export default function OrderTrackingScreen() {
     });
   }, [dropoffCoordinate, liveCoordinate, pickupCoordinate]);
 
-  const isAssigned = mergedOrder?.orderStatus === 'ASSIGNED';
+  const isAssigned = isPendingAssignment || (!isAcceptedAssignment && mergedOrder?.orderStatus === 'ASSIGNED');
   const trackingStatus = (mergedOrder?.trackingStatus ?? null) as TrackingStatus | null;
   const currentStatusIndex = trackingStatus ? TRACKING_FLOW.findIndex((item) => item === trackingStatus) : -1;
+  const canStartTracking = isAcceptedAssignment && currentStatusIndex === -1;
   const nextStatus = currentStatusIndex >= 0 && currentStatusIndex < TRACKING_FLOW.length - 1
     ? TRACKING_FLOW[currentStatusIndex + 1]
-    : currentStatusIndex === -1 && mergedOrder?.orderStatus === 'ACCEPTED'
+    : canStartTracking
       ? TRACKING_FLOW[0]
       : null;
 
@@ -183,7 +186,10 @@ export default function OrderTrackingScreen() {
       const response = await apiClient.get(`/orderservice/api/order/v1/getOrderById/${orderId}`);
       setOrderDetails(response.data as OrderDetails);
     } catch (error: any) {
-      Burnt.toast({ title: error?.message || 'Failed', preset: 'error' });
+      Burnt.toast({
+        title: typeof error === 'string' ? error : error?.response?.data?.message || error?.message || 'Failed',
+        preset: 'error',
+      });
     } finally {
       setActionLoading(false);
     }
@@ -202,7 +208,10 @@ export default function OrderTrackingScreen() {
       setOrderDetails(response.data as OrderDetails);
       Burnt.toast({ title: formatLabel(nextStatus), preset: 'done' });
     } catch (error: any) {
-      Burnt.toast({ title: error?.message || 'Failed to update status', preset: 'error' });
+      Burnt.toast({
+        title: typeof error === 'string' ? error : error?.response?.data?.message || error?.message || 'Failed to update status',
+        preset: 'error',
+      });
     } finally {
       setActionLoading(false);
     }

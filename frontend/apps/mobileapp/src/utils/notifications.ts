@@ -3,6 +3,8 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import apiClient from '../api/client';
 
+const DISPATCH_NOTIFICATION_SOUND = 'Ready_for_Dispatch.mp3';
+
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -32,7 +34,7 @@ export async function registerForPushNotificationsAsync({
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#6C63FF',
-      sound: 'default',
+      sound: DISPATCH_NOTIFICATION_SOUND,
     });
   }
 

@@ -52,8 +52,8 @@ export default function LoginScreen() {
         : { mobileNumber: mobileNumber.trim(), otp: otp.trim() };
 
       await dispatch(login(credentials)).unwrap();
+      await dispatch(getDriverDetails()).unwrap();
       Burnt.toast({ title: 'Welcome back! 🎉', preset: 'done' });
-      dispatch(getDriverDetails());
     } catch (err: any) {
       Burnt.toast({ title: typeof err === 'string' ? err : 'Login failed', preset: 'error' });
     }

@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import apiClient from '../api/client';
+import { logout } from './authSlice';
 
 /**
  * Backend AccountController (BillingAndSettlementService):
@@ -9,10 +10,11 @@ import apiClient from '../api/client';
  */
 
 const getDriverUserId = (state: any) => state.auth?.driver?.user?.id as string | undefined;
+const getDriverUserType = (state: any) => state.auth?.driver?.user?.userType as string | undefined;
 
-async function fetchAccountByUserId(userId: string) {
+async function fetchMyAccount(accountType: 'DRIVER' | 'TENANT_DRIVER') {
   return apiClient.get('/billingandsettlementservice/api/accounts/v1/getMyAccount', {
-    params: { userId },
+    params: { accountType },
   });
 }
 
@@ -20,12 +22,13 @@ export const fetchWalletDetails = createAsyncThunk(
   'wallet/fetchDetails',
   async (_, { getState, rejectWithValue }) => {
     const userId = getDriverUserId(getState());
+    const userType = getDriverUserType(getState());
     if (!userId) {
       return rejectWithValue('User details not loaded yet');
     }
 
     try {
-      const response = await fetchAccountByUserId(userId);
+      const response = await fetchMyAccount(userType === 'TENANT_DRIVER' ? 'TENANT_DRIVER' : 'DRIVER');
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch wallet details');
@@ -38,6 +41,7 @@ export const fetchTransactions = createAsyncThunk(
   async (_, { getState, rejectWithValue }) => {
     const state = getState() as any;
     const userId = getDriverUserId(state);
+    const userType = getDriverUserType(state);
     if (!userId) {
       return rejectWithValue('User details not loaded yet');
     }
@@ -46,7 +50,7 @@ export const fetchTransactions = createAsyncThunk(
       let accountId = state.wallet?.accountId as string | null;
 
       if (!accountId) {
-        const accountResponse = await fetchAccountByUserId(userId);
+        const accountResponse = await fetchMyAccount(userType === 'TENANT_DRIVER' ? 'TENANT_DRIVER' : 'DRIVER');
         accountId = accountResponse.data?.id || null;
       }
 
@@ -125,6 +129,7 @@ const walletSlice = createSlice({
       state.loading = false;
       state.error = action.payload;
     });
+    builder.addCase(logout.fulfilled, () => initialState);
   },
 });
 

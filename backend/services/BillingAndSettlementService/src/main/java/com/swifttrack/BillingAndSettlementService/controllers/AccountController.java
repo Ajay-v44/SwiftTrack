@@ -47,8 +47,9 @@ public class AccountController {
 
     @GetMapping("/v1/getMyAccount")
     public ResponseEntity<Account> getAccountsByUserId(@RequestHeader("token") String token,
-            @RequestParam(required = false) UUID userId) {
-        return ResponseEntity.ok(accountService.getAccountsByUserId(token, userId));
+            @RequestParam(required = false) UUID userId,
+            @RequestParam(required = false) AccountType accountType) {
+        return ResponseEntity.ok(accountService.getAccountsByUserId(token, userId, accountType));
     }
 
     @GetMapping("/v1/getTransactions")

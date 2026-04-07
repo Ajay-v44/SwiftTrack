@@ -266,6 +266,14 @@ public class DriverService {
         DriverOrderAssignment assignment = driverAssignmentRepository.findByOrderId(orderId)
                 .orElseThrow(() -> new RuntimeException("Assignment not found"));
 
+        if (accept && assignment.getStatus() == DriverAssignmentStatus.ACCEPTED) {
+            return;
+        }
+
+        if (!accept && assignment.getStatus() == DriverAssignmentStatus.REJECTED) {
+            return;
+        }
+
         if (assignment.getStatus() != DriverAssignmentStatus.ASSIGNED) {
             throw new RuntimeException("Assignment is not in pending state");
         }
@@ -348,31 +356,8 @@ public class DriverService {
         }
         System.out.println("Order IDs: " + orderIds);
 
-        // Check Redis Cache first
-        String cacheKey = "driverOrders::" + orderIds.toString();
-        List<com.swifttrack.dto.orderDto.GetOrdersForDriver> cachedOrders = (List<com.swifttrack.dto.orderDto.GetOrdersForDriver>) redisTemplate
-                .opsForValue().get(cacheKey);
-
-        if (cachedOrders != null) {
-            System.out.println("Fetching orders from Redis Cache: " + cacheKey);
-            return cachedOrders;
-        }
-
-        System.out.println("Cache miss. Fetching from Order Service: " + cacheKey);
         List<com.swifttrack.dto.orderDto.GetOrdersForDriver> orders = orderInterface
                 .getOrdersForDriver(token, new com.swifttrack.dto.orderDto.GetOrdersRequest(orderIds)).getBody();
-
-        // Cache the result
-        // Note: OrderService might already be caching it, but if we want to be sure or
-        // control TTL from here:
-        // redisTemplate.opsForValue().set(cacheKey, orders);
-        // Since OrderService uses @Cacheable with same key, it should ideally populate
-        // it.
-        // But if we want to ensure *this* service populates it if missed:
-        if (orders != null) {
-            redisTemplate.opsForValue().set(cacheKey, orders);
-        }
-
         return orders;
     }
 

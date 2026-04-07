@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import apiClient from '../api/client';
-import { getDriverDetails } from './authSlice';
+import { getDriverDetails, logout } from './authSlice';
 
 /**
  * Backend DTOs:
@@ -79,6 +79,7 @@ const driverSlice = createSlice({
     builder.addCase(updateLocation.fulfilled, (state, action) => {
       state.currentLocation = action.payload;
     });
+    builder.addCase(logout.fulfilled, () => initialState);
   },
 });
 
