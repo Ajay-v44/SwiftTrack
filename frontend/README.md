@@ -42,6 +42,29 @@ We use **Nx** to run tasks efficiently. While you can run specific commands insi
 
 > **Note:** Always run commands (like `npx nx dev web` or `npx nx start mobileapp`) from the root `frontend` folder!
 
+### EAS Android Firebase Setup
+
+Android EAS builds require `google-services.json`, but this repository intentionally ignores that file so secrets are not committed.
+
+For local development inside `apps/mobileapp`, keep your file at:
+
+```bash
+apps/mobileapp/google-services.json
+```
+
+For EAS cloud builds, upload the same file as an EAS file secret and expose it as `GOOGLE_SERVICES_JSON`:
+
+```bash
+cd apps/mobileapp
+npx eas secret:create --scope project --type file --name GOOGLE_SERVICES_JSON --value ./google-services.json
+```
+
+The Expo app config resolves Android Firebase in this order:
+1. `GOOGLE_SERVICES_JSON` from EAS
+2. Local `apps/mobileapp/google-services.json`
+
+If `GOOGLE_SERVICES_JSON` is missing in EAS, cloud prebuild fails because `google-services.json` is not tracked by git and is therefore not uploaded with the build context.
+
 ---
 
 ## 📱 Strategies for Sharing Code (Web & Mobile)
