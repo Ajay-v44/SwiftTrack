@@ -3,7 +3,7 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import apiClient from '../api/client';
 
-const DISPATCH_NOTIFICATION_SOUND = 'Ready_for_Dispatch.mp3';
+const DISPATCH_NOTIFICATION_SOUND = 'ready_for_dispatch.mp3';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({

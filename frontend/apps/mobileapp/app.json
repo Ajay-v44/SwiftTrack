@@ -4,9 +4,7 @@
     "slug": "swifttrack",
     "version": "1.0.0",
     "orientation": "portrait",
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
+    "runtimeVersion": "1.0.0",
     "updates": {
       "url": "https://u.expo.dev/40e7d2e9-3a84-4287-b355-b9298c0e3919"
     },
@@ -52,7 +50,7 @@
         {
           "icon": "./assets/images/appicon.png",
           "color": "#ffffff",
-          "sounds": ["./assets/music/Ready_for_Dispatch.mp3"]
+          "sounds": ["./assets/music/ready_for_dispatch.mp3"]
         }
       ]
     ],
