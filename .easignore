@@ -1,8 +1,0 @@
-# Ignore environment variables
-.env
-*.env
-**/*.env
-
-# Firebase and Service Account Secrets
-*firebase-adminsdk*.json
-*service-account*.json

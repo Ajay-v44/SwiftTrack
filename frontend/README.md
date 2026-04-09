@@ -63,7 +63,9 @@ The Expo app config resolves Android Firebase in this order:
 1. `GOOGLE_SERVICES_JSON` from EAS
 2. Local `apps/mobileapp/google-services.json`
 
-If `GOOGLE_SERVICES_JSON` is missing in EAS, cloud prebuild fails because `google-services.json` is not tracked by git and is therefore not uploaded with the build context.
+Because `apps/mobileapp/android` is committed, EAS treats the mobile app as a native project. During `eas-build-post-install`, we copy the resolved Firebase file into `apps/mobileapp/android/app/google-services.json` before Gradle runs.
+
+If `GOOGLE_SERVICES_JSON` is missing in EAS, the Android build fails because `google-services.json` is not tracked by git and is therefore not uploaded with the build context.
 
 ---
 
