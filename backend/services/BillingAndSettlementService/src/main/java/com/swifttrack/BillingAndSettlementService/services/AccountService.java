@@ -367,15 +367,58 @@ public class AccountService {
         if (account == null || !account.getIsActive())
             throw new CustomException(HttpStatus.NOT_FOUND, "User account not found or inactive");
 
-        ledgerService.credit(
-                account.getId(),
-                amount,
-                ReferenceType.WALLET_TOPUP,
-                UUID.randomUUID(),
-                null,
-                "Admin wallet top-up",
-                null,
-                tokenResponse.id());
+        BigDecimal currentBalance = account.getBalance();
+        if (currentBalance.compareTo(BigDecimal.ZERO) < 0) {
+            BigDecimal negativeBalance = currentBalance.abs();
+            if (amount.compareTo(negativeBalance) >= 0) {
+                // Clear negative balance
+                ledgerService.credit(
+                        account.getId(),
+                        negativeBalance,
+                        ReferenceType.WALLET_TOPUP,
+                        UUID.randomUUID(),
+                        null,
+                        "Negative balance cleared",
+                        null,
+                        tokenResponse.id());
+                
+                // Add remaining amount to wallet
+                BigDecimal remainingTopUp = amount.subtract(negativeBalance);
+                if (remainingTopUp.compareTo(BigDecimal.ZERO) > 0) {
+                    ledgerService.credit(
+                            account.getId(),
+                            remainingTopUp,
+                            ReferenceType.WALLET_TOPUP,
+                            UUID.randomUUID(),
+                            null,
+                            "Admin wallet top-up",
+                            null,
+                            tokenResponse.id());
+                }
+            } else {
+                // Top-up amount is less than negative balance, just reduce the negative balance
+                ledgerService.credit(
+                        account.getId(),
+                        amount,
+                        ReferenceType.WALLET_TOPUP,
+                        UUID.randomUUID(),
+                        null,
+                        "Negative balance cleared",
+                        null,
+                        tokenResponse.id());
+            }
+        } else {
+            // Normal top-up
+            ledgerService.credit(
+                    account.getId(),
+                    amount,
+                    ReferenceType.WALLET_TOPUP,
+                    UUID.randomUUID(),
+                    null,
+                    "Admin wallet top-up",
+                    null,
+                    tokenResponse.id());
+        }
 
         return accountRepository.findById(account.getId()).orElse(account);
     }
