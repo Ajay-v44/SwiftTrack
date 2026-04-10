@@ -382,6 +382,7 @@ export default function CreateOrderPage() {
                 value={shipmentForm.orderReference}
                 onChange={(value) => setShipmentForm((current) => ({ ...current, orderReference: value }))}
                 placeholder="SWIFT-ORD-1001"
+                required
               />
               <SelectField
                 label="Payment type"
@@ -391,6 +392,7 @@ export default function CreateOrderPage() {
                   { label: "Prepaid", value: "PREPAID" },
                   { label: "Cash on delivery", value: "COD" },
                 ]}
+                required
               />
               <Field
                 label="Package weight (kg)"
@@ -400,6 +402,7 @@ export default function CreateOrderPage() {
                 value={shipmentForm.weightKg}
                 onChange={(value) => setShipmentForm((current) => ({ ...current, weightKg: value }))}
                 placeholder="2.5"
+                required
               />
               <SelectField
                 label="Package size"
@@ -411,6 +414,7 @@ export default function CreateOrderPage() {
                   { label: "Large", value: "LARGE" },
                   { label: "XL", value: "XL" },
                 ]}
+                required
               />
               <Field
                 label="Declared value (INR)"
@@ -426,11 +430,12 @@ export default function CreateOrderPage() {
                 value={shipmentForm.packageDescription}
                 onChange={(value) => setShipmentForm((current) => ({ ...current, packageDescription: value }))}
                 placeholder="Documents, spare parts, electronics..."
+                required
               />
               <div className="md:col-span-2">
                 <Label className="mb-2 block text-sm text-slate-700">Delivery instructions</Label>
                 <Textarea
-                  className="min-h-28 border-slate-200 bg-slate-50"
+                  className="min-h-28 border-slate-200 bg-slate-50 placeholder:text-slate-400 placeholder:font-light"
                   value={shipmentForm.deliveryInstructions}
                   onChange={(event) => setShipmentForm((current) => ({ ...current, deliveryInstructions: event.target.value }))}
                   placeholder="Gate number, landmark, preferred arrival guidance..."
@@ -526,24 +531,24 @@ function OneTimeDropForm({
       <div className="grid gap-4 md:grid-cols-2">
         <Field label="Label" value={form.label} onChange={(value) => updateField("label", value)} placeholder="Customer, branch, warehouse..." />
         <Field label="Business name" value={form.businessName} onChange={(value) => updateField("businessName", value)} placeholder="Receiver business name" />
-        <Field label="Address line 1" value={form.line1} onChange={(value) => updateField("line1", value)} placeholder="Street, building, landmark" />
+        <Field label="Address line 1" value={form.line1} onChange={(value) => updateField("line1", value)} placeholder="Street, building, landmark" required />
         <Field label="Address line 2" value={form.line2} onChange={(value) => updateField("line2", value)} placeholder="Floor, suite, unit" />
         <Field label="Locality" value={form.locality} onChange={(value) => updateField("locality", value)} placeholder="Locality / area" />
-        <Field label="City" value={form.city} onChange={(value) => updateField("city", value)} placeholder="Bengaluru" />
-        <Field label="State" value={form.state} onChange={(value) => updateField("state", value)} placeholder="Karnataka" />
-        <Field label="Country" value={form.country} onChange={(value) => updateField("country", value)} placeholder="India" />
-        <Field label="Pincode" value={form.pincode} onChange={(value) => updateField("pincode", value)} placeholder="560001" />
-        <Field label="Contact person" value={form.contactName} onChange={(value) => updateField("contactName", value)} placeholder="Receiver name" />
-        <Field label="Contact phone" value={form.contactPhone} onChange={(value) => updateField("contactPhone", value)} placeholder="9876543210" />
+        <Field label="City" value={form.city} onChange={(value) => updateField("city", value)} placeholder="Bengaluru" required />
+        <Field label="State" value={form.state} onChange={(value) => updateField("state", value)} placeholder="Karnataka" required />
+        <Field label="Country" value={form.country} onChange={(value) => updateField("country", value)} placeholder="India" required />
+        <Field label="Pincode" value={form.pincode} onChange={(value) => updateField("pincode", value)} placeholder="560001" required />
+        <Field label="Contact person" value={form.contactName} onChange={(value) => updateField("contactName", value)} placeholder="Receiver name" required />
+        <Field label="Contact phone" value={form.contactPhone} onChange={(value) => updateField("contactPhone", value)} placeholder="9876543210" required />
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Latitude" value={form.latitude} onChange={(value) => updateField("latitude", value)} placeholder="12.9716" />
-          <Field label="Longitude" value={form.longitude} onChange={(value) => updateField("longitude", value)} placeholder="77.5946" />
+          <Field label="Latitude" value={form.latitude} onChange={(value) => updateField("latitude", value)} placeholder="12.9716" required />
+          <Field label="Longitude" value={form.longitude} onChange={(value) => updateField("longitude", value)} placeholder="77.5946" required />
         </div>
       </div>
 
       <div>
         <Label className="mb-2 block text-sm text-slate-700">Notes</Label>
-        <Textarea className="min-h-24 border-slate-200 bg-slate-50" value={form.notes} onChange={(event) => updateField("notes", event.target.value)} placeholder="Landmark, gate info, receiving timings..." />
+        <Textarea className="min-h-24 border-slate-200 bg-slate-50 placeholder:text-slate-400 placeholder:font-light" value={form.notes} onChange={(event) => updateField("notes", event.target.value)} placeholder="Landmark, gate info, receiving timings..." />
       </div>
     </div>
   )
@@ -607,7 +612,7 @@ function PlaceAutocompleteInput({ onSelect }: { onSelect: (place: TenantPlaceSug
       <div className="relative">
         <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <Input
-          className="border-slate-200 bg-slate-50 pl-10"
+          className="border-slate-200 bg-slate-50 pl-10 placeholder:text-slate-400 placeholder:font-light"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           onFocus={() => setOpen(true)}
@@ -701,6 +706,7 @@ function Field({
   onChange,
   placeholder,
   type = "text",
+  required,
   ...props
 }: {
   label: string
@@ -708,11 +714,15 @@ function Field({
   onChange: (value: string) => void
   placeholder?: string
   type?: React.HTMLInputTypeAttribute
+  required?: boolean
 } & Omit<React.ComponentProps<typeof Input>, "value" | "onChange" | "type">) {
   return (
     <div>
-      <Label className="mb-2 block text-sm text-slate-700">{label}</Label>
-      <Input {...props} type={type} className="border-slate-200 bg-slate-50" value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />
+      <Label className="mb-2 block text-sm text-slate-700">
+        {label}
+        {required && <span className="ml-1 text-red-500">*</span>}
+      </Label>
+      <Input {...props} type={type} className="border-slate-200 bg-slate-50 placeholder:text-slate-400 placeholder:font-light" value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} required={required} />
     </div>
   )
 }
@@ -722,16 +732,21 @@ function SelectField({
   value,
   onChange,
   options,
+  required,
 }: {
   label: string
   value: string
   onChange: (value: string) => void
   options: Array<{ label: string; value: string }>
+  required?: boolean
 }) {
   return (
     <div>
-      <Label className="mb-2 block text-sm text-slate-700">{label}</Label>
-      <select className="h-10 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition focus:border-slate-400" value={value} onChange={(event) => onChange(event.target.value)}>
+      <Label className="mb-2 block text-sm text-slate-700">
+        {label}
+        {required && <span className="ml-1 text-red-500">*</span>}
+      </Label>
+      <select className="h-10 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition focus:border-slate-400" value={value} onChange={(event) => onChange(event.target.value)} required={required}>
         {options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}

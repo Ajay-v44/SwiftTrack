@@ -29,12 +29,20 @@ export async function registerForPushNotificationsAsync({
   }
 
   if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('default', {
-      name: 'Default',
+    await Notifications.setNotificationChannelAsync('dispatch_alerts', {
+      name: 'Dispatch Alerts',
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#6C63FF',
       sound: DISPATCH_NOTIFICATION_SOUND,
+      audioAttributes: {
+        usage: Notifications.AndroidAudioUsage.ALARM,
+        contentType: Notifications.AndroidAudioContentType.SONIFICATION,
+        flags: {
+          enforceAudibility: true,
+          requestHardwareAudioVideoSynchronization: false,
+        },
+      },
     });
   }
 
