@@ -3,6 +3,10 @@ package com.swifttrack.services.notification;
 import com.google.cloud.firestore.Firestore;
 import com.google.cloud.firestore.SetOptions;
 import com.google.firebase.cloud.FirestoreClient;
+import com.google.firebase.messaging.AndroidConfig;
+import com.google.firebase.messaging.AndroidNotification;
+import com.google.firebase.messaging.ApnsConfig;
+import com.google.firebase.messaging.Aps;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.Notification;
@@ -60,6 +64,18 @@ public class FirebaseService {
                             .setTitle(title)
                             .setBody(body)
                             .build())
+                    .setAndroidConfig(AndroidConfig.builder()
+                            .setPriority(AndroidConfig.Priority.HIGH)
+                            .setNotification(AndroidNotification.builder()
+                                    .setChannelId("dispatch_alerts")
+                                    .setSound("ready_for_dispatch.mp3")
+                                    .build())
+                            .build())
+                    .setApnsConfig(ApnsConfig.builder()
+                            .setAps(Aps.builder()
+                                    .setSound("ready_for_dispatch.mp3")
+                                    .build())
+                            .build())
                     .build();
 
             String response = FirebaseMessaging.getInstance().send(message);
@@ -84,6 +100,18 @@ public class FirebaseService {
                     .setNotification(Notification.builder()
                             .setTitle(title)
                             .setBody(body)
+                            .build())
+                    .setAndroidConfig(AndroidConfig.builder()
+                            .setPriority(AndroidConfig.Priority.HIGH)
+                            .setNotification(AndroidNotification.builder()
+                                    .setChannelId("dispatch_alerts")
+                                    .setSound("ready_for_dispatch.mp3")
+                                    .build())
+                            .build())
+                    .setApnsConfig(ApnsConfig.builder()
+                            .setAps(Aps.builder()
+                                    .setSound("ready_for_dispatch.mp3")
+                                    .build())
                             .build())
                     .build();
 

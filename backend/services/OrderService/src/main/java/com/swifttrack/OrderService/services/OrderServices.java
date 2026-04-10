@@ -1396,14 +1396,24 @@ public class OrderServices {
 
         private String validateOrderAccess(Order order, TokenResponse userDetails) {
                 UUID userId = userDetails.id();
+                if (userId != null && userId.equals(order.getAssignedDriverId())) {
+                        return "DRIVER";
+                }
+                
                 UUID tenantId = resolveTenantScopeId(userDetails);
                 UserType userType = userDetails.userType().orElse(null);
 
                 if (tenantId != null || isTenantScopedUser(userType)) {
-                        if (tenantId == null || order.getTenantId() == null || !tenantId.equals(order.getTenantId())) {
+                        if (userType == UserType.DRIVER_USER) {
+                                // Skip tenant check for global drivers unless they are assigned (handled above)
+                        } else if (tenantId == null || order.getTenantId() == null || !tenantId.equals(order.getTenantId())) {
+                                if (userId != null && (userId.equals(order.getCreatedBy()) || userId.equals(order.getOwnerUserId()))) {
+                                        return "OWNER";
+                                }
                                 throw new CustomException(HttpStatus.FORBIDDEN, "Order does not belong to this tenant");
+                        } else {
+                                return "TENANT";
                         }
-                        return "TENANT";
                 }
 
                 if (userId != null && (userId.equals(order.getCreatedBy()) || userId.equals(order.getOwnerUserId()))) {
