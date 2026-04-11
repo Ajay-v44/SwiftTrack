@@ -153,14 +153,15 @@ function TenantSetupPageContent() {
 
   async function handleCompanySubmit(event: React.FormEvent) {
     event.preventDefault()
-    if (!user?.id) {
+    const tenantScopeId = user?.tenantId || user?.id
+    if (!tenantScopeId) {
       toast.error("Please log in again")
       return
     }
 
     setCompanySaving(true)
     try {
-      await registerTenantCompanyService(user.id, companyForm)
+      await registerTenantCompanyService(tenantScopeId, companyForm)
       toast.success("Company details saved")
       await refreshStatus("providers")
     } catch (error) {
@@ -402,41 +403,56 @@ function TenantSetupPageContent() {
                     No active delivery options are available yet.
                   </div>
                 ) : (
-                  deliveryOptions.map((option) => {
-                    const enabled = deliveryOrder.includes(option.optionType)
-                    const priority = enabled ? deliveryOrder.indexOf(option.optionType) + 1 : null
-                    return (
-                      <div key={option.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 p-4">
-                        <div>
-                          <p className="font-medium text-slate-950">{option.optionType}</p>
-                          <p className="text-sm text-slate-500">
-                            {enabled ? `Priority ${priority}` : "Disabled for tenant routing"}
-                          </p>
+                  deliveryOptions
+                    .slice()
+                    .sort((a, b) => {
+                      const indexA = deliveryOrder.indexOf(a.optionType)
+                      const indexB = deliveryOrder.indexOf(b.optionType)
+
+                      // If both are in deliveryOrder, sort by index
+                      if (indexA !== -1 && indexB !== -1) return indexA - indexB
+                      // If only A is in deliveryOrder, it comes first
+                      if (indexA !== -1) return -1
+                      // If only B is in deliveryOrder, it comes first
+                      if (indexB !== -1) return 1
+                      // Otherwise maintain relative order
+                      return 0
+                    })
+                    .map((option) => {
+                      const enabled = deliveryOrder.includes(option.optionType)
+                      const priority = enabled ? deliveryOrder.indexOf(option.optionType) + 1 : null
+                      return (
+                        <div key={option.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 p-4">
+                          <div>
+                            <p className="font-medium text-slate-950">{option.optionType}</p>
+                            <p className="text-sm text-slate-500">
+                              {enabled ? `Priority ${priority}` : "Disabled for tenant routing"}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Button type="button" variant="outline" onClick={() => toggleDeliveryOption(option.optionType)}>
+                              {enabled ? "Disable" : "Enable"}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              disabled={!enabled || deliveryOrder.indexOf(option.optionType) === 0}
+                              onClick={() => moveDeliveryOption(option.optionType, "up")}
+                            >
+                              Move Up
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              disabled={!enabled || deliveryOrder.indexOf(option.optionType) === deliveryOrder.length - 1}
+                              onClick={() => moveDeliveryOption(option.optionType, "down")}
+                            >
+                              Move Down
+                            </Button>
+                          </div>
                         </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Button type="button" variant="outline" onClick={() => toggleDeliveryOption(option.optionType)}>
-                            {enabled ? "Disable" : "Enable"}
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            disabled={!enabled}
-                            onClick={() => moveDeliveryOption(option.optionType, "up")}
-                          >
-                            Move Up
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            disabled={!enabled}
-                            onClick={() => moveDeliveryOption(option.optionType, "down")}
-                          >
-                            Move Down
-                          </Button>
-                        </div>
-                      </div>
-                    )
-                  })
+                      )
+                    })
                 )}
                 <Button onClick={handleDeliverySubmit} disabled={deliverySaving || deliveryOrder.length === 0}>
                   {deliverySaving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}

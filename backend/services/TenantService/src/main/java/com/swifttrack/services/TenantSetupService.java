@@ -45,7 +45,9 @@ public class TenantSetupService {
         }
 
         UUID tenantScopeId = tokenResponse.tenantId().orElse(tokenResponse.id());
-        boolean companyRegistered = companyRepository.existsById(tenantScopeId);
+        UUID userId = tokenResponse.id();
+        boolean companyRegistered = companyRepository.existsById(tenantScopeId)
+                || (!tenantScopeId.equals(userId) && companyRepository.existsById(userId));
         boolean providersConfigured = !providerInterface.getTenantProviders(tenantScopeId).isEmpty();
         boolean deliveryPreferencesConfigured =
                 !tenantDeliveryConfigurationRepository.findByTenantId(tenantScopeId).isEmpty();

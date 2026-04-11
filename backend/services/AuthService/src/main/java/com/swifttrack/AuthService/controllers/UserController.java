@@ -87,7 +87,7 @@ public class UserController {
                         @ApiResponse(responseCode = "401", description = "Invalid token"),
                         @ApiResponse(responseCode = "404", description = "User account not found")
         })
-        public ResponseEntity<TokenResponse> getUserDetails(@RequestParam String token) {
+        public ResponseEntity<TokenResponse> getUserDetails(@RequestParam("token") String token) {
                 return ResponseEntity.ok(userService.getUserDetails(token));
         }
 
@@ -98,7 +98,7 @@ public class UserController {
                         @ApiResponse(responseCode = "401", description = "Invalid credentials"),
                         @ApiResponse(responseCode = "403", description = "Account not activated")
         })
-        public ResponseEntity<Message> assignAdmin(@RequestParam String token, @RequestParam UUID id) {
+        public ResponseEntity<Message> assignAdmin(@RequestParam("token") String token, @RequestParam UUID id) {
                 return ResponseEntity.ok(userService.assignAdmin(token, id));
         }
 
@@ -109,14 +109,14 @@ public class UserController {
                         @ApiResponse(responseCode = "401", description = "Invalid credentials"),
                         @ApiResponse(responseCode = "403", description = "Account not activated")
         })
-        public ResponseEntity<Message> addTenantUsers(@RequestParam String token,
+        public ResponseEntity<Message> addTenantUsers(@RequestParam("token") String token,
                         @RequestBody List<AddTenantUsers> entity) {
                 return ResponseEntity.ok(userService.addTenantUsers(token, entity));
         }
 
         @PostMapping("v1/admin/createManagedUser")
         @Operation(summary = "Create a managed user", description = "Create a tenant-scoped or managed user by tenant admin or platform admin")
-        public ResponseEntity<ManagedUserResponse> createManagedUser(@RequestParam String token,
+        public ResponseEntity<ManagedUserResponse> createManagedUser(@RequestParam("token") String token,
                         @RequestBody CreateManagedUserRequest request) {
                 return ResponseEntity.ok(userService.createManagedUser(token, request));
         }

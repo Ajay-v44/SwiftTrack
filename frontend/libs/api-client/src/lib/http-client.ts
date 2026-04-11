@@ -42,16 +42,17 @@ function removeCookie(name: string) {
   document.cookie = `${name}=; Max-Age=0; path=/`
 }
 
-function isLoginRequest(config?: InternalAxiosRequestConfig) {
+function isUnprotectedRequest(config?: InternalAxiosRequestConfig) {
   const url = config?.url ?? ""
   return (
     url.includes("/v1/login/emailAndPassword") ||
-    url.includes("/v1/login/mobileNumAndOtp")
+    url.includes("/v1/login/mobileNumAndOtp") ||
+    url.includes("/api/users/v1/register")
   )
 }
 
 function isProtectedRequest(config?: InternalAxiosRequestConfig) {
-  return Boolean(config) && !isLoginRequest(config)
+  return Boolean(config) && !isUnprotectedRequest(config)
 }
 
 function clearPersistedAuth() {
@@ -75,6 +76,32 @@ function redirectToLogin() {
 function logoutUser() {
   clearPersistedAuth()
   redirectToLogin()
+}
+
+function getErrorMessage(error: AxiosError) {
+  const data = error.response?.data
+  if (typeof data === "string") {
+    return data.toLowerCase()
+  }
+
+  if (data && typeof data === "object" && "message" in data && typeof data.message === "string") {
+    return data.message.toLowerCase()
+  }
+
+  return ""
+}
+
+function isAuthFailure(error: AxiosError) {
+  const message = getErrorMessage(error)
+
+  return (
+    message.includes("expired token") ||
+    message.includes("invalid token") ||
+    message.includes("missing auth token") ||
+    message.includes("unauthorized") ||
+    message.includes("getuserdetails") ||
+    message.includes("[401]")
+  )
 }
 
 httpClient.interceptors.request.use(
@@ -101,23 +128,13 @@ httpClient.interceptors.response.use(
   (error: AxiosError) => {
     const status = error.response?.status
 
-    if ((status === 401 || status === 403) && isProtectedRequest(error.config)) {
+    if (status === 401 && isProtectedRequest(error.config)) {
       logoutUser()
     }
 
-    // Safety net: catch auth failures that downstream services accidentally return as 500
-    if (status === 500 && isProtectedRequest(error.config)) {
-      const data = error.response?.data as Record<string, unknown> | undefined
-      const message =
-        typeof data?.["message"] === "string" ? (data["message"] as string).toLowerCase() : ""
-      if (
-        message.includes("expired token") ||
-        message.includes("invalid token") ||
-        message.includes("missing auth token") ||
-        message.includes("[401]") ||
-        message.includes("unauthorized") ||
-        message.includes("getuserdetails")
-      ) {
+    // Safety net: some downstream services wrap auth failures in 403/500 instead of 401.
+    if ((status === 403 || status === 500) && isProtectedRequest(error.config)) {
+      if (isAuthFailure(error)) {
         logoutUser()
       }
     }

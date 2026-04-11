@@ -30,6 +30,6 @@ public interface AuthInterface {
     public ResponseEntity<LoginResponse> loginMobileNumAndOtp(@RequestBody MobileNumAuth mobileNumAuth);
 
     @PostMapping("/api/users/v1/getUserDetails")
-    public ResponseEntity<TokenResponse> getUserDetails(@RequestParam String token);
+    public ResponseEntity<TokenResponse> getUserDetails(@RequestParam("token") String token);
 
 }

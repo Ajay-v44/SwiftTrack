@@ -25,7 +25,7 @@ public class TenantSetupController {
 
     @GetMapping("/v1/setup-status")
     @Operation(summary = "Get tenant setup status", description = "Returns onboarding progress for the authenticated tenant user")
-    public ResponseEntity<TenantSetupStatusResponse> getSetupStatus(@RequestHeader String token) {
+    public ResponseEntity<TenantSetupStatusResponse> getSetupStatus(@RequestHeader("token") String token) {
         return ResponseEntity.ok(tenantSetupService.getSetupStatus(token));
     }
 }

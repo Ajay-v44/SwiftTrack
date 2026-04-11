@@ -30,13 +30,13 @@ public interface AuthInterface {
     public ResponseEntity<LoginResponse> loginMobileNumAndOtp(@RequestBody MobileNumAuth mobileNumAuth);
 
     @PostMapping("/api/users/v1/getUserDetails")
-    public ResponseEntity<TokenResponse> getUserDetails(@RequestParam String token);
+    public ResponseEntity<TokenResponse> getUserDetails(@RequestParam("token") String token);
 
     @PostMapping("/api/users/v1/assignAdmin")
     public ResponseEntity<Message> assignAdmin(@RequestParam("token") String token,
             @RequestParam("tenantId") UUID tenantId, @RequestParam("id") UUID id);
 
     @PostMapping("/api/users/v1/addTenantUsers")
-    public ResponseEntity<Message> addTenantUsers(@RequestParam String token,
+    public ResponseEntity<Message> addTenantUsers(@RequestParam("token") String token,
             @RequestBody List<AddTenantUsers> addTenantUsers);
 }

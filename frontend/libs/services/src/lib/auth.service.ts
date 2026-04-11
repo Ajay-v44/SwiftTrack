@@ -3,12 +3,12 @@ import {
   fetchUserDetailsApi,
   loginWithEmailApi,
   loginWithMobileOtpApi,
-  registerTenantApi,
+  registerUserApi,
 } from "@swifttrack/api-client"
 import { LoginResponse, TenantRegisterInput, TenantSetupStatus, UserDetails } from "@swifttrack/types"
 
-export async function registerTenantService(payload: TenantRegisterInput): Promise<string> {
-  const response = await registerTenantApi(payload)
+export async function registerUserService(payload: TenantRegisterInput & { userType: UserDetails["type"] }): Promise<string> {
+  const response = await registerUserApi(payload)
   return response.data?.message ?? "User registered Successfully"
 }
 
