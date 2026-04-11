@@ -36,6 +36,8 @@ export interface AuthState {
   error: string | null;
 }
 
+const ADMIN_VERIFICATION_MESSAGE = 'Please wait for verification by admin, it may take some time.';
+
 const initialState: AuthState = {
   driver: null,
   token: null,
@@ -65,9 +67,16 @@ export const login = createAsyncThunk('auth/login', async (credentials: any, { r
     return { token: accessToken };
   } catch (error: any) {
     const data = error.response?.data;
-    const message =
+    const rawMessage =
       data?.message ||
       data?.error ||
+      (typeof error?.message === 'string' ? error.message : '');
+    const normalizedMessage = rawMessage.toLowerCase();
+    if (error.response?.status === 403 || normalizedMessage.includes('not verified') || normalizedMessage.includes('not activated')) {
+      return rejectWithValue(ADMIN_VERIFICATION_MESSAGE);
+    }
+    const message =
+      rawMessage ||
       (error.response?.status === 404 ? 'Account does not exist' : 'Login failed. Please try again.');
     return rejectWithValue(message);
   }
@@ -94,12 +103,15 @@ export const register = createAsyncThunk('auth/register', async (data: any, { re
     const response = await apiClient.post('/driverservice/api/driver/v1/register', {
       name: data.name,
       email: data.email.trim(),
-      mobileNumber: data.mobileNumber,
+      mobile: data.mobileNumber.trim(),
       password: data.password,
+      vehicleType: data.vehicleType ?? null,
+      vehicleNumber: data.vehicleNumber?.trim() || null,
+      driverLicensNumber: data.driverLicensNumber?.trim() || null,
     });
     return response.data;
   } catch (error: any) {
-    return rejectWithValue(error.response?.data?.message || 'Registration failed');
+    return rejectWithValue(error.response?.data?.message || ADMIN_VERIFICATION_MESSAGE);
   }
 });
 
