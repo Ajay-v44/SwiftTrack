@@ -2,11 +2,8 @@ import { httpClient } from "./http-client"
 import { serviceEndpoints } from "./endpoints"
 import { LoginResponse, TenantRegisterInput, TenantSetupStatus, UserDetails } from "@swifttrack/types"
 
-export function registerTenantApi(payload: TenantRegisterInput) {
-  return httpClient.post<{ message?: string }>(`${serviceEndpoints.tenantService}/api/tenant/v1/register`, {
-    ...payload,
-    userType: "TENANT_ADMIN",
-  })
+export function registerUserApi(payload: TenantRegisterInput & { userType: UserDetails["type"] }) {
+  return httpClient.post<{ message?: string }>(`${serviceEndpoints.auth}/v1/register`, payload)
 }
 
 export function loginWithEmailApi(email: string, password: string) {

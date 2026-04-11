@@ -81,7 +81,8 @@ public class UserServices {
         userRepo.save(userModel);
 
         if (autoApproveConsumer) {
-            billingAndSettlementInterface.createAccountInternal(userModel.getId(), AccountType.CONSUMER, SYSTEM_USER_ID);
+            billingAndSettlementInterface.createAccountInternal(userModel.getId(), AccountType.CONSUMER,
+                    SYSTEM_USER_ID);
         }
 
         return "User registered Successfully";
@@ -489,7 +490,8 @@ public class UserServices {
 
         UserModel targetUser = userRepo.findById(request.userId())
                 .orElseThrow(() -> new ResourceNotFoundException("User to be updated doesn't exist"));
-        boolean platformAdmin = callingUser.getType() == UserType.SUPER_ADMIN || callingUser.getType() == UserType.SYSTEM_ADMIN;
+        boolean platformAdmin = callingUser.getType() == UserType.SUPER_ADMIN
+                || callingUser.getType() == UserType.SYSTEM_ADMIN;
         if (!platformAdmin && !Objects.equals(callingUser.getTenantId(), targetUser.getTenantId()))
             throw new CustomException(HttpStatus.FORBIDDEN, "Cannot update user from another tenant");
 
@@ -562,12 +564,13 @@ public class UserServices {
     }
 
     private TenantUserListItemResponse toTenantUserListItem(UserModel userModel) {
-        List<String> roles = userModel.getUserRoles() == null ? List.of() : userModel.getUserRoles().stream()
-                .filter(userRole -> userRole.getRoles() != null)
-                .map(userRole -> userRole.getRoles().getName())
-                .distinct()
-                .sorted()
-                .toList();
+        List<String> roles = userModel.getUserRoles() == null ? List.of()
+                : userModel.getUserRoles().stream()
+                        .filter(userRole -> userRole.getRoles() != null)
+                        .map(userRole -> userRole.getRoles().getName())
+                        .distinct()
+                        .sorted()
+                        .toList();
 
         return new TenantUserListItemResponse(
                 userModel.getId(),

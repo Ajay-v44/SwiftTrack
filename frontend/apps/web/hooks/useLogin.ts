@@ -9,7 +9,7 @@ import {
   fetchUserDetailsService,
   loginWithEmailService,
   loginWithMobileOtpService,
-  registerTenantService,
+  registerUserService,
 } from "@swifttrack/services"
 import type { TenantRegisterInput, UserDetails } from "@swifttrack/types"
 import { useAuthStore } from "@/store/useAuthStore"
@@ -83,16 +83,16 @@ export function useLogin() {
     }
   }
 
-  async function registerTenant(payload: TenantRegisterInput) {
+  async function registerUser(payload: TenantRegisterInput & { userType: UserDetails["type"] }) {
     setIsLoading(true)
     try {
-      await registerTenantService(payload)
-      toast.success("Tenant account created successfully")
+      await registerUserService(payload)
+      toast.success("Account created successfully")
       const { accessToken } = await loginWithEmailService(payload.email, payload.password)
       setAuth(accessToken)
       await handleUserBootstrap(accessToken)
     } catch (error: unknown) {
-      const message = getErrorMessage(error, "Failed to register tenant")
+      const message = getErrorMessage(error, "Failed to register")
       toast.error(message)
       throw error
     } finally {
@@ -129,7 +129,7 @@ export function useLogin() {
     otpSent,
     loginWithEmail,
     loginWithPhone,
-    registerTenant,
+    registerUser,
   }
 }
   function getErrorMessage(error: unknown, fallback: string) {

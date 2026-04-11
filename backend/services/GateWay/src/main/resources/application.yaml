@@ -35,6 +35,30 @@ spring:
             - Path=/authservice/**
           filters:
             - StripPrefix=1
+        - id: tenantservice
+          uri: lb://tenantservice
+          predicates:
+            - Path=/tenantservice/**
+          filters:
+            - StripPrefix=1
+        - id: orderservice
+          uri: lb://orderservice
+          predicates:
+            - Path=/orderservice/**
+          filters:
+            - StripPrefix=1
+        - id: providerservice
+          uri: lb://providerservice
+          predicates:
+            - Path=/providerservice/**
+          filters:
+            - StripPrefix=1
+        - id: billingandsettlementservice
+          uri: lb://billingandsettlementservice
+          predicates:
+            - Path=/billingandsettlementservice/**
+          filters:
+            - StripPrefix=1
 server:
   port: 8080
 eureka:

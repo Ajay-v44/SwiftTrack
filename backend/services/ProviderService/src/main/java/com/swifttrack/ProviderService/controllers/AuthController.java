@@ -68,7 +68,7 @@ public class AuthController {
             @ApiResponse(responseCode = "401", description = "Invalid token"),
             @ApiResponse(responseCode = "404", description = "User account not found")
     })
-    public ResponseEntity<TokenResponse> getUserDetails(@RequestParam String token){
+    public ResponseEntity<TokenResponse> getUserDetails(@RequestParam("token") String token){
         return authInterface.getUserDetails(token);
     }
 }

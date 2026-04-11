@@ -1,15 +1,19 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { usePathname } from "next/navigation"
 import { fetchTenantSetupStatusService } from "@swifttrack/services"
 import type { TenantSetupStatus } from "@swifttrack/types"
 
 export function useTenantSetupGuard() {
+  const pathname = usePathname()
   const [setupStatus, setSetupStatus] = useState<TenantSetupStatus | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let active = true
+
+    setLoading(true)
 
     async function load() {
       try {
@@ -33,7 +37,7 @@ export function useTenantSetupGuard() {
     return () => {
       active = false
     }
-  }, [])
+  }, [pathname])
 
   return {
     loading,

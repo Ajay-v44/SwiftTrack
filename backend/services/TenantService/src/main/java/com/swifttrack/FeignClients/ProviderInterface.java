@@ -14,5 +14,5 @@ public interface ProviderInterface {
     List<GetProviders> getProviders();
 
     @GetMapping("/api/providers/v1/internal/getTenantProviders")
-    List<GetProviders> getTenantProviders(@RequestParam UUID tenantId);
+    List<GetProviders> getTenantProviders(@RequestParam("tenantId") UUID tenantId);
 }

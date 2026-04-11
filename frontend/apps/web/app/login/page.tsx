@@ -17,10 +17,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import type { UserDetails } from "@swifttrack/types"
 import { useLogin } from "@/hooks/useLogin"
 
 export default function LoginPage() {
-  const { isLoading, otpSent, loginWithEmail, loginWithPhone, registerTenant } = useLogin()
+  const { isLoading, otpSent, loginWithEmail, loginWithPhone, registerUser } = useLogin()
   const [authMode, setAuthMode] = useState<"login" | "signup">("login")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -32,6 +33,7 @@ export default function LoginPage() {
   const [signupMobile, setSignupMobile] = useState("")
   const [signupPassword, setSignupPassword] = useState("")
   const [signupConfirmPassword, setSignupConfirmPassword] = useState("")
+  const [signupType, setSignupType] = useState<UserDetails["type"]>("TENANT_ADMIN")
 
   const handleEmailLogin = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -66,7 +68,7 @@ export default function LoginPage() {
     }
   }
 
-  const handleTenantSignup = async (event: React.FormEvent) => {
+  const handleSignup = async (event: React.FormEvent) => {
     event.preventDefault()
     if (!signupName || !signupEmail || !signupMobile || !signupPassword || !signupConfirmPassword) {
       toast.error("Please fill in all registration fields")
@@ -79,11 +81,12 @@ export default function LoginPage() {
     }
 
     try {
-      await registerTenant({
+      await registerUser({
         name: signupName,
         email: signupEmail,
         mobile: signupMobile,
         password: signupPassword,
+        userType: signupType,
       })
     } catch {
       return
@@ -131,19 +134,32 @@ export default function LoginPage() {
                   authMode === "signup" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
                 }`}
               >
-                Register Tenant
+                Register
               </button>
             </div>
-            <CardTitle className="text-2xl">{authMode === "login" ? "Welcome Back" : "Create Tenant Account"}</CardTitle>
+            <CardTitle className="text-2xl">{authMode === "login" ? "Welcome Back" : "Create Account"}</CardTitle>
             <CardDescription>
               {authMode === "login"
                 ? "Choose your preferred login method to continue"
-                : "Create your tenant admin account. Company, providers, and delivery preferences come next."}
+                : "Create an account. Select your user type to get started."}
             </CardDescription>
           </CardHeader>
           <CardContent>
             {authMode === "signup" ? (
-              <form onSubmit={handleTenantSignup} className="space-y-4">
+              <form onSubmit={handleSignup} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="signup-type">Account Type</Label>
+                  <select
+                    id="signup-type"
+                    value={signupType}
+                    onChange={(e) => setSignupType(e.target.value as any)}
+                    className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="TENANT_ADMIN">Tenant (Business Owner)</option>
+                    <option value="PROVIDER_ADMIN">Provider (Vendor/Supplier)</option>
+                    <option value="CONSUMER">Customer</option>
+                  </select>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-name">Full Name</Label>
                   <Input
