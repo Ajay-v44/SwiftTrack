@@ -114,3 +114,12 @@ export interface TenantProviderConfigSummary extends ProviderSummary {
   createdAt: string
   updatedAt: string
 }
+
+export interface ProviderOnboardingRequestInput {
+  providerName: string
+  contactPhone: string
+  contactEmail: string
+  notes: string
+  docLinks: string
+  providerWebsite: string
+}
