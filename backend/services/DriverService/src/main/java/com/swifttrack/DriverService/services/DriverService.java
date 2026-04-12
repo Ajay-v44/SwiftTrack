@@ -513,7 +513,7 @@ public class DriverService {
         driverStatus.setDriverId(response.id());
         driverStatus.setStatus(DriverOnlineStatus.OFFLINE);
         driverStatusRepository.save(driverStatus);
-        return new Message("Driver registered successfully");
+        return new Message("Driver registered successfully. Please wait for verification by admin, it may take some time.");
     }
 
     public List<GetAllDriverUser> getDriverUsers(String token, VerificationStatus verificationStatus) {

@@ -8,6 +8,7 @@ import type {
   PaginatedTenantUsersResponse,
   ProviderSummary,
   RoleViewResponse,
+  ProviderOnboardingRequestInput,
   TenantDeliveryConf,
   TenantDeliveryPriorityInput,
   TenantProviderConfigSummary,
@@ -140,4 +141,8 @@ export function removeTenantProviderApi(providerId: string) {
   return httpClient.delete(`${serviceEndpoints.providerService}/v1/tenantProviders`, {
     params: { providerId },
   })
+}
+
+export function requestProviderOnboardingApi(payload: ProviderOnboardingRequestInput) {
+  return httpClient.post(`${serviceEndpoints.providerService}/v1/requestProviderOnboarding`, payload)
 }

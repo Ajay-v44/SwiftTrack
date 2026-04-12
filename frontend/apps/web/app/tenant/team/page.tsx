@@ -7,8 +7,13 @@ import {
   Building2,
   CheckCircle2,
   Loader2,
+  Mail,
+  Link as LinkIcon,
+  MessageSquareText,
+  Phone,
   Plus,
   RefreshCw,
+  Send,
   ShieldCheck,
   UserCog,
   UserPlus,
@@ -34,12 +39,14 @@ import {
   fetchTenantDeliveryConfigurationService,
   fetchTenantUsersService,
   removeTenantProviderService,
+  requestProviderOnboardingService,
   saveTenantDeliveryConfigurationService,
   updateTenantProviderStatusService,
   updateUserStatusService,
 } from "@swifttrack/services"
 import type {
   DeliveryOptionResponse,
+  ProviderOnboardingRequestInput,
   ProviderSummary,
   RoleViewResponse,
   TenantDeliveryConf,
@@ -63,6 +70,15 @@ const initialCreateUserForm = {
 const initialCreateRoleForm = {
   name: "",
   description: "",
+}
+
+const initialProviderOnboardingForm: ProviderOnboardingRequestInput = {
+  providerName: "",
+  contactPhone: "",
+  contactEmail: "",
+  notes: "",
+  docLinks: "{}",
+  providerWebsite: "",
 }
 
 export default function TenantTeamPage() {
@@ -96,6 +112,8 @@ export default function TenantTeamPage() {
   const [configuredProviders, setConfiguredProviders] = useState<TenantProviderConfigSummary[]>([])
   const [savingDeliveryConfig, setSavingDeliveryConfig] = useState(false)
   const [providerActionId, setProviderActionId] = useState<string | null>(null)
+  const [providerOnboardingForm, setProviderOnboardingForm] = useState(initialProviderOnboardingForm)
+  const [submittingProviderOnboarding, setSubmittingProviderOnboarding] = useState(false)
   const [loadingDelivery, setLoadingDelivery] = useState(true)
 
   const tenantUserGroup = useMemo(
@@ -389,6 +407,60 @@ export default function TenantTeamPage() {
     }
   }
 
+  async function handleProviderOnboardingRequest(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    const providerName = providerOnboardingForm.providerName.trim()
+    const providerWebsite = providerOnboardingForm.providerWebsite.trim()
+    const contactEmail = providerOnboardingForm.contactEmail.trim().toLowerCase()
+    const contactPhone = providerOnboardingForm.contactPhone.trim()
+    const notes = providerOnboardingForm.notes.trim()
+
+    if (!providerName) {
+      toast.error("Provider name is required")
+      return
+    }
+
+    if (!contactEmail && !contactPhone) {
+      toast.error("Add at least one provider contact: email or phone")
+      return
+    }
+
+    if (contactEmail && !isValidEmail(contactEmail)) {
+      toast.error("Enter a valid provider contact email")
+      return
+    }
+
+    if (contactPhone && !isValidPhone(contactPhone)) {
+      toast.error("Enter a valid provider contact phone")
+      return
+    }
+
+    if (providerWebsite && !isValidWebsite(providerWebsite)) {
+      toast.error("Enter a valid provider website URL")
+      return
+    }
+
+    setSubmittingProviderOnboarding(true)
+
+    try {
+      await requestProviderOnboardingService({
+        providerName,
+        providerWebsite,
+        contactEmail,
+        contactPhone,
+        notes,
+        docLinks: "{}",
+      })
+      toast.success("Provider onboarding request submitted")
+      setProviderOnboardingForm(initialProviderOnboardingForm)
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Failed to request provider onboarding"))
+    } finally {
+      setSubmittingProviderOnboarding(false)
+    }
+  }
+
   async function reloadTenantProviders() {
     const configured = await fetchConfiguredTenantProvidersSafe(user?.tenantId || undefined)
     setConfiguredProviders(configured)
@@ -661,6 +733,75 @@ export default function TenantTeamPage() {
             ) : (
               <>
                 <div className="space-y-4">
+                  <div className="rounded-2xl border border-indigo-200 bg-[linear-gradient(135deg,rgba(238,242,255,0.9),rgba(255,255,255,0.96))] p-5">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                      <div>
+                        <p className="text-xs font-medium uppercase tracking-[0.18em] text-indigo-600">Provider Not Listed</p>
+                        <h3 className="mt-1 text-lg font-semibold text-slate-950">Request provider onboarding</h3>
+                        <p className="mt-1 text-sm leading-6 text-slate-600">
+                          Ask SwiftTrack to onboard an external provider that is not available in the list below.
+                        </p>
+                      </div>
+                      <Badge className="w-fit rounded-full bg-white text-indigo-700 shadow-sm" variant="secondary">
+                        `/api/providers/v1/requestProviderOnboarding`
+                      </Badge>
+                    </div>
+
+                    <form className="mt-5 grid gap-4 md:grid-cols-2" onSubmit={handleProviderOnboardingRequest}>
+                      <RequestInputField
+                        label="Provider Name"
+                        value={providerOnboardingForm.providerName}
+                        onChange={(value) => setProviderOnboardingForm((current) => ({ ...current, providerName: value }))}
+                        placeholder="BlueDart, Delhivery, Shadowfax..."
+                        icon={<Building2 className="h-4 w-4" />}
+                        required
+                      />
+                      <RequestInputField
+                        label="Provider Website"
+                        value={providerOnboardingForm.providerWebsite}
+                        onChange={(value) => setProviderOnboardingForm((current) => ({ ...current, providerWebsite: value }))}
+                        placeholder="https://provider.com"
+                        icon={<LinkIcon className="h-4 w-4" />}
+                      />
+                      <RequestInputField
+                        label="Contact Email"
+                        type="email"
+                        value={providerOnboardingForm.contactEmail}
+                        onChange={(value) => setProviderOnboardingForm((current) => ({ ...current, contactEmail: value }))}
+                        placeholder="partnerships@provider.com"
+                        icon={<Mail className="h-4 w-4" />}
+                      />
+                      <RequestInputField
+                        label="Contact Phone"
+                        value={providerOnboardingForm.contactPhone}
+                        onChange={(value) => setProviderOnboardingForm((current) => ({ ...current, contactPhone: value }))}
+                        placeholder="+91 98765 43210"
+                        icon={<Phone className="h-4 w-4" />}
+                      />
+                      <div className="space-y-2 md:col-span-2">
+                        <label className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Notes</label>
+                        <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                          <div className="mb-2 flex items-center gap-2 text-slate-400">
+                            <MessageSquareText className="h-4 w-4" />
+                            <span className="text-xs">Why this provider matters for your tenant</span>
+                          </div>
+                          <textarea
+                            value={providerOnboardingForm.notes}
+                            onChange={(event) => setProviderOnboardingForm((current) => ({ ...current, notes: event.target.value }))}
+                            className="min-h-28 w-full resize-y border-0 bg-transparent text-sm text-slate-700 outline-none"
+                            placeholder="Mention cities, service level, pricing, or business need."
+                          />
+                        </div>
+                      </div>
+                      <div className="md:col-span-2 flex justify-end">
+                        <Button type="submit" className="rounded-full bg-slate-950 text-white hover:bg-slate-800" disabled={submittingProviderOnboarding}>
+                          {submittingProviderOnboarding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                          Request Onboarding
+                        </Button>
+                      </div>
+                    </form>
+                  </div>
+
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                     <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Available To Add</p>
                     <div className="mt-3 space-y-3">
@@ -915,6 +1056,43 @@ function InputField({
   )
 }
 
+function RequestInputField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  icon,
+  type = "text",
+  required = false,
+}: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  placeholder?: string
+  icon: ReactNode
+  type?: string
+  required?: boolean
+}) {
+  return (
+    <div className="space-y-2">
+      <label className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+        {label}
+        {required ? <span className="ml-1 text-rose-500">*</span> : null}
+      </label>
+      <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+        <span className="text-slate-400">{icon}</span>
+        <Input
+          type={type}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
+          className="border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+        />
+      </div>
+    </div>
+  )
+}
+
 function RoleChecklist({
   title,
   roles,
@@ -1016,4 +1194,22 @@ function getErrorMessage(error: unknown, fallback: string) {
   }
 
   return error instanceof Error ? error.message : fallback
+}
+
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+}
+
+function isValidPhone(value: string) {
+  return /^[+]?[\d\s()-]{8,20}$/.test(value)
+}
+
+function isValidWebsite(value: string) {
+  try {
+    const normalizedValue = value.startsWith("http://") || value.startsWith("https://") ? value : `https://${value}`
+    const url = new URL(normalizedValue)
+    return Boolean(url.hostname)
+  } catch {
+    return false
+  }
 }

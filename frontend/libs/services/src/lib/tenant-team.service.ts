@@ -13,6 +13,7 @@ import {
   fetchTenantUserTypesApi,
   fetchTenantUsersApi,
   removeTenantProviderApi,
+  requestProviderOnboardingApi,
   saveTenantDeliveryConfigurationApi,
   updateTenantProviderStatusApi,
   updateUserStatusApi,
@@ -24,6 +25,7 @@ import type {
   CreateRoleInput,
   PaginatedTenantUsersResponse,
   ProviderSummary,
+  ProviderOnboardingRequestInput,
   TenantTeamUser,
   TenantUserTypeGroup,
   TenantDeliveryPriorityInput,
@@ -122,6 +124,11 @@ export async function updateTenantProviderStatusService(
 
 export async function removeTenantProviderService(providerId: string) {
   const response = await removeTenantProviderApi(providerId)
+  return response.data
+}
+
+export async function requestProviderOnboardingService(payload: ProviderOnboardingRequestInput) {
+  const response = await requestProviderOnboardingApi(payload)
   return response.data
 }
 

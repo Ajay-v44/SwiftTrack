@@ -13,6 +13,12 @@ import * as Burnt from 'burnt';
 import { Colors } from '../theme/colors';
 
 const { width } = Dimensions.get('window');
+const VEHICLE_TYPES = ['BIKE', 'CAR', 'VAN', 'TRUCK'] as const;
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MOBILE_REGEX = /^[0-9]{10,15}$/;
+const VEHICLE_NUMBER_REGEX = /^[A-Z0-9 -]{6,15}$/;
+const LICENSE_REGEX = /^[A-Z0-9-]{6,20}$/;
 
 export default function LoginScreen() {
   const [loginMethod, setLoginMethod] = useState<'email' | 'mobile'>('mobile');
@@ -23,12 +29,17 @@ export default function LoginScreen() {
   const [mobileNumber, setMobileNumber] = useState('');
   const [otp, setOtp] = useState('');
   const [name, setName] = useState('');
+  const [vehicleType, setVehicleType] = useState<(typeof VEHICLE_TYPES)[number] | null>(null);
+  const [vehicleNumber, setVehicleNumber] = useState('');
+  const [driverLicenseNumber, setDriverLicenseNumber] = useState('');
 
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
   const mobileRef = useRef<TextInput>(null);
   const otpRef = useRef<TextInput>(null);
   const nameRef = useRef<TextInput>(null);
+  const vehicleNumberRef = useRef<TextInput>(null);
+  const driverLicenseRef = useRef<TextInput>(null);
   const scrollRef = useRef<ScrollView>(null);
 
   const dispatch = useDispatch<AppDispatch>();
@@ -63,15 +74,39 @@ export default function LoginScreen() {
     Keyboard.dismiss();
     dispatch(clearError());
 
-    if (!name.trim()) { Burnt.toast({ title: 'Please enter your name', preset: 'error' }); return; }
-    if (!email.trim()) { Burnt.toast({ title: 'Please enter your email', preset: 'error' }); return; }
-    if (!mobileNumber.trim()) { Burnt.toast({ title: 'Please enter mobile number', preset: 'error' }); return; }
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim().toLowerCase();
+    const trimmedMobile = mobileNumber.trim();
+    const normalizedVehicleNumber = vehicleNumber.trim().toUpperCase();
+    const normalizedLicenseNumber = driverLicenseNumber.trim().toUpperCase();
+
+    if (!trimmedName || trimmedName.length < 3) { Burnt.toast({ title: 'Enter a valid full name', preset: 'error' }); return; }
+    if (!trimmedEmail) { Burnt.toast({ title: 'Please enter your email', preset: 'error' }); return; }
+    if (!EMAIL_REGEX.test(trimmedEmail)) { Burnt.toast({ title: 'Enter a valid email address', preset: 'error' }); return; }
+    if (!trimmedMobile) { Burnt.toast({ title: 'Please enter mobile number', preset: 'error' }); return; }
+    if (!MOBILE_REGEX.test(trimmedMobile)) { Burnt.toast({ title: 'Enter a valid mobile number', preset: 'error' }); return; }
     if (!password || password.length < 6) { Burnt.toast({ title: 'Password must be at least 6 chars', preset: 'error' }); return; }
+    if (!vehicleType) { Burnt.toast({ title: 'Please select vehicle type', preset: 'error' }); return; }
+    if (!normalizedVehicleNumber) { Burnt.toast({ title: 'Please enter vehicle number', preset: 'error' }); return; }
+    if (!VEHICLE_NUMBER_REGEX.test(normalizedVehicleNumber)) { Burnt.toast({ title: 'Enter a valid vehicle number', preset: 'error' }); return; }
+    if (!normalizedLicenseNumber) { Burnt.toast({ title: 'Please enter driving license number', preset: 'error' }); return; }
+    if (!LICENSE_REGEX.test(normalizedLicenseNumber)) { Burnt.toast({ title: 'Enter a valid driving license number', preset: 'error' }); return; }
 
     try {
-      await dispatch(register({ name: name.trim(), email: email.trim(), mobileNumber: mobileNumber.trim(), password })).unwrap();
-      Burnt.toast({ title: 'Account created! Please login 🎉', preset: 'done' });
+      await dispatch(register({
+        name: trimmedName,
+        email: trimmedEmail,
+        mobileNumber: trimmedMobile,
+        password,
+        vehicleType,
+        vehicleNumber: normalizedVehicleNumber,
+        driverLicensNumber: normalizedLicenseNumber,
+      })).unwrap();
+      Burnt.toast({ title: 'Account created. Please wait for verification by admin, it may take some time.', preset: 'done' });
       setIsRegistering(false);
+      setVehicleType(null);
+      setVehicleNumber('');
+      setDriverLicenseNumber('');
     } catch (err: any) {
       Burnt.toast({ title: typeof err === 'string' ? err : 'Registration failed', preset: 'error' });
     }
@@ -162,10 +197,66 @@ export default function LoginScreen() {
                   placeholderTextColor={Colors.textMuted} value={mobileNumber} onChangeText={setMobileNumber}
                   keyboardType="phone-pad" autoComplete="tel" textContentType="telephoneNumber"
                   returnKeyType={isRegistering ? 'next' : 'done'}
-                  onSubmitEditing={() => isRegistering ? passwordRef.current?.focus() : otpRef.current?.focus()}
+                  onSubmitEditing={() => isRegistering ? vehicleNumberRef.current?.focus() : otpRef.current?.focus()}
                   blurOnSubmit={false}
                 />
               </View>
+            )}
+
+            {isRegistering && (
+              <>
+                <View style={styles.registerSection}>
+                  <Text style={styles.sectionLabel}>Vehicle Type</Text>
+                  <View style={styles.vehicleTypeGrid}>
+                    {VEHICLE_TYPES.map((type) => (
+                      <TouchableOpacity
+                        key={type}
+                        style={[styles.vehicleTypeChip, vehicleType === type && styles.vehicleTypeChipActive]}
+                        onPress={() => setVehicleType(type)}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[styles.vehicleTypeText, vehicleType === type && styles.vehicleTypeTextActive]}>
+                          {type}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <View style={styles.inputIcon}><Truck color={Colors.accentGreen} size={20} /></View>
+                  <TextInput
+                    ref={vehicleNumberRef}
+                    style={styles.input}
+                    placeholder="Vehicle Number"
+                    placeholderTextColor={Colors.textMuted}
+                    value={vehicleNumber}
+                    onChangeText={setVehicleNumber}
+                    autoCapitalize="characters"
+                    autoCorrect={false}
+                    returnKeyType="next"
+                    onSubmitEditing={() => driverLicenseRef.current?.focus()}
+                    blurOnSubmit={false}
+                  />
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <View style={styles.inputIcon}><KeyRound color={Colors.accentYellow} size={20} /></View>
+                  <TextInput
+                    ref={driverLicenseRef}
+                    style={styles.input}
+                    placeholder="Driving License Number"
+                    placeholderTextColor={Colors.textMuted}
+                    value={driverLicenseNumber}
+                    onChangeText={setDriverLicenseNumber}
+                    autoCapitalize="characters"
+                    autoCorrect={false}
+                    returnKeyType="next"
+                    onSubmitEditing={() => passwordRef.current?.focus()}
+                    blurOnSubmit={false}
+                  />
+                </View>
+              </>
             )}
 
             {(loginMethod === 'email' || isRegistering) && (
@@ -252,6 +343,29 @@ const styles = StyleSheet.create({
   title: { fontSize: 34, fontWeight: '800', color: Colors.textPrimary, marginBottom: 8, letterSpacing: -0.5 },
   subtitle: { fontSize: 16, color: Colors.textSecondary, textAlign: 'center' },
   formContainer: { width: '100%' },
+  registerSection: { marginBottom: 14 },
+  sectionLabel: { color: Colors.textSecondary, fontSize: 13, fontWeight: '700', marginBottom: 10, paddingHorizontal: 4 },
+  vehicleTypeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  vehicleTypeChip: {
+    minWidth: '47%',
+    backgroundColor: Colors.bgCard,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  vehicleTypeChipActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primaryLight,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  vehicleTypeText: { color: Colors.textSecondary, fontSize: 14, fontWeight: '700' },
+  vehicleTypeTextActive: { color: Colors.textPrimary },
   methodToggle: {
     flexDirection: 'row', backgroundColor: Colors.bgCard, borderRadius: 16, padding: 4, marginBottom: 24,
     borderWidth: 1, borderColor: Colors.borderLight,
