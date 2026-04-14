@@ -2,6 +2,7 @@ package com.swifttrack.BillingAndSettlementService.controllers;
 
 import com.swifttrack.BillingAndSettlementService.models.Settlement;
 import com.swifttrack.BillingAndSettlementService.models.SettlementTransaction;
+import com.swifttrack.BillingAndSettlementService.models.enums.SettlementAction;
 import com.swifttrack.BillingAndSettlementService.services.SettlementService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -26,24 +27,12 @@ public class SettlementController {
         return ResponseEntity.ok(settlement);
     }
 
-    @PutMapping("/{settlementId}/processing")
-    public ResponseEntity<Settlement> markProcessing(@PathVariable UUID settlementId,
-                                                      @RequestParam String externalReference) {
-        Settlement settlement = settlementService.markProcessing(settlementId, externalReference);
-        return ResponseEntity.ok(settlement);
-    }
-
-    @PutMapping("/{settlementId}/settled")
-    public ResponseEntity<Settlement> markSettled(@PathVariable UUID settlementId,
-                                                   @RequestParam(required = false) String externalReference) {
-        Settlement settlement = settlementService.markSettled(settlementId, externalReference);
-        return ResponseEntity.ok(settlement);
-    }
-
-    @PutMapping("/{settlementId}/failed")
-    public ResponseEntity<Settlement> markFailed(@RequestHeader("token") String token,
-                                                  @PathVariable UUID settlementId) {
-        Settlement settlement = settlementService.markFailed(token, settlementId);
+    @PutMapping("/{settlementId}/status")
+    public ResponseEntity<Settlement> updateSettlementStatus(@RequestHeader(value = "token", required = false) String token,
+                                                             @PathVariable UUID settlementId,
+                                                             @RequestParam SettlementAction action,
+                                                             @RequestParam(required = false) String externalReference) {
+        Settlement settlement = settlementService.updateSettlementStatus(token, settlementId, action, externalReference);
         return ResponseEntity.ok(settlement);
     }
 

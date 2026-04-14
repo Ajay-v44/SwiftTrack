@@ -14,6 +14,7 @@ import OrderTrackingScreen from '../screens/OrderTrackingScreen';
 import DevMapScreen from '../screens/DevMapScreen';
 import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
 import HelpCenterScreen from '../screens/HelpCenterScreen';
+import WithdrawScreen from '../screens/WithdrawScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -89,6 +90,7 @@ export default function RootNavigator() {
           <Stack.Screen name="DevMap" component={DevMapScreen} />
           <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
           <Stack.Screen name="HelpCenter" component={HelpCenterScreen} />
+          <Stack.Screen name="Withdraw" component={WithdrawScreen} />
         </>
       ) : (
         <Stack.Screen name="Login" component={LoginScreen} />

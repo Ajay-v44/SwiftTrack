@@ -5,7 +5,7 @@ import { RootState, AppDispatch } from '../store/store';
 import { fetchWalletDetails, fetchTransactions } from '../store/walletSlice';
 import { ArrowUpRight, ArrowDownLeft, Wallet as WalletIcon, TrendingUp } from 'lucide-react-native';
 import { Colors } from '../theme/colors';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
 /**
  * Backend LedgerTransaction fields:
@@ -14,6 +14,7 @@ import { useFocusEffect } from '@react-navigation/native';
 
 export default function WalletScreen() {
   const dispatch = useDispatch<AppDispatch>();
+  const navigation = useNavigation<any>();
   const { balance, currency, transactions, loading, error } = useSelector((state: RootState) => state.wallet);
   const [refreshing, setRefreshing] = React.useState(false);
 
@@ -90,7 +91,7 @@ export default function WalletScreen() {
             {currency === 'INR' ? '₹' : currency}{balance.toFixed(2)}
           </Text>
           <View style={styles.balanceActions}>
-            <TouchableOpacity style={styles.withdrawBtn}>
+            <TouchableOpacity style={styles.withdrawBtn} onPress={() => navigation.navigate('Withdraw')}>
               <Text style={styles.withdrawBtnText}>Withdraw Funds</Text>
             </TouchableOpacity>
           </View>

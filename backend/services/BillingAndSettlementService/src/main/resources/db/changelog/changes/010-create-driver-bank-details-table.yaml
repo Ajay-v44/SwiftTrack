@@ -1,0 +1,46 @@
+databaseChangeLog:
+  - changeSet:
+      id: 010-create-driver-bank-details-table
+      author: system
+      changes:
+        - createTable:
+            tableName: driver_bank_details
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: driver_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: account_number
+                  type: VARCHAR(255)
+              - column:
+                  name: ifsc_code
+                  type: VARCHAR(50)
+              - column:
+                  name: upi_id
+                  type: VARCHAR(255)
+              - column:
+                  name: account_holder_name
+                  type: VARCHAR(255)
+              - column:
+                  name: bank_name
+                  type: VARCHAR(255)
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+        - addUniqueConstraint:
+            tableName: driver_bank_details
+            columnNames: driver_id
+            constraintName: uq_driver_bank_details_driver_id
