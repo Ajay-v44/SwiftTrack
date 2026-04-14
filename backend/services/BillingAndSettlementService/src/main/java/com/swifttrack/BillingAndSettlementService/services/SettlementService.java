@@ -5,6 +5,7 @@ import com.swifttrack.BillingAndSettlementService.models.LedgerTransaction;
 import com.swifttrack.BillingAndSettlementService.models.Settlement;
 import com.swifttrack.BillingAndSettlementService.models.SettlementTransaction;
 import com.swifttrack.BillingAndSettlementService.models.enums.ReferenceType;
+import com.swifttrack.BillingAndSettlementService.models.enums.SettlementAction;
 import com.swifttrack.BillingAndSettlementService.models.enums.SettlementStatus;
 import com.swifttrack.BillingAndSettlementService.repositories.AccountRepository;
 import com.swifttrack.BillingAndSettlementService.repositories.SettlementRepository;
@@ -45,8 +46,15 @@ public class SettlementService {
         Account account = accountRepository.findByIdForUpdate(accountId)
                 .orElseThrow(() -> new RuntimeException("Account not found: " + accountId));
 
-        if (account.getBalance().compareTo(amount) < 0) {
-            throw new RuntimeException("Insufficient balance. Account balance=" + account.getBalance()
+        List<Settlement> pendingSettlements = settlementRepository.findByAccountIdAndStatus(accountId, SettlementStatus.PENDING);
+        BigDecimal pendingTotal = pendingSettlements.stream()
+                .map(Settlement::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal availableBalance = account.getBalance().subtract(pendingTotal);
+
+        if (availableBalance.compareTo(amount) < 0) {
+            throw new RuntimeException("Insufficient balance. Available=" + availableBalance
                     + " requested=" + amount);
         }
 
@@ -59,11 +67,6 @@ public class SettlementService {
                 .build();
 
         Settlement saved = settlementRepository.save(settlement);
-
-        // Create settlement debit on the account
-        ledgerService.debit(accountId, amount, ReferenceType.SETTLEMENT,
-                saved.getId(), null, "Settlement payout initiated",
-                "SETTLEMENT-" + saved.getId() + "-DEBIT", initiatedBy);
 
         log.info("Initiated settlement id={} for account={} amount={} by={}", saved.getId(), accountId, amount, initiatedBy);
 
@@ -94,6 +97,14 @@ public class SettlementService {
         Settlement settlement = settlementRepository.findById(settlementId)
                 .orElseThrow(() -> new RuntimeException("Settlement not found: " + settlementId));
 
+        if (settlement.getStatus() == SettlementStatus.PROCESSING) {
+            return settlement; // Idempotent
+        }
+
+        if (settlement.getStatus() != SettlementStatus.PENDING) {
+            throw new RuntimeException("Invalid settlement status transition: " + settlement.getStatus() + " -> PROCESSING");
+        }
+
         settlement.setStatus(SettlementStatus.PROCESSING);
         settlement.setExternalReference(externalReference);
         return settlementRepository.save(settlement);
@@ -107,10 +118,24 @@ public class SettlementService {
         Settlement settlement = settlementRepository.findById(settlementId)
                 .orElseThrow(() -> new RuntimeException("Settlement not found: " + settlementId));
 
+        if (settlement.getStatus() == SettlementStatus.SETTLED) {
+            return settlement; // Idempotent
+        }
+
+        if (settlement.getStatus() != SettlementStatus.PENDING && settlement.getStatus() != SettlementStatus.PROCESSING) {
+            throw new RuntimeException("Invalid settlement status transition: " + settlement.getStatus() + " -> SETTLED");
+        }
+
         settlement.setStatus(SettlementStatus.SETTLED);
         if (externalReference != null) {
             settlement.setExternalReference(externalReference);
         }
+
+        // Create settlement debit on the account upon marking as settled
+        ledgerService.debit(settlement.getAccountId(), settlement.getAmount(), ReferenceType.SETTLEMENT,
+                settlement.getId(), null, "Settlement payout completed",
+                "SETTLEMENT-" + settlement.getId() + "-DEBIT", 
+                settlement.getInitiatedBy() != null ? settlement.getInitiatedBy() : UUID.fromString("00000000-0000-0000-0000-000000000000"));
 
         log.info("Settlement id={} marked as SETTLED. External ref={}", settlementId, externalReference);
         return settlementRepository.save(settlement);
@@ -133,18 +158,33 @@ public class SettlementService {
         Settlement settlement = settlementRepository.findById(settlementId)
                 .orElseThrow(() -> new RuntimeException("Settlement not found: " + settlementId));
 
+        if (settlement.getStatus() == SettlementStatus.FAILED) {
+            return settlement; // Idempotent
+        }
+
+        if (settlement.getStatus() != SettlementStatus.PENDING && settlement.getStatus() != SettlementStatus.PROCESSING) {
+            throw new RuntimeException("Invalid settlement status transition: " + settlement.getStatus() + " -> FAILED");
+        }
+
         settlement.setStatus(SettlementStatus.FAILED);
         settlementRepository.save(settlement);
 
-        // Reverse the settlement debit by crediting back
-        ledgerService.credit(settlement.getAccountId(), settlement.getAmount(),
-                ReferenceType.ADJUSTMENT, settlementId, null,
-                "Settlement failed - reversal credit",
-                "SETTLEMENT-" + settlementId + "-REVERSAL", updatedBy);
-
-        log.warn("Settlement id={} FAILED. Reversed debit of {} on account={} by={}",
-                settlementId, settlement.getAmount(), settlement.getAccountId(), updatedBy);
+        log.warn("Settlement id={} FAILED. account={} by={}",
+                settlementId, settlement.getAccountId(), updatedBy);
         return settlement;
+    }
+
+    /**
+     * Unified method to update settlement status based on an action.
+     */
+    @Transactional
+    public Settlement updateSettlementStatus(String token, UUID settlementId, SettlementAction action, String externalReference) {
+        log.info("Updating settlement id={} with action={}", settlementId, action);
+        return switch (action) {
+            case PROCESSING -> markProcessing(settlementId, externalReference);
+            case SETTLED -> markSettled(settlementId, externalReference);
+            case FAILED -> markFailed(token, settlementId);
+        };
     }
 
     /**
