@@ -210,6 +210,13 @@ public class ProviderService {
         return new Message("Provider onboarding requested successfully please wait for approval");
     }
 
+    public ProviderOnboardingRequest getProviderOnboardingStatus(String token) {
+        TokenResponse tokenResponse = authInterface.getUserDetails(token).getBody();
+        if (tokenResponse == null)
+            throw new CustomException(HttpStatus.FORBIDDEN, "Unauthorized");
+        return providerOnboardingRequestRepository.findByRequestedUserId(tokenResponse.id());
+    }
+
     public List<GetProviders> getProviderByStatus(String token, Boolean status) {
         TokenResponse tokenResponse = authInterface.getUserDetails(token).getBody();
         if (tokenResponse == null)

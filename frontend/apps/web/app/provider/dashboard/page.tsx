@@ -1,147 +1,228 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  Package, MapPin, Truck, CheckCircle2, Navigation,
-  Activity, Star, Zap, DollarSign, Calendar
+  CheckCircle2, Clock, MapPin, Navigation, 
+  Package, Star, Truck, Zap, Wallet, ArrowRightLeft, CreditCard, TrendingUp
 } from 'lucide-react';
+import { getProviderOnboardingStatusApi, requestProviderOnboardingApi, getProviderByStatusApi } from '@swifttrack/api-client';
+import { useAuthStore } from '@/store/useAuthStore';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 export default function ProviderDashboard() {
-  const [metrics] = useState({
-    activeBids: 14,
-    enRoute: 8,
-    deliveredToday: 24,
-    qualityScore: 98.5,
-    grossEarnings: 3450.00
-  });
+  const { user } = useAuthStore();
+  const [loading, setLoading] = useState(true);
+  const [onboardingStatus, setOnboardingStatus] = useState<string | null>(null);
+  const [acceptedProviders, setAcceptedProviders] = useState<any[]>([]);
 
+  // Onboarding form state
+  const [formData, setFormData] = useState({
+    providerName: '',
+    providerWebsite: '',
+    contactEmail: '',
+    contactPhone: '',
+    notes: '',
+    docLinks: '{}'
+  });
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    fetchStatus();
+  }, []);
+
+  const fetchStatus = async () => {
+    try {
+      setLoading(true);
+      const res = await getProviderOnboardingStatusApi();
+      if (res && res.data) {
+        setOnboardingStatus(res.data.status);
+        if (res.data.status === 'APPROVED') {
+          fetchAcceptedProviders();
+        }
+      } else {
+        setOnboardingStatus(null);
+      }
+    } catch (e: any) {
+      if (e?.response?.status === 404 || !e?.response) {
+        setOnboardingStatus(null);
+      } else {
+        setOnboardingStatus('ERROR'); // fallback
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchAcceptedProviders = async () => {
+    try {
+      const res = await getProviderByStatusApi(true);
+      if (res && res.data) {
+        setAcceptedProviders(res.data);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await requestProviderOnboardingApi(formData);
+      setOnboardingStatus('PENDING');
+    } catch (err) {
+      console.error(err);
+      alert('Failed to submit onboarding request.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-12 text-[#d3c2c1]">
+        Loading...
+      </div>
+    );
+  }
+
+  if (onboardingStatus === 'PENDING') {
+    return (
+      <div className="p-12 text-center text-[#d3c2c1] flex flex-col items-center justify-center min-h-[60vh]">
+        <Clock className="w-16 h-16 text-amber-500 mb-6 animate-pulse" />
+        <h2 className="text-3xl font-bold text-white mb-4">Onboarding in Review</h2>
+        <p className="text-[#d3c2c1]/80 max-w-md mx-auto">
+          Your provider account request is currently under review by our administrators. We will notify you once you are approved.
+        </p>
+      </div>
+    );
+  }
+
+  if (onboardingStatus === null) {
+    return (
+      <div className="p-12 text-[#d3c2c1] max-w-3xl mx-auto">
+        <h2 className="text-4xl font-bold text-white mb-8">Provider Onboarding</h2>
+        <form onSubmit={handleSubmit} className="space-y-6 bg-[#1B1212] p-8 rounded-[2rem] border border-[#ffb4ab]/10 shadow-2xl">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-bold text-[#d3c2c1] mb-2">Provider/Company Name</label>
+              <input required value={formData.providerName} onChange={e => setFormData({...formData, providerName: e.target.value})} className="w-full bg-[#2a1b1b] border border-[#ffb4ab]/20 rounded-xl py-3 px-4 text-white placeholder:text-[#d3c2c1]/50 focus:outline-none focus:border-[#ffb4ab]" placeholder="e.g. Acme Logistics" />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-[#d3c2c1] mb-2">Website (Optional)</label>
+              <input value={formData.providerWebsite} onChange={e => setFormData({...formData, providerWebsite: e.target.value})} className="w-full bg-[#2a1b1b] border border-[#ffb4ab]/20 rounded-xl py-3 px-4 text-white placeholder:text-[#d3c2c1]/50 focus:outline-none focus:border-[#ffb4ab]" placeholder="e.g. https://acmelogistics.com" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-bold text-[#d3c2c1] mb-2">Contact Email</label>
+                <input type="email" required value={formData.contactEmail} onChange={e => setFormData({...formData, contactEmail: e.target.value})} className="w-full bg-[#2a1b1b] border border-[#ffb4ab]/20 rounded-xl py-3 px-4 text-white placeholder:text-[#d3c2c1]/50 focus:outline-none focus:border-[#ffb4ab]" placeholder="contact@acmelogistics.com" />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-[#d3c2c1] mb-2">Contact Phone</label>
+                <input required value={formData.contactPhone} onChange={e => setFormData({...formData, contactPhone: e.target.value})} className="w-full bg-[#2a1b1b] border border-[#ffb4ab]/20 rounded-xl py-3 px-4 text-white placeholder:text-[#d3c2c1]/50 focus:outline-none focus:border-[#ffb4ab]" placeholder="+1 234 567 8900" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-[#d3c2c1] mb-2">Notes</label>
+              <textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} rows={4} className="w-full bg-[#2a1b1b] border border-[#ffb4ab]/20 rounded-xl py-3 px-4 text-white placeholder:text-[#d3c2c1]/50 focus:outline-none focus:border-[#ffb4ab]" placeholder="Tell us about your fleet and capabilities..." />
+            </div>
+          </div>
+          <button disabled={submitting} type="submit" className="w-full py-4 bg-[#ffb4ab] text-[#410002] font-black rounded-xl shadow-[0_0_30px_rgba(255,180,171,0.3)] hover:scale-[1.02] transition-transform">
+            {submitting ? 'Submitting...' : 'Request Onboarding'}
+          </button>
+        </form>
+      </div>
+    );
+  }
+
+  // APPROVED STATUS - Show Wallet/Dashboard
+  const balance = 12500.00; // Mock balance
   return (
     <div className="p-12 space-y-8 text-[#d3c2c1]">
+      <h1 className="text-3xl font-bold text-white tracking-tight">Provider Financials & Providers</h1>
       
-      {/* Header Banner */}
-       <div className="relative bg-gradient-to-br from-[#2a1b1b] to-[#1B1212] rounded-[3rem] p-12 border border-[#ffb4ab]/10 overflow-hidden shadow-2xl">
-        <div className="absolute right-0 top-0 w-1/2 h-full bg-[url('https://images.unsplash.com/photo-1579450841249-1dbfc50f00ed?q=80&w=2070&auto=format&fit=crop')] mix-blend-overlay opacity-20 bg-cover bg-center"></div>
-        <div className="absolute left-0 bottom-0 w-96 h-96 bg-[#ffb4ab]/10 rounded-full blur-[100px] pointer-events-none"></div>
-
-        <div className="relative z-10 max-w-2xl">
-          <p className="text-[#ffb4ab] font-bold tracking-widest text-[10px] uppercase mb-4 flex items-center gap-2">
-            <Activity className="w-3 h-3" /> Real-time Logistics
-          </p>
-          <h1 className="font-['Manrope'] text-5xl font-extrabold text-white mb-6 leading-tight">
-            Manage your fleet & capture dynamic loads.
-          </h1>
-          <div className="flex gap-4">
-            <button className="px-8 py-4 bg-[#ffb4ab] text-[#410002] font-black rounded-full shadow-[0_0_30px_rgba(255,180,171,0.3)] hover:scale-105 transition-transform flex items-center gap-2">
-              <Zap className="w-5 h-5 fill-[#410002]" /> Secure Open Bids
-            </button>
-            <button className="px-8 py-4 bg-[#2a1b1b] border border-[#ffb4ab]/20 text-[#ffb4ab] font-bold rounded-full hover:bg-[#ffb4ab]/10 transition-colors">
-              Dispatch Assets
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Primary Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-        {[
-          { label: 'Active Bids', value: metrics.activeBids, icon: Zap, color: 'text-amber-400', bg: 'bg-amber-400/10' },
-          { label: 'Vehicles En Route', value: metrics.enRoute, icon: Truck, color: 'text-[#ffb4ab]', bg: 'bg-[#ffb4ab]/10' },
-          { label: 'Delivered Today', value: metrics.deliveredToday, icon: CheckCircle2, color: 'text-emerald-400', bg: 'bg-emerald-400/10' },
-          { label: 'Quality Score', value: `${metrics.qualityScore}%`, icon: Star, color: 'text-purple-400', bg: 'bg-purple-400/10' },
-          { label: 'Today\'s Earnings', value: `$${metrics.grossEarnings.toLocaleString()}`, icon: DollarSign, color: 'text-white', bg: 'bg-white/10' }
-        ].map((m, i) => (
-          <div key={i} className="bg-[#1B1212] border border-[#ffb4ab]/5 p-6 rounded-3xl shadow-xl hover:-translate-y-1 transition-transform group">
-            <div className={`w-10 h-10 rounded-xl ${m.bg} ${m.color} flex items-center justify-center mb-6`}>
-              <m.icon className="w-5 h-5" />
-            </div>
-            <p className="font-['Manrope'] text-3xl font-extrabold text-white mb-1 group-hover:text-[#ffb4ab] transition-colors">{m.value}</p>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#d3c2c1]/70">{m.label}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
-        
-        {/* Open Marketplace Bids */}
-        <div className="lg:col-span-2 bg-[#1B1212] border border-[#ffb4ab]/10 rounded-[2rem] p-8 shadow-2xl relative">
-          <div className="flex justify-between items-center mb-8">
-            <div>
-              <h3 className="font-['Manrope'] text-xl font-bold text-white">Live Operations Board</h3>
-              <p className="text-[#d3c2c1] text-xs mt-1">Accept and dispatch loads instantly</p>
-            </div>
-            <button className="text-xs font-bold text-[#ffb4ab] border border-[#ffb4ab] px-4 py-1.5 rounded-full hover:bg-[#ffb4ab]/10">View All Available</button>
-          </div>
-
-          <div className="space-y-4">
-            {[1, 2, 3].map(bid => (
-              <div key={bid} className="bg-[#2a1b1b]/50 border border-[#ffb4ab]/10 rounded-2xl p-5 hover:bg-[#2a1b1b] transition-colors flex items-center justify-between">
-                <div className="flex gap-6 items-center w-full">
-                  <div className="w-12 h-12 bg-[#ffb4ab]/10 rounded-xl flex items-center justify-center text-[#ffb4ab] shrink-0">
-                    <Package className="w-6 h-6" />
-                  </div>
-                  <div className="flex-1 flex justify-between items-center">
-                    <div>
-                       <div className="flex items-center gap-2 mb-1">
-                         <p className="font-bold text-white text-sm">Industrial Freight - 4,500 LBS</p>
-                         <span className="bg-amber-500/20 text-amber-400 text-[10px] uppercase font-black px-2 py-0.5 rounded-md">Urgent SLA</span>
-                       </div>
-                       <div className="flex items-center gap-4 text-xs text-[#d3c2c1]/80 font-medium">
-                         <span className="flex items-center gap-1"><MapPin className="w-3 h-3"/> Chicago, IL</span>
-                         <span className="text-[#ffb4ab]">→</span>
-                         <span className="flex items-center gap-1"><Navigation className="w-3 h-3"/> Detroit, MI</span>
-                       </div>
-                    </div>
-                    <div className="text-right">
-                       <p className="font-['Manrope'] text-2xl font-black text-white mb-1">$850.00</p>
-                       <button className="px-6 py-2 bg-[#ffb4ab] text-[#410002] text-xs font-bold rounded-full shadow-[0_0_15px_rgba(255,180,171,0.2)] hover:scale-105 transition-transform">Accept Load</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Fleet Schedule */}
-        <div className="bg-[#1B1212] border border-[#ffb4ab]/10 rounded-[2rem] p-8 shadow-2xl relative flex flex-col justify-between">
-           <div>
-              <div className="flex justify-between items-center mb-8">
-                <h3 className="font-['Manrope'] text-xl font-bold text-white flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-[#ffb4ab]" /> Fleet Availability
-                </h3>
-              </div>
-              
-               <div className="space-y-5">
-                 <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                      <div className="w-3 h-3 rounded-full bg-emerald-400 animate-pulse"></div>
-                      <p className="text-sm font-bold text-white">Truck #88 (Reefer)</p>
-                    </div>
-                    <span className="text-xs text-[#d3c2c1]">Available Now</span>
-                 </div>
-                 <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                      <div className="w-3 h-3 rounded-full bg-amber-400"></div>
-                      <p className="text-sm font-bold text-white">Truck #12 (Dry Van)</p>
-                    </div>
-                    <span className="text-xs text-[#d3c2c1]">Assigned (ETA 2h)</span>
-                 </div>
-                 <div className="flex justify-between items-center opacity-50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-3 h-3 rounded-full bg-red-400"></div>
-                      <p className="text-sm font-bold text-white">Truck #04 (Flatbed)</p>
-                    </div>
-                    <span className="text-xs text-[#d3c2c1]">Maintenance</span>
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.9fr)]">
+        <Card className="overflow-hidden border border-[#ffb4ab]/10 bg-gradient-to-br from-[#2a1b1b] to-[#1B1212] shadow-2xl relative rounded-[2rem]">
+           <div className="absolute left-0 bottom-0 w-96 h-96 bg-[#ffb4ab]/5 rounded-full blur-[100px] pointer-events-none"></div>
+           <CardContent className="flex flex-col gap-8 px-6 py-8 sm:px-8 relative z-10">
+             <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+               <div className="space-y-3">
+                 <Badge variant="outline" className="rounded-full border-[#ffb4ab]/20 bg-[#2a1b1b] px-3 py-1 text-[#ffb4ab]">
+                   Finance Hub
+                 </Badge>
+                 <div className="space-y-2">
+                   <p className="text-xs font-medium uppercase tracking-[0.24em] text-[#d3c2c1]/70">Available Balance</p>
+                   <div className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+                     ${balance.toLocaleString('en-US', {minimumFractionDigits: 2})}
+                   </div>
+                   <p className="max-w-lg text-sm leading-6 text-[#d3c2c1]/80">
+                     Monitor your earnings, withdraw funds, and view your active provider status details.
+                   </p>
                  </div>
                </div>
-           </div>
+             </div>
 
-           <button className="w-full mt-10 py-4 bg-[#2a1b1b] border border-[#ffb4ab]/20 rounded-2xl text-white font-bold text-sm tracking-wide hover:bg-[#ffb4ab]/10 transition-colors">
-             Manage Fleet Assets
-           </button>
-        </div>
+             <div className="flex flex-wrap gap-3">
+               <Button className="rounded-full bg-[#ffb4ab] text-[#410002] hover:bg-[#ffb4ab]/80 font-bold border-none transition-transform hover:scale-105 active:scale-95">
+                 <Wallet className="h-4 w-4 mr-2" />
+                 Withdraw Earnings
+               </Button>
+               <Button variant="outline" className="rounded-full border-[#ffb4ab]/20 bg-[#2a1b1b] text-white hover:bg-[#ffb4ab]/10">
+                 View Transactions
+               </Button>
+             </div>
+           </CardContent>
+        </Card>
 
+        {/* Show active providers as requested */}
+        <Card className="border border-[#ffb4ab]/10 bg-[#1B1212] shadow-2xl rounded-[2rem]">
+          <CardHeader className="border-b border-[#ffb4ab]/10 pb-5">
+            <div className="flex items-center gap-3">
+              <div className="rounded-2xl bg-[#2a1b1b] p-3 text-[#ffb4ab]">
+                <Truck className="h-5 w-5" />
+              </div>
+              <div>
+                <CardTitle className="text-white text-lg">Active Networks</CardTitle>
+                <CardDescription className="text-[#d3c2c1]/70">Your provider details & active networks</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-5 pt-6">
+            {acceptedProviders.map(p => (
+              <div key={p.id} className="rounded-2xl border border-[#ffb4ab]/10 bg-[#2a1b1b]/50 p-4">
+                <div className="flex justify-between items-center">
+                  <div className="font-medium text-white">{p.providerName}</div>
+                  <Badge className="bg-emerald-500/20 text-emerald-400 border-none">Active</Badge>
+                </div>
+                {p.servicableAreas?.length > 0 && (
+                   <p className="text-xs text-[#d3c2c1]/60 mt-2">Areas: {p.servicableAreas.join(', ')}</p>
+                )}
+              </div>
+            ))}
+            {acceptedProviders.length === 0 && (
+              <div className="text-xs text-[#d3c2c1]/60">No active networks.</div>
+            )}
+            <Button variant="outline" className="w-full rounded-full border-[#ffb4ab]/20 bg-[#2a1b1b] text-white hover:bg-[#ffb4ab]/10">
+               Manage Network
+            </Button>
+          </CardContent>
+        </Card>
+      </section>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mt-8">
+        <Card className="border border-[#ffb4ab]/10 bg-[#1B1212] shadow-xl rounded-3xl">
+          <CardContent className="p-6">
+            <div className="rounded-2xl bg-[#ffb4ab]/10 w-12 h-12 flex items-center justify-center text-[#ffb4ab] mb-4">
+              <TrendingUp className="w-6 h-6" />
+            </div>
+            <p className="text-xs font-bold uppercase tracking-widest text-[#d3c2c1]/70">Total Revenue</p>
+            <p className="text-3xl font-extrabold text-white mt-1">$45,230</p>
+          </CardContent>
+        </Card>
       </div>
+
     </div>
   );
 }
