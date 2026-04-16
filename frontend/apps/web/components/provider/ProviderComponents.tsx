@@ -13,10 +13,7 @@ export function ProviderSidebar() {
 
   const navigation = [
     { name: 'Dispatch Board', href: '/provider/dashboard', icon: Map },
-    { name: 'Active Routes', href: '/provider/routes', icon: Truck },
-    { name: 'Fleet Status', href: '/provider/fleet', icon: Briefcase },
-    { name: 'Settlements', href: '/provider/settlements', icon: FileText },
-    { name: 'API Connect', href: '/provider/api', icon: Settings },
+    { name: 'Wallet', href: '/provider/dashboard', icon: FileText },
   ];
 
   return (

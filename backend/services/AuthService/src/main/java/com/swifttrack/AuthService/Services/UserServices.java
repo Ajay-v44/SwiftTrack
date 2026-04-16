@@ -75,7 +75,8 @@ public class UserServices {
         userModel.setMobile(registerUser.mobile());
         userModel.setPasswordHash(cryptography.encode(registerUser.password()));
         userModel.setType(registerUser.userType());
-        boolean autoApproveConsumer = registerUser.userType() == UserType.CONSUMER;
+        boolean autoApproveConsumer = registerUser.userType() == UserType.CONSUMER
+                || registerUser.userType() == UserType.PROVIDER_USER;
         userModel.setStatus(true);
         userModel.setVerificationStatus(autoApproveConsumer ? VerificationStatus.APPROVED : VerificationStatus.PENDING);
         userRepo.save(userModel);

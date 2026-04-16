@@ -24,6 +24,7 @@ import com.swifttrack.ProviderService.dto.CreateProviderAndServicableAreas;
 import com.swifttrack.ProviderService.dto.GetProviders;
 import com.swifttrack.ProviderService.dto.ProviderOnBoardingInput;
 import com.swifttrack.ProviderService.dto.TenantProviderConfigResponse;
+import com.swifttrack.ProviderService.models.ProviderOnboardingRequest;
 import com.swifttrack.ProviderService.services.ProviderService;
 import com.swifttrack.dto.Message;
 
@@ -148,5 +149,15 @@ public class ProviderController {
     public ResponseEntity<Message> requestProviderOnboarding(@RequestHeader String token,
             @RequestBody ProviderOnBoardingInput providerOnboardingRequest) {
         return ResponseEntity.ok(providerService.requestProviderOnboarding(token, providerOnboardingRequest));
+    }
+
+    @GetMapping("/v1/getProviderOnboardingStatus")
+    @Operation(summary = "Get provider onboarding status", description = "Get provider onboarding status for the current user")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Provider onboarding status retrieved successfully"),
+            @ApiResponse(responseCode = "500", description = "Internal Server error")
+    })
+    public ResponseEntity<ProviderOnboardingRequest> getProviderOnboardingStatus(@RequestHeader String token) {
+        return ResponseEntity.ok(providerService.getProviderOnboardingStatus(token));
     }
 }
