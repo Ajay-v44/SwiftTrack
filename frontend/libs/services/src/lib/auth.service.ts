@@ -27,6 +27,10 @@ export async function loginWithMobileOtpService(
 
 export async function fetchUserDetailsService(token: string): Promise<UserDetails> {
   const response = await fetchUserDetailsApi(token)
+  // The backend returns userType, but the frontend interface expects type
+  if (response.data && (response.data as any).userType && !response.data.type) {
+    response.data.type = (response.data as any).userType;
+  }
   return response.data
 }
 

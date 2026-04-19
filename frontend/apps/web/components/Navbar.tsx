@@ -15,7 +15,7 @@ export function Navbar() {
     const dashboardHref = user
         ? accountType === "SUPER_ADMIN" || accountType === "SYSTEM_ADMIN" || accountType === "ADMIN_USER"
             ? "/admin/dashboard"
-            : accountType === "PROVIDER_ADMIN" || accountType === "PROVIDER_USER"
+            : accountType === "PROVIDER_USER"
                 ? "/provider/dashboard"
                 : accountType === "TENANT_DRIVER" || accountType === "DRIVER_USER"
                     ? "/driver/dashboard"
