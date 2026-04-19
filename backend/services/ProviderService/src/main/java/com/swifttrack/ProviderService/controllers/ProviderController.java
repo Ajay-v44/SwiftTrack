@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -25,6 +26,7 @@ import com.swifttrack.ProviderService.dto.GetProviders;
 import com.swifttrack.ProviderService.dto.ProviderOnBoardingInput;
 import com.swifttrack.ProviderService.dto.TenantProviderConfigResponse;
 import com.swifttrack.ProviderService.models.ProviderOnboardingRequest;
+import com.swifttrack.ProviderService.models.enums.Status;
 import com.swifttrack.ProviderService.services.ProviderService;
 import com.swifttrack.dto.Message;
 
@@ -159,5 +161,12 @@ public class ProviderController {
     })
     public ResponseEntity<ProviderOnboardingRequest> getProviderOnboardingStatus(@RequestHeader String token) {
         return ResponseEntity.ok(providerService.getProviderOnboardingStatus(token));
+    }
+
+    @PatchMapping("/v1/updateOnBoardingRequest")
+    @Operation(summary = "Accept OR Reject", description = "Accept OR Reject The Request By An Admin")
+    public ResponseEntity<Message> updateOnBoardingRequest(@RequestHeader String token,
+            @RequestParam UUID requestId, @RequestParam Status status) {
+        return ResponseEntity.ok(providerService.updateOnBoardingRequest(token, requestId, status));
     }
 }

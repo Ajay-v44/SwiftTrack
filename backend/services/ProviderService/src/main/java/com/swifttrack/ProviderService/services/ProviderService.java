@@ -245,7 +245,8 @@ public class ProviderService {
 
         UserType userType = tokenResponse.userType().get();
         if (userType != UserType.SUPER_ADMIN && userType != UserType.SYSTEM_USER)
-            throw new CustomException(HttpStatus.FORBIDDEN, "Only SUPER_ADMIN or SYSTEM_USER can update provider status");
+            throw new CustomException(HttpStatus.FORBIDDEN,
+                    "Only SUPER_ADMIN or SYSTEM_USER can update provider status");
         if (status == null)
             throw new CustomException(HttpStatus.BAD_REQUEST, "status is required");
 
@@ -324,5 +325,20 @@ public class ProviderService {
         }
 
         return tokenResponse.tenantId().orElse(tokenResponse.id());
+    }
+
+    public Message updateOnBoardingRequest(String token, UUID requestId, Status status) {
+        TokenResponse tokenResponse = authInterface.getUserDetails(token).getBody();
+        if (tokenResponse == null || tokenResponse.id() == null) {
+            return null;
+        }
+        ProviderOnboardingRequest providerOnboardingRequest = providerOnboardingRequestRepository.findById(requestId)
+                .orElse(null);
+        if (providerOnboardingRequest == null) {
+            throw new CustomException(HttpStatus.NOT_FOUND, "Provider onboarding request not found");
+        }
+        providerOnboardingRequest.setStatus(status);
+        providerOnboardingRequestRepository.save(providerOnboardingRequest);
+        return new Message("Provider onboarding request updated successfully");
     }
 }

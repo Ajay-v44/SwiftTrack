@@ -50,7 +50,7 @@ export function useLogin() {
       return
     }
 
-    if (userDetails.type === "PROVIDER_ADMIN" || userDetails.type === "PROVIDER_USER") {
+    if (userDetails.type === "PROVIDER_USER") {
       router.push("/provider/dashboard")
       return
     }

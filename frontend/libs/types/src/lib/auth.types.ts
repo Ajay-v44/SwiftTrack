@@ -11,7 +11,6 @@ export type UserType =
   | "DRIVER_USER"
   | "CONSUMER"
   | "PROVIDER_USER"
-  | "PROVIDER_ADMIN"
 
 export interface UserDetails {
   id: string
