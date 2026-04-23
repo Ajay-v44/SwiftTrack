@@ -10,6 +10,7 @@ import {
   fetchTenantOrdersApi,
   searchTenantOrdersApi,
   setTenantDefaultAddressApi,
+  fetchPublicOrderTrackingApi,
   type RawTenantCreateOrderResponse,
   type RawTenantOrderQuoteResponse,
   updateTenantAddressApi,
@@ -135,6 +136,11 @@ export async function fetchTenantOrderDetailsService(orderId: string): Promise<T
 
 export async function fetchTenantOrderTrackingService(orderId: string): Promise<TenantOrderTrackingResponse> {
   const response = await fetchTenantOrderTrackingApi(orderId)
+  return response.data
+}
+
+export async function fetchPublicOrderTrackingService(trackingId: string): Promise<TenantOrderTrackingResponse> {
+  const response = await fetchPublicOrderTrackingApi(trackingId)
   return response.data
 }
 

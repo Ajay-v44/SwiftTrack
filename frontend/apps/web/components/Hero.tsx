@@ -34,18 +34,27 @@ export function Hero() {
                 </p>
 
                 <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-                    <div className="relative w-full max-w-sm sm:max-w-md">
+                    <form 
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            const formData = new FormData(e.currentTarget);
+                            const id = formData.get("trackingId");
+                            if (id) window.location.href = `/track?id=${id}`;
+                        }}
+                        className="relative w-full max-w-sm sm:max-w-md"
+                    >
                         <div className="absolute -inset-1 rounded-lg bg-gradient-to-r from-primary to-purple-600 opacity-30 blur transition group-hover:opacity-100"></div>
                         <div className="relative flex glass-card rounded-lg p-1.5 ring-1 ring-white/10">
                             <Input
+                                name="trackingId"
                                 placeholder="Enter Tracking ID (e.g. SWIFT123...)"
                                 className="border-0 bg-transparent focus-visible:ring-0 text-foreground placeholder:text-muted-foreground/50"
                             />
-                            <Button className="ml-1 bg-primary hover:bg-primary/90">
+                            <Button type="submit" className="ml-1 bg-primary hover:bg-primary/90">
                                 Track
                             </Button>
                         </div>
-                    </div>
+                    </form>
                     <span className="text-sm text-muted-foreground hidden sm:inline">or</span>
                     <Button size="lg" variant="outline" className="w-full sm:w-auto glass border-primary/20 hover:bg-primary/5 text-primary">
                         Request Demo

@@ -119,3 +119,7 @@ export function cancelTenantOrderApi(orderId: string) {
     params: { orderId },
   })
 }
+
+export function fetchPublicOrderTrackingApi(trackingId: string) {
+  return httpClient.get<any>(`${serviceEndpoints.orders}/v1/public/track/${trackingId}`)
+}
