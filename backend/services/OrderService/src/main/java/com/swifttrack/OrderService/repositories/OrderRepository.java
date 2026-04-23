@@ -26,6 +26,9 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
   // Find by Customer Reference ID (Tenant's Order ID)
   Optional<Order> findByTenantIdAndCustomerReferenceId(UUID tenantId, String customerReferenceId);
 
+  @EntityGraph(attributePaths = { "locations", "trackingState" })
+  Optional<Order> findByCustomerReferenceId(String customerReferenceId);
+
   // Find by Order Status
   List<Order> findByOrderStatus(OrderStatus orderStatus);
 

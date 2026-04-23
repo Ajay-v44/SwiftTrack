@@ -1124,6 +1124,20 @@ public class OrderServices {
                 return buildOrderTrackingTimelineResponse(order);
         }
 
+        public OrderTrackingTimelineResponse getPublicTracking(String trackingId) {
+                Order order;
+                try {
+                        UUID orderId = UUID.fromString(trackingId);
+                        order = orderRepository.findDetailedById(orderId)
+                                        .orElseGet(() -> orderRepository.findByCustomerReferenceId(trackingId)
+                                                        .orElseThrow(() -> new RuntimeException("Order not found with tracking ID: " + trackingId)));
+                } catch (IllegalArgumentException e) {
+                        order = orderRepository.findByCustomerReferenceId(trackingId)
+                                        .orElseThrow(() -> new RuntimeException("Order not found with tracking ID: " + trackingId));
+                }
+                return buildOrderTrackingTimelineResponse(order);
+        }
+
         public OrderDetailsResponse getGuestOrderById(UUID orderId,
                         String guestAccessToken) {
                 Order order = findDetailedOrder(orderId);

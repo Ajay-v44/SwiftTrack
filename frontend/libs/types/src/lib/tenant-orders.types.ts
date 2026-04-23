@@ -212,5 +212,5 @@ export interface TenantOrderTrackingResponse {
   lastStatusUpdatedAt: string | null
   lastLocationUpdatedAt: string | null
   currentLocation: TenantOrderCurrentLocationInfo | null
-  events: TenantOrderTimelineEvent[]
+  trackingHistory: TenantOrderTimelineEvent[]
 }

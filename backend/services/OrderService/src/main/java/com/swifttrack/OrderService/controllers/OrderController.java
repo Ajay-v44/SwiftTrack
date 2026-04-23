@@ -163,4 +163,10 @@ public class OrderController {
             @RequestParam("guestAccessToken") String guestAccessToken) {
         return ResponseEntity.ok(orderServices.getGuestOrderById(orderId, guestAccessToken));
     }
+
+    @GetMapping("/v1/public/track/{trackingId}")
+    public ResponseEntity<OrderTrackingTimelineResponse> getPublicTracking(
+            @PathVariable("trackingId") String trackingId) {
+        return ResponseEntity.ok(orderServices.getPublicTracking(trackingId));
+    }
 }
