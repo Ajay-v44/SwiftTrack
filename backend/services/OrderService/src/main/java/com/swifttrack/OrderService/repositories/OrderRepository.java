@@ -29,6 +29,17 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
   @EntityGraph(attributePaths = { "locations", "trackingState" })
   Optional<Order> findByCustomerReferenceId(String customerReferenceId);
 
+  @EntityGraph(attributePaths = { "locations", "trackingState" })
+  Optional<Order> findByProviderOrderId(String providerOrderId);
+
+  @Query(value = """
+      SELECT *
+      FROM orders
+      WHERE CAST(id AS text) ILIKE CONCAT(:idPrefix, '%')
+      ORDER BY created_at DESC
+      """, nativeQuery = true)
+  List<Order> findByIdPrefix(@Param("idPrefix") String idPrefix);
+
   // Find by Order Status
   List<Order> findByOrderStatus(OrderStatus orderStatus);
 
@@ -66,9 +77,6 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
       @Param("startDateTime") LocalDateTime startDateTime,
       @Param("endDateTime") LocalDateTime endDateTime);
 
-  // Find by Provider Order ID
-  Optional<Order> findByProviderOrderId(String providerOrderId);
-
   Optional<Order> findById(UUID orderId);
 
   @EntityGraph(attributePaths = { "locations", "trackingState" })
@@ -97,6 +105,74 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
       """)
   Page<Order> findTenantOrders(
       @Param("tenantId") UUID tenantId,
+      @Param("startDateTime") LocalDateTime startDateTime,
+      @Param("endDateTime") LocalDateTime endDateTime,
+      Pageable pageable);
+
+  @EntityGraph(attributePaths = "locations")
+  @Query(value = """
+      SELECT o
+      FROM Order o
+      WHERE o.ownerUserId = :ownerUserId
+        AND o.bookingChannel = com.swifttrack.enums.BillingAndSettlement.BookingChannel.CONSUMER
+        AND o.createdAt >= :startDateTime
+        AND o.createdAt < :endDateTime
+      ORDER BY o.createdAt DESC
+      """, countQuery = """
+      SELECT COUNT(o.id)
+      FROM Order o
+      WHERE o.ownerUserId = :ownerUserId
+        AND o.bookingChannel = com.swifttrack.enums.BillingAndSettlement.BookingChannel.CONSUMER
+        AND o.createdAt >= :startDateTime
+        AND o.createdAt < :endDateTime
+      """)
+  Page<Order> findConsumerOrders(
+      @Param("ownerUserId") UUID ownerUserId,
+      @Param("startDateTime") LocalDateTime startDateTime,
+      @Param("endDateTime") LocalDateTime endDateTime,
+      Pageable pageable);
+
+  @EntityGraph(attributePaths = "locations")
+  @Query(value = """
+      SELECT DISTINCT o
+      FROM Order o
+      LEFT JOIN o.locations l
+      WHERE o.ownerUserId = :ownerUserId
+        AND o.bookingChannel = com.swifttrack.enums.BillingAndSettlement.BookingChannel.CONSUMER
+        AND o.createdAt >= :startDateTime
+        AND o.createdAt < :endDateTime
+        AND (
+          (:orderId IS NOT NULL AND o.id = :orderId) OR
+          LOWER(COALESCE(o.customerReferenceId, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
+          LOWER(COALESCE(o.selectedProviderCode, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
+          LOWER(COALESCE(l.city, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
+          LOWER(COALESCE(l.state, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
+          LOWER(COALESCE(l.pincode, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
+          LOWER(COALESCE(l.locality, '')) LIKE LOWER(CONCAT('%', :query, '%'))
+        )
+      ORDER BY o.createdAt DESC
+      """, countQuery = """
+      SELECT COUNT(DISTINCT o.id)
+      FROM Order o
+      LEFT JOIN o.locations l
+      WHERE o.ownerUserId = :ownerUserId
+        AND o.bookingChannel = com.swifttrack.enums.BillingAndSettlement.BookingChannel.CONSUMER
+        AND o.createdAt >= :startDateTime
+        AND o.createdAt < :endDateTime
+        AND (
+          (:orderId IS NOT NULL AND o.id = :orderId) OR
+          LOWER(COALESCE(o.customerReferenceId, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
+          LOWER(COALESCE(o.selectedProviderCode, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
+          LOWER(COALESCE(l.city, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
+          LOWER(COALESCE(l.state, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
+          LOWER(COALESCE(l.pincode, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
+          LOWER(COALESCE(l.locality, '')) LIKE LOWER(CONCAT('%', :query, '%'))
+        )
+      """)
+  Page<Order> searchConsumerOrders(
+      @Param("ownerUserId") UUID ownerUserId,
+      @Param("query") String query,
+      @Param("orderId") UUID orderId,
       @Param("startDateTime") LocalDateTime startDateTime,
       @Param("endDateTime") LocalDateTime endDateTime,
       Pageable pageable);

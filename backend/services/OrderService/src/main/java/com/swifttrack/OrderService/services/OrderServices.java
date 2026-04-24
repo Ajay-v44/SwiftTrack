@@ -1125,17 +1125,37 @@ public class OrderServices {
         }
 
         public OrderTrackingTimelineResponse getPublicTracking(String trackingId) {
+                String normalizedTrackingId = normalizePublicTrackingId(trackingId);
                 Order order;
                 try {
-                        UUID orderId = UUID.fromString(trackingId);
+                        UUID orderId = UUID.fromString(normalizedTrackingId);
                         order = orderRepository.findDetailedById(orderId)
-                                        .orElseGet(() -> orderRepository.findByCustomerReferenceId(trackingId)
-                                                        .orElseThrow(() -> new RuntimeException("Order not found with tracking ID: " + trackingId)));
+                                        .orElseGet(() -> findPublicTrackingOrder(normalizedTrackingId));
                 } catch (IllegalArgumentException e) {
-                        order = orderRepository.findByCustomerReferenceId(trackingId)
-                                        .orElseThrow(() -> new RuntimeException("Order not found with tracking ID: " + trackingId));
+                        order = findPublicTrackingOrder(normalizedTrackingId);
                 }
                 return buildOrderTrackingTimelineResponse(order);
+        }
+
+        private String normalizePublicTrackingId(String trackingId) {
+                if (trackingId == null) {
+                        return "";
+                }
+                return trackingId.trim().replaceFirst("^#+", "");
+        }
+
+        private Order findPublicTrackingOrder(String trackingId) {
+                return orderRepository.findByCustomerReferenceId(trackingId)
+                                .or(() -> orderRepository.findByProviderOrderId(trackingId))
+                                .or(() -> findOrderByPublicIdPrefix(trackingId))
+                                .orElseThrow(() -> new RuntimeException("Order not found with tracking ID: " + trackingId));
+        }
+
+        private Optional<Order> findOrderByPublicIdPrefix(String trackingId) {
+                if (trackingId.length() < 8 || trackingId.length() >= 36) {
+                        return Optional.empty();
+                }
+                return orderRepository.findByIdPrefix(trackingId).stream().findFirst();
         }
 
         public OrderDetailsResponse getGuestOrderById(UUID orderId,
@@ -1338,6 +1358,47 @@ public class OrderServices {
                                 new TenantOrdersSummaryDto(processedOrders, openIssues, deliveredOrders, activeOrders));
         }
 
+        public PaginatedTenantOrdersResponse getConsumerOrders(
+                        String token,
+                        String query,
+                        LocalDate startDate,
+                        LocalDate endDate,
+                        Pageable pageable) {
+                TokenResponse userDetails = requireAuthenticatedUser(token);
+                if (userDetails.userType().orElse(null) != UserType.CONSUMER) {
+                        throw new CustomException(HttpStatus.FORBIDDEN, "Only consumers can access customer orders");
+                }
+                validateOrderDateRange(startDate, endDate);
+
+                LocalDate effectiveStartDate = startDate != null ? startDate : LocalDate.of(1970, 1, 1);
+                LocalDate effectiveEndDate = endDate != null ? endDate : LocalDate.now();
+                LocalDateTime startDateTime = effectiveStartDate.atStartOfDay();
+                LocalDateTime endDateTime = effectiveEndDate.plusDays(1).atStartOfDay();
+                String normalizedQuery = query != null && !query.isBlank() ? query.trim() : null;
+                UUID parsedOrderId = parseOrderId(normalizedQuery);
+
+                Page<Order> orderPage = normalizedQuery == null
+                                ? orderRepository.findConsumerOrders(userDetails.id(), startDateTime, endDateTime, pageable)
+                                : orderRepository.searchConsumerOrders(userDetails.id(), normalizedQuery, parsedOrderId,
+                                                startDateTime, endDateTime, pageable);
+
+                List<TenantOrderListItemDto> items = orderPage.getContent().stream()
+                                .map(this::toTenantOrderListItem)
+                                .toList();
+
+                long openIssues = items.stream().filter(item -> List.of("CANCELLED", "FAILED").contains(item.orderStatus())).count();
+                long deliveredOrders = items.stream().filter(item -> "DELIVERED".equals(item.orderStatus())).count();
+                long activeOrders = items.stream().filter(item -> List.of("CREATED", "QUOTED", "ASSIGNED", "PICKED_UP", "IN_TRANSIT").contains(item.orderStatus())).count();
+
+                return new PaginatedTenantOrdersResponse(
+                                items,
+                                orderPage.getNumber(),
+                                orderPage.getSize(),
+                                orderPage.getTotalElements(),
+                                orderPage.getTotalPages(),
+                                new TenantOrdersSummaryDto(orderPage.getTotalElements(), openIssues, deliveredOrders, activeOrders));
+        }
+
         private OrderDetailsResponse buildOrderDetailsResponse(Order order, String accessScope, String token) {
                 List<OrderDetailsResponse.OrderLocationInfo> locations = mapOrderLocations(order);
                 OrderDetailsResponse.OrderLocationInfo pickup = findLocationByType(locations, LocationType.PICKUP);
@@ -1382,6 +1443,9 @@ public class OrderServices {
         }
 
         private OrderTrackingTimelineResponse buildOrderTrackingTimelineResponse(Order order) {
+                List<OrderDetailsResponse.OrderLocationInfo> locations = mapOrderLocations(order);
+                OrderDetailsResponse.OrderLocationInfo pickup = findLocationByType(locations, LocationType.PICKUP);
+                OrderDetailsResponse.OrderLocationInfo dropoff = findLocationByType(locations, LocationType.DROP);
                 List<OrderDetailsResponse.OrderTimelineEvent> trackingHistory = mapTrackingHistory(order);
                 OrderDetailsResponse.CurrentLocationInfo currentLocation = mapCurrentLocation(order);
 
@@ -1392,6 +1456,9 @@ public class OrderServices {
                                 resolveLastStatusUpdatedAt(order),
                                 resolveLastLocationUpdatedAt(order),
                                 currentLocation,
+                                pickup,
+                                dropoff,
+                                locations,
                                 trackingHistory);
         }
 
@@ -1449,22 +1516,56 @@ public class OrderServices {
                 if (order.getLocations() == null || order.getLocations().isEmpty()) {
                         return List.of();
                 }
+                CreateOrderRequest payload = deserializeCreateOrderPayload(order);
 
                 return order.getLocations().stream()
                                 .sorted(Comparator.comparing(OrderLocation::getCreatedAt,
                                                 Comparator.nullsLast(Comparator.naturalOrder())))
-                                .map(location -> new OrderDetailsResponse.OrderLocationInfo(
-                                                location.getId(),
-                                                location.getLocationType() == null ? null : location.getLocationType().name(),
-                                                toDouble(location.getLatitude()),
-                                                toDouble(location.getLongitude()),
-                                                location.getCity(),
-                                                location.getState(),
-                                                location.getCountry(),
-                                                location.getPincode(),
-                                                location.getLocality(),
-                                                location.getCreatedAt()))
+                                .map(location -> mapOrderLocation(location, payload))
                                 .toList();
+        }
+
+        private OrderDetailsResponse.OrderLocationInfo mapOrderLocation(OrderLocation location,
+                        CreateOrderRequest payload) {
+                CreateOrderRequest.Address payloadAddress = resolvePayloadAddress(location, payload);
+
+                return new OrderDetailsResponse.OrderLocationInfo(
+                                location.getId(),
+                                location.getLocationType() == null ? null : location.getLocationType().name(),
+                                toDouble(location.getLatitude()),
+                                toDouble(location.getLongitude()),
+                                payloadAddress == null ? null : payloadAddress.line1(),
+                                payloadAddress == null ? null : payloadAddress.line2(),
+                                location.getCity(),
+                                location.getState(),
+                                location.getCountry(),
+                                location.getPincode(),
+                                location.getLocality(),
+                                location.getCreatedAt());
+        }
+
+        private CreateOrderRequest.Address resolvePayloadAddress(OrderLocation location, CreateOrderRequest payload) {
+                if (location.getLocationType() == null || payload == null) {
+                        return null;
+                }
+
+                CreateOrderRequest.LocationPoint point = switch (location.getLocationType()) {
+                        case PICKUP -> payload.pickup();
+                        case DROP -> payload.dropoff();
+                };
+
+                return point == null ? null : point.address();
+        }
+
+        private CreateOrderRequest deserializeCreateOrderPayload(Order order) {
+                if (order.getCreateOrderPayload() == null || order.getCreateOrderPayload().isBlank()) {
+                        return null;
+                }
+                try {
+                        return objectMapper.readValue(order.getCreateOrderPayload(), CreateOrderRequest.class);
+                } catch (Exception e) {
+                        return null;
+                }
         }
 
         private OrderDetailsResponse.OrderLocationInfo findLocationByType(

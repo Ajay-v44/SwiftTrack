@@ -33,14 +33,14 @@ public interface ProviderInterface {
         public QuoteResponse getQuote(@RequestHeader String token, @RequestParam String providerCode,
                         @RequestBody QuoteInput quoteInput);
 
-        @PostMapping("/api/provider/orders/v1/internal/getQuote")
+        @PostMapping(value = "/api/provider/orders/v1/internal/getQuote", consumes = "application/json", produces = "application/json")
         public QuoteResponse getQuoteInternal(@RequestParam String providerCode, @RequestBody QuoteInput quoteInput);
 
         @PostMapping("/api/provider/orders/v1/createOrder")
         public CreateOrderResponse createOrder(@RequestHeader String token, @RequestParam UUID quoteSessionId,
                         @RequestBody CreateOrderRequest createOrderRequest);
 
-        @PostMapping("/api/provider/orders/v1/internal/createOrder")
+        @PostMapping(value = "/api/provider/orders/v1/internal/createOrder", consumes = "application/json", produces = "application/json")
         public CreateOrderResponse createOrderInternal(@RequestParam String providerCode,
                         @RequestBody CreateOrderRequest createOrderRequest);
 

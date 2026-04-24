@@ -38,8 +38,8 @@ export function Hero() {
                         onSubmit={(e) => {
                             e.preventDefault();
                             const formData = new FormData(e.currentTarget);
-                            const id = formData.get("trackingId");
-                            if (id) window.location.href = `/track?id=${id}`;
+                            const id = formData.get("trackingId")?.toString().trim();
+                            if (id) window.location.href = `/track?id=${encodeURIComponent(id)}`;
                         }}
                         className="relative w-full max-w-sm sm:max-w-md"
                     >

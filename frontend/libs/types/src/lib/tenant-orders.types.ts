@@ -13,6 +13,21 @@ export interface TenantOrderQuote {
   currency: string | null
 }
 
+export interface CustomerDeliveryOptionQuote {
+  quoteOptionId: string
+  choiceCode: string | null
+  selectedType: string | null
+  providerCode: string | null
+  price: number
+  currency: string | null
+  providerQuoteId: string | null
+}
+
+export interface CustomerDeliveryOptionsQuote {
+  quoteSessionId: string
+  options: CustomerDeliveryOptionQuote[]
+}
+
 export interface TenantSavedAddress {
   id: string
   label: string | null
@@ -97,6 +112,10 @@ export interface TenantCreateOrderInput {
   deliveryInstructions?: string | null
 }
 
+export interface CustomerCreateOrderInput extends TenantCreateOrderInput {
+  selectedQuoteId: string
+}
+
 export interface TenantOrdersFilterInput {
   query?: string
   page: number
@@ -136,6 +155,8 @@ export interface TenantOrderLocationInfo {
   type: string | null
   latitude: number | null
   longitude: number | null
+  line1: string | null
+  line2: string | null
   city: string | null
   state: string | null
   country: string | null
@@ -212,5 +233,8 @@ export interface TenantOrderTrackingResponse {
   lastStatusUpdatedAt: string | null
   lastLocationUpdatedAt: string | null
   currentLocation: TenantOrderCurrentLocationInfo | null
+  pickup: TenantOrderLocationInfo | null
+  dropoff: TenantOrderLocationInfo | null
+  locations: TenantOrderLocationInfo[]
   trackingHistory: TenantOrderTimelineEvent[]
 }

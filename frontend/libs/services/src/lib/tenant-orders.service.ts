@@ -1,7 +1,10 @@
 import {
   cancelTenantOrderApi,
   createTenantAddressApi,
+  createConsumerOrderApi,
   createTenantOrderApi,
+  fetchConsumerOrderQuoteApi,
+  fetchConsumerOrdersApi,
   fetchPlaceSuggestionsApi,
   fetchTenantAddressesApi,
   fetchTenantOrderDetailsApi,
@@ -12,17 +15,21 @@ import {
   setTenantDefaultAddressApi,
   fetchPublicOrderTrackingApi,
   type RawTenantCreateOrderResponse,
+  type RawCustomerDeliveryOptionsQuoteResponse,
   type RawTenantOrderQuoteResponse,
   updateTenantAddressApi,
   type RawMapPlaceSuggestion,
 } from "@swifttrack/api-client"
 import {
   PaginatedTenantOrdersResponse,
+  CustomerCreateOrderInput,
+  CustomerDeliveryOptionsQuote,
   TenantCreateOrderInput,
   TenantOrderDetailsResponse,
   TenantOrderListItem,
   TenantOrderQuote,
   TenantOrderQuoteFormInput,
+  TenantOrderTimelineEvent,
   TenantOrderTrackingResponse,
   TenantOrdersFilterInput,
   TenantPlaceSuggestion,
@@ -39,6 +46,18 @@ export async function fetchTenantOrderQuotesService(
 
 export async function createTenantOrderService(input: TenantCreateOrderInput): Promise<{ orderId: string }> {
   const response = await createTenantOrderApi(input)
+  return mapTenantCreateOrderResponse(response.data)
+}
+
+export async function fetchConsumerOrderQuotesService(
+  input: TenantOrderQuoteFormInput
+): Promise<CustomerDeliveryOptionsQuote> {
+  const response = await fetchConsumerOrderQuoteApi(input)
+  return mapCustomerQuoteResponse(response.data)
+}
+
+export async function createConsumerOrderService(input: CustomerCreateOrderInput): Promise<{ orderId: string }> {
+  const response = await createConsumerOrderApi(input)
   return mapTenantCreateOrderResponse(response.data)
 }
 
@@ -89,6 +108,20 @@ export async function fetchTenantOrdersService(
   return response.data
 }
 
+export async function fetchConsumerOrdersService(
+  filters: TenantOrdersFilterInput
+): Promise<PaginatedTenantOrdersResponse> {
+  const response = await fetchConsumerOrdersApi({
+    page: filters.page,
+    size: filters.size,
+    query: filters.query?.trim() || undefined,
+    startDate: filters.startDate,
+    endDate: filters.endDate,
+  })
+
+  return response.data
+}
+
 function mapPlaceSuggestion(raw: RawMapPlaceSuggestion): TenantPlaceSuggestion | null {
   const latitude = raw.coordinates?.lat
   const longitude = raw.coordinates?.lng
@@ -123,6 +156,21 @@ function mapTenantQuoteResponse(raw: RawTenantOrderQuoteResponse): TenantOrderQu
   }
 }
 
+function mapCustomerQuoteResponse(raw: RawCustomerDeliveryOptionsQuoteResponse): CustomerDeliveryOptionsQuote {
+  return {
+    quoteSessionId: raw.quoteSessionId,
+    options: (raw.options ?? []).map((option) => ({
+      quoteOptionId: option.quoteOptionId,
+      choiceCode: option.choiceCode ?? null,
+      selectedType: option.selectedType ?? null,
+      providerCode: option.providerCode ?? null,
+      price: typeof option.quoteResponse?.price === "number" ? option.quoteResponse.price : 0,
+      currency: option.quoteResponse?.currency ?? null,
+      providerQuoteId: option.quoteResponse?.quoteId ?? null,
+    })),
+  }
+}
+
 function mapTenantCreateOrderResponse(raw: RawTenantCreateOrderResponse): { orderId: string } {
   return {
     orderId: raw.orderId,
@@ -136,12 +184,29 @@ export async function fetchTenantOrderDetailsService(orderId: string): Promise<T
 
 export async function fetchTenantOrderTrackingService(orderId: string): Promise<TenantOrderTrackingResponse> {
   const response = await fetchTenantOrderTrackingApi(orderId)
-  return response.data
+  return normalizeTenantOrderTrackingResponse(response.data)
 }
 
 export async function fetchPublicOrderTrackingService(trackingId: string): Promise<TenantOrderTrackingResponse> {
   const response = await fetchPublicOrderTrackingApi(trackingId)
-  return response.data
+  return normalizeTenantOrderTrackingResponse(response.data)
+}
+
+function normalizeTenantOrderTrackingResponse(
+  raw: Partial<TenantOrderTrackingResponse> & { events?: TenantOrderTimelineEvent[] | null }
+): TenantOrderTrackingResponse {
+  return {
+    orderId: raw.orderId ?? "",
+    orderStatus: raw.orderStatus ?? null,
+    trackingStatus: raw.trackingStatus ?? null,
+    lastStatusUpdatedAt: raw.lastStatusUpdatedAt ?? null,
+    lastLocationUpdatedAt: raw.lastLocationUpdatedAt ?? null,
+    currentLocation: raw.currentLocation ?? null,
+    pickup: raw.pickup ?? null,
+    dropoff: raw.dropoff ?? null,
+    locations: raw.locations ?? [raw.pickup, raw.dropoff].filter((item): item is NonNullable<typeof item> => Boolean(item)),
+    trackingHistory: raw.trackingHistory ?? raw.events ?? [],
+  }
 }
 
 export function buildFallbackTenantOrderDetails(order: TenantOrderListItem): TenantOrderDetailsResponse {
@@ -161,6 +226,8 @@ export function buildFallbackTenantOrderDetails(order: TenantOrderListItem): Ten
         type: "PICKUP",
         latitude: null,
         longitude: null,
+        line1: null,
+        line2: null,
         city: order.pickupCity,
         state: null,
         country: null,
@@ -173,6 +240,8 @@ export function buildFallbackTenantOrderDetails(order: TenantOrderListItem): Ten
         type: "DROP",
         latitude: null,
         longitude: null,
+        line1: null,
+        line2: null,
         city: order.dropoffCity,
         state: null,
         country: null,
@@ -205,6 +274,8 @@ function normalizeTenantOrderDetailsResponse(
           type: "PICKUP",
           latitude: raw.pickupLat ?? null,
           longitude: raw.pickupLng ?? null,
+          line1: null,
+          line2: null,
           city: raw.city ?? null,
           state: raw.state ?? null,
           country: null,
@@ -222,6 +293,8 @@ function normalizeTenantOrderDetailsResponse(
           type: "DROP",
           latitude: raw.dropoffLat ?? null,
           longitude: raw.dropoffLng ?? null,
+          line1: null,
+          line2: null,
           city: null,
           state: null,
           country: null,

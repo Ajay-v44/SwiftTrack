@@ -61,7 +61,7 @@ export function useLogin() {
     }
 
     if (userDetails.type === "CONSUMER") {
-      router.push("/track")
+      router.push("/customer/dashboard")
       return
     }
 
