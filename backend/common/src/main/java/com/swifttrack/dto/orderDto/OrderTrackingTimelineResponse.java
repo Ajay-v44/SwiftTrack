@@ -11,5 +11,8 @@ public record OrderTrackingTimelineResponse(
         LocalDateTime lastStatusUpdatedAt,
         LocalDateTime lastLocationUpdatedAt,
         OrderDetailsResponse.CurrentLocationInfo currentLocation,
+        OrderDetailsResponse.OrderLocationInfo pickup,
+        OrderDetailsResponse.OrderLocationInfo dropoff,
+        List<OrderDetailsResponse.OrderLocationInfo> locations,
         List<OrderDetailsResponse.OrderTimelineEvent> events) {
 }

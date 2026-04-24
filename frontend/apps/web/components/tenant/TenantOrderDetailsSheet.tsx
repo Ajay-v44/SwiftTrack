@@ -82,7 +82,7 @@ export function TenantOrderDetailsSheet({
   loading: boolean
   error: string | null
 }) {
-  const timeline = tracking?.events ?? []
+  const timeline = tracking?.trackingHistory ?? []
   const currentLocation = tracking?.currentLocation || details?.currentLocation || null
   const trackingStatus = tracking?.trackingStatus || details?.trackingStatus || details?.orderStatus || "Unknown"
   const statusToneClass = statusTone[trackingStatus] || "bg-slate-100 text-slate-700 border-slate-200"

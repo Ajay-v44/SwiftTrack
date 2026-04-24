@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import com.swifttrack.enums.BillingAndSettlement.AccountType;
 
-@FeignClient(name = "billingandsettlementservice", url = "http://localhost:8080/billingandsettlementservice/api/accounts")
+@FeignClient(name = "billingandsettlementservice", url = "${BILLING_ACCOUNTS_URL:http://localhost:8002/api/accounts}")
 public interface BillingAndSettlementInterface {
 
     @PostMapping("/v1/createAccount")

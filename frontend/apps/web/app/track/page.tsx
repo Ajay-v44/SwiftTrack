@@ -6,54 +6,76 @@ import { useState, useEffect, Suspense } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { fetchPublicOrderTrackingService } from "@swifttrack/services"
 import { TenantOrderTrackingResponse } from "@swifttrack/types"
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
+
+function formatTrackingAddress(location: TenantOrderTrackingResponse["pickup"]) {
+    if (!location) return "Address not available"
+
+    const cityLine = [location.city, location.state, location.pincode].filter(Boolean).join(", ")
+    const parts = [location.line1, location.line2, location.locality, cityLine, location.country]
+        .map((part) => part?.trim())
+        .filter((part): part is string => Boolean(part))
+
+    return parts.length > 0 ? parts.join(", ") : "Address not available"
+}
 
 function TrackContent() {
+    const router = useRouter()
     const searchParams = useSearchParams()
-    const [trackingId, setTrackingId] = useState(searchParams.get("id") || "")
+    const queryTrackingId = searchParams.get("id")?.trim() || ""
+    const [trackingId, setTrackingId] = useState(queryTrackingId)
     const [status, setStatus] = useState<"idle" | "searching" | "found" | "error">("idle")
     const [trackingData, setTrackingData] = useState<TenantOrderTrackingResponse | null>(null)
     const [error, setError] = useState<string | null>(null)
 
-    const handleSearch = async (e?: React.FormEvent) => {
-        if (e) e.preventDefault()
-        if (!trackingId.trim()) return
+    const runSearch = async (id: string) => {
+        const normalizedId = id.trim()
+        if (!normalizedId) return
 
+        setTrackingId(normalizedId)
         setStatus("searching")
         setError(null)
 
         try {
-            const data = await fetchPublicOrderTrackingService(trackingId)
+            const data = await fetchPublicOrderTrackingService(normalizedId)
             setTrackingData(data)
             setStatus("found")
         } catch (err) {
             console.error("Tracking failed", err)
+            setTrackingData(null)
             setError("We couldn't find a shipment with that tracking ID. Please check and try again.")
             setStatus("error")
         }
     }
 
-    useEffect(() => {
-        const id = searchParams.get("id")
-        if (id) {
-            setTrackingId(id)
-            // We can't call handleSearch directly here because it uses state from the current render
-            // Instead, we'll trigger it via a separate effect or just call it with the id
-            const triggerSearch = async (tid: string) => {
-                setStatus("searching")
-                setError(null)
-                try {
-                    const data = await fetchPublicOrderTrackingService(tid)
-                    setTrackingData(data)
-                    setStatus("found")
-                } catch (err) {
-                    setError("We couldn't find a shipment with that tracking ID.")
-                    setStatus("error")
-                }
-            }
-            triggerSearch(id)
+    const handleSearch = async (e?: React.FormEvent) => {
+        if (e) e.preventDefault()
+        const normalizedId = trackingId.trim()
+        if (!normalizedId) return
+
+        if (normalizedId !== queryTrackingId) {
+            router.replace(`/track?id=${encodeURIComponent(normalizedId)}`)
+            return
         }
-    }, [searchParams])
+
+        await runSearch(normalizedId)
+    }
+
+    useEffect(() => {
+        setTrackingId(queryTrackingId)
+
+        if (queryTrackingId) {
+            void runSearch(queryTrackingId)
+        } else {
+            setTrackingData(null)
+            setError(null)
+            setStatus("idle")
+        }
+    }, [queryTrackingId])
+
+    const trackingHistory = trackingData?.trackingHistory ?? []
+    const pickupAddress = formatTrackingAddress(trackingData?.pickup ?? null)
+    const dropoffAddress = formatTrackingAddress(trackingData?.dropoff ?? null)
 
     return (
         <div className="container mx-auto px-4 py-12 relative">
@@ -154,13 +176,13 @@ function TrackContent() {
                                         <div className="flex items-center gap-2 text-muted-foreground text-sm mb-2">
                                             <MapPin className="h-4 w-4" /> From
                                         </div>
-                                        <div className="font-semibold">Origin Hub</div>
+                                        <div className="font-semibold leading-6 text-white">{pickupAddress}</div>
                                     </div>
                                     <div className="text-right">
                                         <div className="flex items-center justify-end gap-2 text-muted-foreground text-sm mb-2">
                                             To <MapPin className="h-4 w-4" />
                                         </div>
-                                        <div className="font-semibold">Destination</div>
+                                        <div className="font-semibold leading-6 text-white">{dropoffAddress}</div>
                                     </div>
                                 </div>
 
@@ -203,9 +225,14 @@ function TrackContent() {
                                 <Clock className="h-5 w-5 text-primary" /> Shipment History
                             </h3>
                             <div className="space-y-0 relative">
-                                {trackingData.trackingHistory.map((step, i) => (
+                                {trackingHistory.length === 0 && (
+                                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-muted-foreground">
+                                        Tracking has started, but there are no timeline events available yet.
+                                    </div>
+                                )}
+                                {trackingHistory.map((step, i) => (
                                     <div key={i} className="relative pl-10 pb-10 last:pb-0 group">
-                                        {i !== trackingData.trackingHistory.length - 1 && (
+                                        {i !== trackingHistory.length - 1 && (
                                             <div className="absolute left-[11px] top-7 bottom-0 w-[2px] bg-gradient-to-b from-primary to-white/5" />
                                         )}
                                         <div className={`absolute left-0 top-1 h-6 w-6 rounded-full flex items-center justify-center z-10 transition-transform group-hover:scale-110 ${i === 0 ? "bg-primary shadow-[0_0_15px_rgba(var(--primary-rgb),0.5)]" : "bg-white/10"}`}>

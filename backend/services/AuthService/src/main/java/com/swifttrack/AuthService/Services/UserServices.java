@@ -18,6 +18,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.jpa.domain.Specification;
 
+import lombok.extern.slf4j.Slf4j;
+
 import com.swifttrack.AuthService.Dto.PaginatedTenantUsersResponse;
 import com.swifttrack.AuthService.Dto.TenantUserListItemResponse;
 import com.swifttrack.AuthService.Dto.LoginResponse;
@@ -47,6 +49,7 @@ import com.swifttrack.exception.ResourceNotFoundException;
 import com.swifttrack.exception.CustomException;
 
 @Service
+@Slf4j
 public class UserServices {
     private static final UUID SYSTEM_USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
 
@@ -82,8 +85,13 @@ public class UserServices {
         userRepo.save(userModel);
 
         if (autoApproveConsumer) {
-            billingAndSettlementInterface.createAccountInternal(userModel.getId(), AccountType.CONSUMER,
-                    SYSTEM_USER_ID);
+            try {
+                billingAndSettlementInterface.createAccountInternal(userModel.getId(), AccountType.CONSUMER,
+                        SYSTEM_USER_ID);
+            } catch (Exception e) {
+                log.warn("User registered but billing account bootstrap failed for userId={}: {}",
+                        userModel.getId(), e.getMessage());
+            }
         }
 
         return "User registered Successfully";

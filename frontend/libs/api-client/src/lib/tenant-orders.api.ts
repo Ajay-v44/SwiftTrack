@@ -2,6 +2,7 @@ import { httpClient } from "./http-client"
 import { serviceEndpoints } from "./endpoints"
 import type {
   TenantCreateOrderInput,
+  CustomerCreateOrderInput,
   TenantOrderQuoteFormInput,
   TenantSavedAddress,
   TenantSavedAddressInput,
@@ -47,6 +48,21 @@ export interface RawTenantCreateOrderResponse {
   providerCode?: string | null
   totalAmount?: number | null
   choiceCode?: string | null
+}
+
+export interface RawCustomerDeliveryOptionsQuoteResponse {
+  quoteSessionId: string
+  options?: Array<{
+    quoteOptionId: string
+    choiceCode?: string | null
+    selectedType?: string | null
+    providerCode?: string | null
+    quoteResponse?: {
+      price?: number | null
+      currency?: string | null
+      quoteId?: string | null
+    } | null
+  }> | null
 }
 
 export function fetchTenantAddressesApi() {
@@ -111,6 +127,59 @@ export function createTenantOrderApi(payload: TenantCreateOrderInput) {
 
   return httpClient.post<RawTenantCreateOrderResponse>(`${serviceEndpoints.orders}/v1/createOrder`, body, {
     params: { quoteSessionId },
+  })
+}
+
+export function fetchConsumerOrdersApi(params: {
+  page: number
+  size: number
+  query?: string
+  startDate?: string
+  endDate?: string
+}) {
+  return httpClient.get<any>(`${serviceEndpoints.orders}/v1/consumer/orders`, { params })
+}
+
+export function fetchConsumerOrderQuoteApi(payload: TenantOrderQuoteFormInput) {
+  return httpClient.post<RawCustomerDeliveryOptionsQuoteResponse>(`${serviceEndpoints.orders}/v1/consumer/getQuote`, payload)
+}
+
+export function createConsumerOrderApi(payload: CustomerCreateOrderInput) {
+  const { selectedQuoteId, quoteSessionId, orderReference, paymentType, pickupAddressId, dropoff, packageInfo, deliveryInstructions } =
+    payload
+
+  const body = {
+    orderReference,
+    orderType: "ON_DEMAND",
+    paymentType,
+    pickupAddressId,
+    dropoff: {
+      addressId: dropoff.addressId ?? null,
+      address: {
+        line1: dropoff.line1,
+        line2: dropoff.line2 ?? null,
+        city: dropoff.city,
+        state: dropoff.state,
+        country: dropoff.country,
+        pincode: dropoff.pincode,
+        locality: dropoff.locality ?? null,
+        latitude: dropoff.latitude,
+        longitude: dropoff.longitude,
+      },
+      contact: {
+        name: dropoff.contactName,
+        phone: dropoff.contactPhone,
+      },
+      businessName: dropoff.businessName ?? null,
+      notes: dropoff.notes ?? null,
+      verification: null,
+    },
+    packageInfo,
+    deliveryInstructions,
+  }
+
+  return httpClient.post<RawTenantCreateOrderResponse>(`${serviceEndpoints.orders}/v1/consumer/createOrder`, body, {
+    params: { quoteSessionId, selectedQuoteId },
   })
 }
 

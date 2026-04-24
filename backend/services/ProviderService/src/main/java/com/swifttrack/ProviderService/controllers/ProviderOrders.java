@@ -30,25 +30,25 @@ public class ProviderOrders {
         this.providerOrderServices = providerOrderServices;
     }
 
-    @PostMapping("/v1/getQuote")
+    @PostMapping(value = "/v1/getQuote", consumes = "application/json")
     public ResponseEntity<QuoteResponse> getQuote(@RequestHeader String token, @RequestParam String providerCode,
             @RequestBody QuoteInput quoteInput) {
         return ResponseEntity.ok(providerOrderServices.getQuote(token, providerCode, quoteInput));
     }
 
-    @PostMapping("/v1/internal/getQuote")
+    @PostMapping(value = "/v1/internal/getQuote", consumes = "application/json")
     public ResponseEntity<QuoteResponse> getQuoteInternal(@RequestParam String providerCode,
             @RequestBody QuoteInput quoteInput) {
         return ResponseEntity.ok(providerOrderServices.getQuoteInternal(providerCode, quoteInput));
     }
 
-    @PostMapping("/v1/createOrder")
+    @PostMapping(value = "/v1/createOrder", consumes = "application/json")
     public ResponseEntity<CreateOrderResponse> createOrder(@RequestHeader String token,
             @RequestParam UUID quoteSessionId, @RequestBody CreateOrderRequest createOrderRequest) {
         return ResponseEntity.ok(providerOrderServices.createOrder(token, quoteSessionId, createOrderRequest));
     }
 
-    @PostMapping("/v1/internal/createOrder")
+    @PostMapping(value = "/v1/internal/createOrder", consumes = "application/json")
     public ResponseEntity<CreateOrderResponse> createOrderInternal(@RequestParam String providerCode,
             @RequestBody CreateOrderRequest createOrderRequest) {
         return ResponseEntity.ok(providerOrderServices.createOrderInternal(providerCode, createOrderRequest));

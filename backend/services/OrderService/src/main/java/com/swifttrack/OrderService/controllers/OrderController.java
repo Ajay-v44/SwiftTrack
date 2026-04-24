@@ -157,6 +157,17 @@ public class OrderController {
         return ResponseEntity.ok(orderServices.getTenantOrders(token, query, startDate, endDate, PageRequest.of(page, size)));
     }
 
+    @GetMapping("/v1/consumer/orders")
+    public ResponseEntity<PaginatedTenantOrdersResponse> getConsumerOrders(
+            @RequestHeader("token") String token,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) LocalDate startDate,
+            @RequestParam(required = false) LocalDate endDate) {
+        return ResponseEntity.ok(orderServices.getConsumerOrders(token, query, startDate, endDate, PageRequest.of(page, size)));
+    }
+
     @GetMapping("/v1/guest/getOrderById/{orderId}")
     public ResponseEntity<com.swifttrack.dto.orderDto.OrderDetailsResponse> getGuestOrderById(
             @PathVariable("orderId") UUID orderId,

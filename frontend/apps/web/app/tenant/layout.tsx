@@ -30,7 +30,7 @@ export default function TenantLayout({
       if (user.type === "PROVIDER_USER") router.replace("/provider/dashboard")
       else if (user.type === "TENANT_DRIVER" || user.type === "DRIVER_USER") router.replace("/driver/dashboard")
       else if (user.type === "SUPER_ADMIN" || user.type === "SYSTEM_ADMIN") router.replace("/admin/dashboard")
-      else if (user.type === "CONSUMER") router.replace("/track")
+      else if (user.type === "CONSUMER") router.replace("/customer/dashboard")
       else router.replace("/")
       return
     }

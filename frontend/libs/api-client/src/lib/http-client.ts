@@ -47,7 +47,8 @@ function isUnprotectedRequest(config?: InternalAxiosRequestConfig) {
   return (
     url.includes("/v1/login/emailAndPassword") ||
     url.includes("/v1/login/mobileNumAndOtp") ||
-    url.includes("/api/users/v1/register")
+    url.includes("/api/users/v1/register") ||
+    url.includes("/public/")
   )
 }
 
